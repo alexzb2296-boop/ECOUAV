@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>FPV España</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{color-scheme:dark;--bg:#0b1117;--panel:#121b24;--line:#253443;--text:#edf5fb;--muted:#91a5b5;--accent:#59c3ff;--good:#31c978;--warn:#ffb020;--bad:#ff5b5b}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}.top{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;gap:12px;align-items:center;justify-content:space-between}.top h1{font-size:18px;margin:0}.top small{color:var(--muted)}#map{height:62vh;min-height:430px}.leaflet-control-layers,.leaflet-bar a{background:#111c25!important;color:white!important;border-color:#314252!important}.panel{padding:14px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:13px}.label{font-size:12px;color:var(--muted);margin-bottom:5px}.value{font-size:22px;font-weight:700}.status{display:flex;align-items:center;gap:8px}.dot{width:12px;height:12px;border-radius:50%;background:var(--good)}.coords{font-size:13px;color:var(--muted);margin-top:4px}.notice{margin:0 14px 16px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;color:var(--muted);font-size:13px}.toolbar{position:absolute;z-index:1000;top:76px;left:12px;background:#101922dd;border:1px solid #314252;border-radius:12px;padding:7px;display:flex;gap:6px}.toolbar button{border:0;border-radius:9px;background:#243442;color:white;padding:9px 11px;font-weight:650}.toolbar button.active{background:#dceefa;color:#0a1720}@media(max-width:720px){.panel{grid-template-columns:repeat(2,1fr)}#map{height:58vh;min-height:390px}.toolbar{top:72px}.top small{display:none}}
+</style></head>
+<body>
+<header class="top"><div><h1>FPV España · Planificador</h1><small>Mapa satélite + punto de vuelo</small></div><div id="flightStatus" class="status"><span class="dot"></span><strong>LISTO</strong></div></header>
+<div style="position:relative"><div class="toolbar"><button id="sat" class="active">Satélite</button><button id="topo">Relieve</button><button id="center">España</button></div><div id="map"></div></div>
+<section class="panel">
+<div class="card"><div class="label">Punto seleccionado</div><div class="value">📍 Vuelo</div><div id="coords" class="coords">Pulsa en el mapa</div></div>
+<div class="card"><div class="label">Altitud terreno</div><div id="elev" class="value">— m</div><div class="coords">Pendiente de API DEM</div></div>
+<div class="card"><div class="label">Viento</div><div id="wind" class="value">— km/h</div><div class="coords">Pendiente de meteorología</div></div>
+<div class="card"><div class="label">Rachas</div><div id="gust" class="value">— km/h</div><div class="coords">Pendiente de meteorología</div></div>
+</section>
+<div class="notice"><b>Uso FPV:</b> esta versión ya utiliza cartografía satélite real. Las cifras de viento, relieve y restricciones UAS no se inventan: aparecerán cuando se conecten sus fuentes de datos. Antes de volar, comprueba siempre las zonas geográficas UAS oficiales de ENAIRE.</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const map=L.map('map',{zoomControl:true}).setView([40.2,-3.7],6);
+const satellite=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Tiles © Esri',crossOrigin:true});
+const fallback=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap contributors'});
+satellite.on('tileerror',()=>{ if(current===satellite && !map.hasLayer(fallback)) fallback.addTo(map); });
+satellite.on('tileload',()=>{ if(map.hasLayer(fallback)) map.removeLayer(fallback); });
+const topo=L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',{maxZoom:17,attribution:'© OpenTopoMap contributors'});
+satellite.addTo(map);
+setTimeout(()=>map.invalidateSize(),150);
+let current=satellite,marker;
+function base(layer){if(current)map.removeLayer(current);current=layer;layer.addTo(map)}
+document.getElementById('sat').onclick=()=>{base(satellite);sat.classList.add('active');topoBtn.classList.remove('active')};
+const topoBtn=document.getElementById('topo');topoBtn.onclick=()=>{base(topo);topoBtn.classList.add('active');sat.classList.remove('active')};
+document.getElementById('center').onclick=()=>map.setView([40.2,-3.7],6);
+map.on('click',e=>{if(marker)marker.setLatLng(e.latlng);else marker=L.marker(e.latlng,{draggable:true}).addTo(map);show(e.latlng);marker.on('dragend',x=>show(x.target.getLatLng()))});
+function show(p){document.getElementById('coords').textContent=p.lat.toFixed(6)+', '+p.lng.toFixed(6)}
+</script></body></html>
