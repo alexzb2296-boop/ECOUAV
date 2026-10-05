@@ -1,41 +1,219 @@
 <!doctype html>
 <html lang="es">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>ECOUAV v0.4</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ECOUAV v0.5</title>
+
+<link rel="stylesheet"
+href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
 <style>
-:root{color-scheme:dark;--bg:#0b1117;--panel:#121b24;--line:#253443;--text:#edf5fb;--muted:#91a5b5;--accent:#59c3ff;--good:#31c978;--warn:#ffb020;--bad:#ff5b5b}
+:root{
+color-scheme:dark;
+--bg:#0b1117;
+--panel:#121b24;
+--line:#253443;
+--text:#edf5fb;
+--muted:#91a5b5;
+--accent:#59c3ff;
+--good:#31c978;
+--warn:#ffb020;
+--bad:#ff5b5b
+}
+
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
-.top{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;gap:12px;align-items:center;justify-content:space-between}
+
+body{
+margin:0;
+background:var(--bg);
+color:var(--text);
+font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif
+}
+
+.top{
+padding:14px 16px;
+border-bottom:1px solid var(--line);
+display:flex;
+gap:12px;
+align-items:center;
+justify-content:space-between
+}
+
 .top h1{font-size:18px;margin:0}
-.top small{color:var(--muted)}
-#map{height:62vh;min-height:430px}
-.leaflet-control-layers,.leaflet-bar a{background:#111c25!important;color:white!important;border-color:#314252!important}
-.panel{padding:14px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:13px}
-.label{font-size:12px;color:var(--muted);margin-bottom:5px}
-.value{font-size:22px;font-weight:700}
-.status{display:flex;align-items:center;gap:8px}
-.dot{width:12px;height:12px;border-radius:50%;background:var(--good)}
-.coords{font-size:13px;color:var(--muted);margin-top:4px}
-.notice{margin:0 14px 16px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;color:var(--muted);font-size:13px}
-.toolbar{position:absolute;z-index:1000;top:76px;left:12px;background:#101922dd;border:1px solid #314252;border-radius:12px;padding:7px;display:flex;gap:6px}
-.toolbar button{border:0;border-radius:9px;background:#243442;color:white;padding:9px 11px;font-weight:650}
-.toolbar button.active{background:#dceefa;color:#0a1720}
-.toolrow{padding:0 14px 14px;display:flex;gap:8px;flex-wrap:wrap}
-.toolrow button{border:1px solid var(--line);border-radius:11px;background:var(--panel);color:var(--text);padding:10px 12px;font-weight:700}
-.toolrow button.active{background:#dceefa;color:#0a1720}
+.top small,.mini,.coords{color:var(--muted)}
+
+#map{
+height:60vh;
+min-height:420px
+}
+
+.leaflet-control-layers,
+.leaflet-bar a{
+background:#111c25!important;
+color:#fff!important;
+border-color:#314252!important
+}
+
+.toolbar{
+position:absolute;
+z-index:1000;
+top:12px;
+left:12px;
+background:#101922dd;
+border:1px solid #314252;
+border-radius:12px;
+padding:7px;
+display:flex;
+gap:6px;
+max-width:calc(100% - 24px);
+overflow:auto
+}
+
+button{
+border:1px solid var(--line);
+border-radius:10px;
+background:#182530;
+color:var(--text);
+padding:9px 11px;
+font-weight:700
+}
+
+button.active{
+background:#dceefa;
+color:#0a1720
+}
+
+.panel{
+padding:14px;
+display:grid;
+grid-template-columns:repeat(4,minmax(0,1fr));
+gap:10px
+}
+
+.card{
+background:var(--panel);
+border:1px solid var(--line);
+border-radius:14px;
+padding:13px
+}
+
 .wide{grid-column:span 2}
-.mini{font-size:13px;color:var(--muted);margin-top:5px}
+.full{grid-column:1/-1}
+
+.label{
+font-size:12px;
+color:var(--muted);
+margin-bottom:5px
+}
+
+.value{
+font-size:21px;
+font-weight:750
+}
+
+.coords,.mini{
+font-size:13px;
+margin-top:5px
+}
+
+.status{
+display:flex;
+align-items:center;
+gap:8px
+}
+
+.dot{
+width:12px;
+height:12px;
+border-radius:50%;
+background:var(--good)
+}
+
+.toolrow{
+padding:0 14px 14px;
+display:flex;
+gap:8px;
+flex-wrap:wrap
+}
+
+.notice{
+margin:0 14px 16px;
+padding:12px 14px;
+border:1px solid var(--line);
+border-radius:12px;
+color:var(--muted);
+font-size:13px
+}
+
+.formgrid{
+display:grid;
+grid-template-columns:repeat(4,minmax(0,1fr));
+gap:9px
+}
+
+.field label{
+display:block;
+font-size:11px;
+color:var(--muted);
+margin:0 0 4px
+}
+
+.field input,
+.field select{
+width:100%;
+border:1px solid var(--line);
+border-radius:9px;
+background:#0d161e;
+color:var(--text);
+padding:9px;
+font-size:16px
+}
+
+.actions{
+display:flex;
+gap:7px;
+flex-wrap:wrap;
+margin-top:10px
+}
+
+.hidden{display:none}
+
+.poiList{
+display:flex;
+gap:7px;
+flex-wrap:wrap;
+margin-top:8px
+}
+
+.poiChip{
+padding:7px 9px;
+border:1px solid var(--line);
+border-radius:9px;
+font-size:12px
+}
+
+input[type=file]{display:none}
 
 @media(max-width:720px){
-.panel{grid-template-columns:repeat(2,1fr)}
-#map{height:58vh;min-height:390px}
-.toolbar{top:72px;max-width:calc(100vw - 24px);overflow-x:auto;white-space:nowrap}
-.top small{display:none}
+
+.panel{
+grid-template-columns:repeat(2,1fr)
+}
+
+.formgrid{
+grid-template-columns:repeat(2,1fr)
+}
+
+#map{
+height:55vh;
+min-height:390px
+}
+
 .wide{grid-column:span 2}
+
+.top small{display:none}
+
 }
 </style>
 </head>
@@ -43,572 +221,2767 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
 <body>
 
 <header class="top">
+
 <div>
-<h1>ECOUAV</h1>
-<small>Planificador UAS · simple y rápido</small>
+<h1>
+ECOUAV
+<span style="color:var(--accent)">v0.5</span>
+</h1>
+
+<small>
+Planificador UAS · Terreno · RF · Misiones
+</small>
 </div>
+
 <div id="flightStatus" class="status">
 <span class="dot"></span>
 <strong>LISTO</strong>
 </div>
+
 </header>
 
+
 <div style="position:relative">
+
 <div class="toolbar">
-<button id="sat" class="active">Satélite</button>
-<button id="topo">Relieve</button>
-<button id="locate">Mi posición</button>
-<button id="center">España</button>
+
+<button id="sat" class="active">
+Satélite
+</button>
+
+<button id="topo">
+Relieve
+</button>
+
+<button id="contours">
+Curvas
+</button>
+
+<button id="locate">
+Mi posición
+</button>
+
+<button id="center">
+España
+</button>
+
 </div>
+
 <div id="map"></div>
+
 </div>
+
 
 <section class="panel">
 
 <div class="card">
-<div class="label">Punto seleccionado</div>
-<div class="value">📍 Vuelo</div>
-<div id="coords" class="coords">Pulsa en el mapa</div>
+
+<div class="label">
+PUNTO SELECCIONADO
 </div>
 
-<div class="card">
-<div class="label">Altitud terreno</div>
-<div id="elev" class="value">— m</div>
-<div id="elevNote" class="coords">Selecciona un punto</div>
+<div class="value">
+📍 Vuelo
 </div>
 
-<div class="card">
-<div class="label">Viento</div>
-<div id="wind" class="value">— km/h</div>
-<div id="windNote" class="coords">Selecciona un punto</div>
+<div id="coords" class="coords">
+Pulsa en el mapa
 </div>
 
+</div>
+
+
 <div class="card">
-<div class="label">Rachas</div>
-<div id="gust" class="value">— km/h</div>
-<div id="gustNote" class="coords">Selecciona un punto</div>
+
+<div class="label">
+ALTITUD TERRENO
+</div>
+
+<div id="elev" class="value">
+— m
+</div>
+
+<div id="elevNote" class="coords">
+Selecciona un punto
+</div>
+
+</div>
+
+
+<div class="card">
+
+<div class="label">
+VIENTO
+</div>
+
+<div id="wind" class="value">
+— km/h
+</div>
+
+<div id="windNote" class="coords">
+Selecciona un punto
+</div>
+
+</div>
+
+
+<div class="card">
+
+<div class="label">
+RACHAS
+</div>
+
+<div id="gust" class="value">
+— km/h
+</div>
+
+<div id="gustNote" class="coords">
+Selecciona un punto
+</div>
+
 </div>
 
 </section>
 
+
 <div class="toolrow">
-<button id="measureBtn">📏 Medir</button>
-<button id="losBtn">👁 LOS</button>
-<button id="clearBtn">✕ Limpiar</button>
+
+<button id="measureBtn">
+📏 Medir
+</button>
+
+<button id="losBtn">
+👁 LOS
+</button>
+
+<button id="antennaBtn">
+📡 Antena
+</button>
+
+<button id="poiBtn">
+📍 POI
+</button>
+
+<button id="missionBtn">
+💾 Misión
+</button>
+
+<button id="clearBtn">
+✕ Limpiar herramientas
+</button>
+
 </div>
+
 
 <section class="panel" style="padding-top:0">
 
-<div class="card">
-<div class="label">VIENTO POR ALTURA</div>
-<div id="windLevels" class="value" style="font-size:16px">
-10 m — · 80 m — · 120 m —
-</div>
-<div class="mini">Estimación meteorológica por niveles disponibles</div>
-</div>
 
 <div class="card">
-<div class="label">MEDICIÓN</div>
-<div id="measureOut" class="value" style="font-size:17px">Sin medición</div>
-<div class="mini">Marca dos puntos</div>
+
+<div class="label">
+VIENTO POR ALTURA
 </div>
+
+<div id="windLevels"
+class="value"
+style="font-size:16px">
+
+10 m — · 80 m — · 120 m —
+
+</div>
+
+<div class="mini">
+Estimación meteorológica
+</div>
+
+</div>
+
+
+<div class="card">
+
+<div class="label">
+MEDICIÓN
+</div>
+
+<div id="measureOut"
+class="value"
+style="font-size:17px">
+
+Sin medición
+
+</div>
+
+<div class="mini">
+Marca dos puntos
+</div>
+
+</div>
+
 
 <div class="card wide">
-<div class="label">LOS · LÍNEA DE VISTA</div>
-<div id="losOut" class="value" style="font-size:17px">Sin cálculo</div>
-<div class="mini">Análisis básico del relieve entre A y B</div>
+
+<div class="label">
+LOS · FRESNEL
+</div>
+
+<div id="losOut"
+class="value"
+style="font-size:17px">
+
+Sin cálculo
+
+</div>
+
+<div id="losDetail" class="mini">
+Análisis del relieve y primera zona de Fresnel
+</div>
+
+</div>
+
+
+<div id="antennaCard"
+class="card full hidden">
+
+<div class="label">
+📡 CONFIGURACIÓN DE ANTENA / ENLACE FPV
+</div>
+
+
+<div class="formgrid">
+
+<div class="field">
+
+<label>
+Azimut °
+</label>
+
+<input
+id="azimuth"
+type="number"
+min="0"
+max="359"
+value="0">
+
+</div>
+
+
+<div class="field">
+
+<label>
+Apertura °
+</label>
+
+<input
+id="beam"
+type="number"
+min="1"
+max="360"
+value="90">
+
+</div>
+
+
+<div class="field">
+
+<label>
+Alcance máximo km
+</label>
+
+<input
+id="rangeKm"
+type="number"
+min=".1"
+step=".1"
+value="5">
+
+</div>
+
+
+<div class="field">
+
+<label>
+Altura antena m AGL
+</label>
+
+<input
+id="antHeight"
+type="number"
+min=".1"
+step=".1"
+value="2">
+
+</div>
+
+
+<div class="field">
+
+<label>
+Frecuencia MHz
+</label>
+
+<input
+id="freq"
+type="number"
+min="1"
+value="5800">
+
+</div>
+
+
+<div class="field">
+
+<label>
+Potencia VTX mW
+</label>
+
+<input
+id="vtx"
+type="number"
+min="1"
+value="1000">
+
+</div>
+
+
+<div class="field">
+
+<label>
+Ganancia TX dBi
+</label>
+
+<input
+id="txGain"
+type="number"
+step=".1"
+value="2">
+
+</div>
+
+
+<div class="field">
+
+<label>
+Ganancia RX dBi
+</label>
+
+<input
+id="rxGain"
+type="number"
+step=".1"
+value="8">
+
+</div>
+
+
+<div class="field">
+
+<label>
+Altura aeronave m AGL
+</label>
+
+<input
+id="airHeight"
+type="number"
+min=".1"
+step=".1"
+value="30">
+
+</div>
+
+</div>
+
+
+<div class="actions">
+
+<button id="placeAntenna">
+Colocar antena en mapa
+</button>
+
+<button id="updateSector">
+Actualizar sector
+</button>
+
+<button id="testLink">
+Comprobar enlace al punto seleccionado
+</button>
+
+</div>
+
+
+<div id="antennaInfo" class="mini">
+
+Coloca la antena para dibujar su sector teórico.
+
+</div>
+
+</div>
+
+
+<div id="poiCard"
+class="card full hidden">
+
+<div class="label">
+📍 PUNTO DE REFERENCIA
+</div>
+
+
+<div class="formgrid">
+
+<div class="field">
+
+<label>
+Tipo
+</label>
+
+<select id="poiType">
+
+<option>
+🚦 Cruce de caminos
+</option>
+
+<option>
+💧 Charca / agua
+</option>
+
+<option>
+🌲 Línea de árboles
+</option>
+
+<option>
+🏠 Edificación
+</option>
+
+<option>
+🚙 Vehículo
+</option>
+
+<option>
+📡 Antena
+</option>
+
+<option>
+🛫 Punto de despegue
+</option>
+
+<option>
+📍 Punto de interés
+</option>
+
+<option>
+✏️ Personalizado
+</option>
+
+</select>
+
+</div>
+
+
+<div class="field wide">
+
+<label>
+Nombre
+</label>
+
+<input
+id="poiName"
+placeholder="Ej. cruce norte">
+
+</div>
+
+</div>
+
+
+<div class="actions">
+
+<button id="placePoi">
+Colocar POI en mapa
+</button>
+
+</div>
+
+
+<div id="poiList"
+class="poiList">
+</div>
+
+</div>
+
+
+<div id="missionCard"
+class="card full hidden">
+
+<div class="label">
+💾 MISIÓN
+</div>
+
+
+<div class="formgrid">
+
+<div class="field wide">
+
+<label>
+Nombre de misión
+</label>
+
+<input
+id="missionName"
+value="Misión ECOUAV">
+
+</div>
+
+</div>
+
+
+<div class="actions">
+
+<button id="saveMission">
+Guardar en este dispositivo
+</button>
+
+<button id="loadMission">
+Cargar guardada
+</button>
+
+<button id="exportGeo">
+Exportar GeoJSON
+</button>
+
+<button id="exportKml">
+Exportar KML
+</button>
+
+<button id="exportGpx">
+Exportar GPX
+</button>
+
+<label>
+
+<button type="button"
+id="importFake">
+Importar archivo
+</button>
+
+<input
+id="importFile"
+type="file"
+accept=".json,.geojson,.kml,.gpx">
+
+</label>
+
+</div>
+
+
+<div id="missionInfo"
+class="mini">
+
+La misión incluye antena y puntos de referencia.
+
+GeoJSON es el formato nativo de ECOUAV v0.5.
+
+</div>
+
 </div>
 
 </section>
 
+
 <div class="notice">
-<b>Uso FPV:</b> ECOUAV utiliza cartografía satélite y consulta altitud del terreno y meteorología mediante servicios públicos. Si una fuente no responde, ECOUAV lo indicará en lugar de inventar datos. Antes de volar, comprueba siempre las zonas geográficas UAS oficiales.
+
+<b>Importante:</b>
+
+la cobertura RF, LOS y Fresnel son estimaciones de planificación.
+
+No garantizan enlace real: vegetación, edificios,
+interferencias, orientación/polarización,
+receptor y otros factores pueden cambiar el resultado.
+
+Comprueba también las zonas geográficas UAS oficiales antes de volar.
+
 </div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script
+src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
+</script>
+
 
 <script>
 
-const map=L.map('map',{zoomControl:true}).setView([40.2,-3.7],6);
+const $=id=>document.getElementById(id);
 
-const satellite=L.tileLayer(
+const map=
+L.map('map',{
+zoomControl:true
+})
+.setView(
+[40.2,-3.7],
+6
+);
+
+
+const satellite=
+L.tileLayer(
+
 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-{maxZoom:19,attribution:'Tiles © Esri'}
+
+{
+maxZoom:19,
+attribution:'Tiles © Esri'
+}
+
 );
 
-const topo=L.tileLayer(
+
+const topo=
+L.tileLayer(
+
 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
-{maxZoom:17,attribution:'© OpenTopoMap contributors'}
+
+{
+maxZoom:17,
+attribution:'© OpenTopoMap contributors'
+}
+
 );
+
 
 satellite.addTo(map);
 
+
 let current=satellite;
+
 let marker;
+
+let selectedPoint=null;
+
 let toolMode=null;
+
 let toolPoints=[];
-let toolLayer=L.layerGroup().addTo(map);
+
+let antenna=null;
+
+let antennaMarker=null;
+
+let sectorLayer=null;
+
+let pois=[];
+
+
+const toolLayer=
+L.layerGroup().addTo(map);
+
+const poiLayer=
+L.layerGroup().addTo(map);
+
 
 function base(layer){
-if(current)map.removeLayer(current);
+
+if(current)
+map.removeLayer(current);
+
 current=layer;
+
 layer.addTo(map);
+
 }
 
-const satBtn=document.getElementById('sat');
-const topoBtn=document.getElementById('topo');
 
-satBtn.onclick=()=>{
+$('sat').onclick=()=>{
+
 base(satellite);
-satBtn.classList.add('active');
-topoBtn.classList.remove('active');
+
+$('sat')
+.classList
+.add('active');
+
+$('topo')
+.classList
+.remove('active');
+
 };
 
-topoBtn.onclick=()=>{
+
+$('topo').onclick=()=>{
+
 base(topo);
-topoBtn.classList.add('active');
-satBtn.classList.remove('active');
+
+$('topo')
+.classList
+.add('active');
+
+$('sat')
+.classList
+.remove('active');
+
 };
 
-document.getElementById('center').onclick=()=>{
-map.setView([40.2,-3.7],6);
+
+$('contours').onclick=()=>{
+
+const on=
+!map.hasLayer(topo);
+
+if(on){
+
+topo.setOpacity(.55);
+
+topo.addTo(map);
+
+$('contours')
+.classList
+.add('active');
+
+}else{
+
+if(current!==topo)
+map.removeLayer(topo);
+
+$('contours')
+.classList
+.remove('active');
+
+}
+
 };
 
-document.getElementById('locate').onclick=()=>{
+
+$('center').onclick=()=>{
+
+map.setView(
+[40.2,-3.7],
+6
+);
+
+};
+
+
+$('locate').onclick=()=>{
 
 if(!navigator.geolocation){
-alert('Geolocalización no disponible');
+
+alert(
+'Geolocalización no disponible'
+);
+
 return;
+
 }
 
-navigator.geolocation.getCurrentPosition(
+navigator
+.geolocation
+.getCurrentPosition(
 
-pos=>{
+p=>{
 
-const p=[
-pos.coords.latitude,
-pos.coords.longitude
-];
+const q=
+L.latLng(
 
-map.setView(p,15);
+p.coords.latitude,
 
-if(marker){
-marker.setLatLng(p);
-}else{
-marker=L.marker(p,{draggable:true}).addTo(map);
-}
+p.coords.longitude
 
-show({
-lat:p[0],
-lng:p[1]
-});
+);
+
+map.setView(q,15);
+
+selectPoint(q);
 
 },
 
 ()=>{
-alert('No se pudo obtener tu ubicación');
+
+alert(
+'No se pudo obtener tu ubicación'
+);
+
 }
 
 );
 
 };
 
-setTimeout(()=>{
-map.invalidateSize();
-},250);
 
-map.on('click',e=>{
+map.on(
+'click',
+
+e=>{
 
 if(toolMode){
-handleToolPoint(e.latlng);
+
+handleToolPoint(
+e.latlng
+);
+
 return;
+
 }
+
+selectPoint(
+e.latlng
+);
+
+}
+
+);
+
+
+function selectPoint(p){
+
+selectedPoint=
+L.latLng(p);
 
 if(marker){
-marker.setLatLng(e.latlng);
-}else{
-marker=L.marker(e.latlng,{draggable:true}).addTo(map);
 
-marker.on('dragend',x=>{
-show(x.target.getLatLng());
-});
-}
-
-show(e.latlng);
-
-});
-
-document.getElementById('measureBtn').onclick=()=>{
-setTool('measure');
-};
-
-document.getElementById('losBtn').onclick=()=>{
-setTool('los');
-};
-
-document.getElementById('clearBtn').onclick=()=>{
-clearTools();
-};
-
-function setTool(m){
-
-toolMode=m;
-toolPoints=[];
-toolLayer.clearLayers();
-
-document
-.getElementById('measureBtn')
-.classList.toggle('active',m==='measure');
-
-document
-.getElementById('losBtn')
-.classList.toggle('active',m==='los');
-
-if(m==='measure'){
-document.getElementById('measureOut').textContent='Marca punto A';
-}else{
-document.getElementById('losOut').textContent='Marca punto A';
-}
-
-}
-
-function clearTools(){
-
-toolMode=null;
-toolPoints=[];
-toolLayer.clearLayers();
-
-document
-.querySelectorAll('.toolrow button')
-.forEach(b=>b.classList.remove('active'));
-
-document.getElementById('measureOut').textContent='Sin medición';
-document.getElementById('losOut').textContent='Sin cálculo';
-
-}
-
-function handleToolPoint(p){
-
-toolPoints.push(p);
-
-L.circleMarker(p,{radius:6})
-.addTo(toolLayer)
-.bindTooltip(
-toolPoints.length===1?'A':'B',
-{permanent:true,direction:'top'}
-);
-
-if(toolPoints.length<2){
-
-if(toolMode==='measure'){
-document.getElementById('measureOut').textContent='Marca punto B';
-}else{
-document.getElementById('losOut').textContent='Marca punto B';
-}
-
-return;
-}
-
-const [a,b]=toolPoints;
-
-L.polyline(
-[a,b],
-{weight:3}
-).addTo(toolLayer);
-
-const d=map.distance(a,b);
-
-if(toolMode==='measure'){
-
-document.getElementById('measureOut').textContent=
-d>=1000
-?(d/1000).toFixed(2)+' km'
-:Math.round(d)+' m';
-
-toolMode=null;
+marker.setLatLng(p);
 
 }else{
 
-runLOS(a,b,d);
-toolMode=null;
-
+marker=
+L.marker(
+p,
+{
+draggable:true
 }
+)
+.addTo(map);
 
-document.getElementById('measureBtn').classList.remove('active');
-document.getElementById('losBtn').classList.remove('active');
+marker.on(
 
-}
+'dragend',
 
-async function runLOS(a,b,d){
+e=>{
 
-const out=document.getElementById('losOut');
-
-out.textContent='Calculando…';
-
-try{
-
-const n=30;
-const lat=[];
-const lon=[];
-
-for(let i=0;i<n;i++){
-
-const t=i/(n-1);
-
-lat.push(
-a.lat+(b.lat-a.lat)*t
-);
-
-lon.push(
-a.lng+(b.lng-a.lng)*t
+selectPoint(
+e.target.getLatLng()
 );
 
 }
 
-const r=await fetch(
-`https://api.open-meteo.com/v1/elevation?latitude=${lat.join(',')}&longitude=${lon.join(',')}`
 );
 
-if(!r.ok)throw 0;
-
-const data=await r.json();
-const e=data.elevation;
-
-if(!e||e.length<2)throw 0;
-
-const start=e[0]+2;
-const end=e[e.length-1]+2;
-
-let blocked=false;
-
-for(let i=1;i<e.length-1;i++){
-
-const t=i/(e.length-1);
-
-const line=
-start+(end-start)*t;
-
-const clear=
-line-e[i];
-
-if(clear<0){
-blocked=true;
 }
 
-}
 
-out.textContent=
-(blocked
-?'⚠️ Relieve intercepta LOS'
-:'✓ LOS de terreno despejado')
-+' · '
-+(d/1000).toFixed(2)
-+' km';
+$('coords').textContent=
 
-}catch(e){
-
-out.textContent='LOS no disponible';
-
-}
-
-}
-
-async function show(p){
-
-document.getElementById('coords').textContent=
 p.lat.toFixed(6)
-+', '
-+p.lng.toFixed(6);
++
+', '
++
+p.lng.toFixed(6);
 
-await Promise.allSettled([
-loadElevation(p.lat,p.lng),
-loadWeather(p.lat,p.lng)
+
+Promise.allSettled([
+
+loadElevation(
+p.lat,
+p.lng
+),
+
+loadWeather(
+p.lat,
+p.lng
+)
+
 ]);
 
 }
 
-async function loadElevation(lat,lng){
 
-const el=document.getElementById('elev');
-const note=document.getElementById('elevNote');
+$('measureBtn').onclick=
+()=>setTool('measure');
 
-el.textContent='…';
-note.textContent='Consultando terreno';
 
-try{
+$('losBtn').onclick=
+()=>setTool('los');
 
-const r=await fetch(
-`https://api.open-meteo.com/v1/elevation?latitude=${lat}&longitude=${lng}`
+
+$('antennaBtn').onclick=
+()=>toggleCard(
+'antennaCard',
+'antennaBtn'
 );
 
-if(!r.ok)throw new Error('elevation');
 
-const d=await r.json();
+$('poiBtn').onclick=
+()=>toggleCard(
+'poiCard',
+'poiBtn'
+);
 
-const v=
-Array.isArray(d.elevation)
-?d.elevation[0]
-:d.elevation;
 
-if(v==null)throw new Error('elevation');
+$('missionBtn').onclick=
+()=>toggleCard(
+'missionCard',
+'missionBtn'
+);
 
-el.textContent=
-Math.round(v)+' m';
 
-note.textContent=
-'Altitud aproximada del terreno';
+function toggleCard(
+card,
+btn
+){
 
-}catch(e){
+$(card)
+.classList
+.toggle('hidden');
 
-el.textContent='— m';
-note.textContent='Altitud no disponible';
+$(btn)
+.classList
+.toggle('active');
 
 }
 
+
+$('clearBtn').onclick=()=>{
+
+toolMode=null;
+
+toolPoints=[];
+
+toolLayer.clearLayers();
+
+$('measureOut')
+.textContent=
+'Sin medición';
+
+$('losOut')
+.textContent=
+'Sin cálculo';
+
+$('losDetail')
+.textContent=
+'Análisis del relieve y primera zona de Fresnel';
+
+[
+'measureBtn',
+'losBtn'
+]
+.forEach(
+
+x=>
+$(x)
+.classList
+.remove('active')
+
+);
+
+};
+
+
+function setTool(m){
+
+toolMode=m;
+
+toolPoints=[];
+
+toolLayer.clearLayers();
+
+
+$('measureBtn')
+.classList
+.toggle(
+'active',
+m==='measure'
+);
+
+
+$('losBtn')
+.classList
+.toggle(
+'active',
+m==='los'
+);
+
+
+$(
+m==='measure'
+?'measureOut'
+:'losOut'
+)
+.textContent=
+'Marca punto A';
+
 }
 
-async function loadWeather(lat,lng){
 
-const wind=document.getElementById('wind');
-const gust=document.getElementById('gust');
+function handleToolPoint(p){
 
-const wn=document.getElementById('windNote');
-const gn=document.getElementById('gustNote');
 
-wind.textContent='…';
-gust.textContent='…';
+if(
+toolMode==='placeAntenna'
+){
 
-wn.textContent='Consultando meteo';
-gn.textContent='Consultando meteo';
+setAntenna(p);
 
-try{
+toolMode=null;
 
-const url=
-`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=wind_speed_10m,wind_gusts_10m,wind_direction_10m&wind_speed_unit=kmh&timezone=auto`;
+$('placeAntenna')
+.classList
+.remove('active');
 
-const r=await fetch(url);
+return;
+
+}
+
+
+if(
+toolMode==='placePoi'
+){
+
+addPoi(p);
+
+toolMode=null;
+
+$('placePoi')
+.classList
+.remove('active');
+
+return;
+
+}
+
+
+toolPoints.push(p);
+
+
+L.circleMarker(
+p,
+{
+radius:6
+}
+)
+.addTo(toolLayer)
+.bindTooltip(
+
+toolPoints.length===1
+?'A'
+:'B',
+
+{
+permanent:true,
+direction:'top'
+}
+
+);
+
+
+if(
+toolPoints.length<2
+){
+
+$(
+toolMode==='measure'
+?'measureOut'
+:'losOut'
+)
+.textContent=
+'Marca punto B';
+
+return;
+
+}
+
+
+const [a,b]=
+toolPoints;
+
+
+const d=
+map.distance(
+a,
+b
+);
+
+
+L.polyline(
+[a,b],
+{
+weight:3
+}
+)
+.addTo(toolLayer);
+
+
+if(
+toolMode==='measure'
+){
+
+$('measureOut')
+.textContent=
+
+d>=1000
+
+?(d/1000)
+.toFixed(2)
++' km'
+
+:Math.round(d)
++' m';
+
+}else{
+
+runLOS(
+
+a,
+b,
+d,
+
+Number(
+$('antHeight').value
+)||2,
+
+Number(
+$('airHeight').value
+)||30,
+
+Number(
+$('freq').value
+)||5800
+
+);
+
+}
+
+
+toolMode=null;
+
+
+$('measureBtn')
+.classList
+.remove('active');
+
+
+$('losBtn')
+.classList
+.remove('active');
+
+}
+
+
+$('placeAntenna').onclick=()=>{
+
+toolMode=
+'placeAntenna';
+
+$('placeAntenna')
+.classList
+.add('active');
+
+$('antennaInfo')
+.textContent=
+'Pulsa en el mapa para colocar la antena';
+
+};
+
+
+$('updateSector').onclick=()=>{
+
+if(antenna){
+
+drawSector();
+
+}else{
+
+alert(
+'Primero coloca la antena'
+);
+
+}
+
+};
+
+
+function setAntenna(p){
+
+antenna={
+lat:p.lat,
+lng:p.lng
+};
+
+
+if(antennaMarker){
+
+antennaMarker
+.setLatLng(p);
+
+}else{
+
+antennaMarker=
+L.marker(
+
+p,
+
+{
+draggable:true,
+title:'Antena FPV'
+}
+
+)
+.addTo(map)
+.bindTooltip(
+'📡 Antena'
+);
+
+
+antennaMarker.on(
+
+'dragend',
+
+e=>{
+
+const q=
+e.target.getLatLng();
+
+antenna={
+lat:q.lat,
+lng:q.lng
+};
+
+drawSector();
+
+}
+
+);
+
+}
+
+
+drawSector();
+
+
+$('antennaInfo')
+.textContent=
+
+'Antena: '
++
+p.lat.toFixed(5)
++
+', '
++
+p.lng.toFixed(5);
+
+}
+
+
+function destination(
+p,
+bearing,
+km
+){
+
+const R=6371;
+
+const d=
+km/R;
+
+const br=
+bearing
+*Math.PI/180;
+
+const lat1=
+p.lat
+*Math.PI/180;
+
+const lon1=
+p.lng
+*Math.PI/180;
+
+
+const lat2=
+Math.asin(
+
+Math.sin(lat1)
+*Math.cos(d)
+
++
+
+Math.cos(lat1)
+*Math.sin(d)
+*Math.cos(br)
+
+);
+
+
+const lon2=
+
+lon1
+
++
+
+Math.atan2(
+
+Math.sin(br)
+*Math.sin(d)
+*Math.cos(lat1),
+
+Math.cos(d)
+-
+Math.sin(lat1)
+*Math.sin(lat2)
+
+);
+
+
+return L.latLng(
+
+lat2*180/Math.PI,
+
+lon2*180/Math.PI
+
+);
+
+}
+
+
+function drawSector(){
+
+if(!antenna)
+return;
+
+
+if(sectorLayer)
+map.removeLayer(
+sectorLayer
+);
+
+
+let az=
+
+(
+(
+Number(
+$('azimuth').value
+)||0
+)
+%360
++360
+)
+%360;
+
+
+let beam=
+Math.max(
+
+1,
+
+Math.min(
+
+360,
+
+Number(
+$('beam').value
+)||90
+
+)
+
+);
+
+
+let range=
+Math.max(
+
+.1,
+
+Number(
+$('rangeKm').value
+)||5
+
+);
+
+
+let pts=[
+
+L.latLng(
+antenna.lat,
+antenna.lng
+)
+
+];
+
+
+const steps=
+Math.max(
+
+12,
+
+Math.ceil(
+beam/5
+)
+
+);
+
+
+for(
+let i=0;
+i<=steps;
+i++
+){
+
+pts.push(
+
+destination(
+
+antenna,
+
+az
+-beam/2
++beam*i/steps,
+
+range
+
+)
+
+);
+
+}
+
+
+pts.push(
+
+L.latLng(
+antenna.lat,
+antenna.lng
+)
+
+);
+
+
+sectorLayer=
+
+L.polygon(
+
+pts,
+
+{
+weight:2,
+fillOpacity:.15
+}
+
+)
+.addTo(map);
+
+}
+
+
+$('testLink').onclick=()=>{
+
+if(
+!antenna
+||
+!selectedPoint
+){
+
+alert(
+'Coloca la antena y selecciona un punto de vuelo'
+);
+
+return;
+
+}
+
+
+const a=
+L.latLng(
+antenna.lat,
+antenna.lng
+);
+
+
+const d=
+map.distance(
+a,
+selectedPoint
+);
+
+
+toolLayer.clearLayers();
+
+
+L.polyline(
+
+[
+a,
+selectedPoint
+],
+
+{
+weight:3
+}
+
+)
+.addTo(toolLayer);
+
+
+runLOS(
+
+a,
+
+selectedPoint,
+
+d,
+
+Number(
+$('antHeight').value
+)||2,
+
+Number(
+$('airHeight').value
+)||30,
+
+Number(
+$('freq').value
+)||5800
+
+);
+
+};
+
+
+async function elevationsBetween(
+a,
+b,
+n=60
+){
+
+const lat=[];
+
+const lon=[];
+
+
+for(
+let i=0;
+i<n;
+i++
+){
+
+const t=
+i/(n-1);
+
+
+lat.push(
+
+a.lat
++
+(b.lat-a.lat)
+*t
+
+);
+
+
+lon.push(
+
+a.lng
++
+(b.lng-a.lng)
+*t
+
+);
+
+}
+
+
+const r=
+await fetch(
+
+`https://api.open-meteo.com/v1/elevation?latitude=${lat.join(',')}&longitude=${lon.join(',')}`
+
+);
+
 
 if(!r.ok)
-throw new Error('weather');
+throw 0;
 
-const d=await r.json();
-const c=d.current||{};
 
-if(c.wind_speed_10m==null)
-throw new Error('weather');
+const d=
+await r.json();
 
-wind.textContent=
-Math.round(c.wind_speed_10m)
-+' km/h';
 
-gust.textContent=
-c.wind_gusts_10m==null
-?'— km/h'
-:Math.round(c.wind_gusts_10m)+' km/h';
+if(
+!d.elevation
+||
+d.elevation.length!==n
+)
+throw 0;
 
-wn.textContent=
-c.wind_direction_10m==null
-?'Viento actual'
-:`Dirección ${Math.round(c.wind_direction_10m)}° · 10 m`;
 
-gn.textContent=
-'Racha actual · 10 m';
-
-loadWindLevels(lat,lng);
-
-updateStatus(
-c.wind_speed_10m,
-c.wind_gusts_10m
-);
-
-}catch(e){
-
-wind.textContent='— km/h';
-gust.textContent='— km/h';
-
-wn.textContent=
-'Meteorología no disponible';
-
-gn.textContent=
-'Meteorología no disponible';
+return d.elevation;
 
 }
 
-}
 
-async function loadWindLevels(lat,lng){
+async function runLOS(
+a,
+b,
+d,
+hA=2,
+hB=30,
+fMHz=5800
+){
 
-const el=
-document.getElementById('windLevels');
+$('losOut')
+.textContent=
+'Calculando…';
 
-el.textContent='Consultando…';
+
+$('losDetail')
+.textContent=
+'Consultando perfil del terreno';
+
 
 try{
 
-const u=
-`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=wind_speed_10m,wind_speed_80m,wind_speed_120m&wind_speed_unit=kmh&timezone=auto`;
 
-const r=await fetch(u);
+const e=
+await elevationsBetween(
+a,
+b
+);
 
-if(!r.ok)throw 0;
 
-const c=
-(await r.json()).current||{};
+const start=
+e[0]+hA;
 
-const f=v=>
-v==null
-?'—'
-:Math.round(v)+' km/h';
 
-el.textContent=
-`10 m ${f(c.wind_speed_10m)} · 80 m ${f(c.wind_speed_80m)} · 120 m ${f(c.wind_speed_120m)}`;
+const end=
+e[e.length-1]+hB;
+
+
+const totalKm=
+d/1000;
+
+
+let terrainBlocked=false;
+
+let fresnelBlocked=false;
+
+let minClear=Infinity;
+
+let minF=Infinity;
+
+
+for(
+let i=1;
+i<e.length-1;
+i++
+){
+
+const t=
+i/(e.length-1);
+
+
+const line=
+
+start
++
+(end-start)
+*t;
+
+
+const clear=
+line-e[i];
+
+
+const d1=
+d*t;
+
+
+const d2=
+d*(1-t);
+
+
+const wavelength=
+
+299792458
+/
+(
+fMHz
+*1000000
+);
+
+
+const r1=
+
+Math.sqrt(
+
+wavelength
+*d1
+*d2
+/d
+
+);
+
+
+minClear=
+Math.min(
+minClear,
+clear
+);
+
+
+minF=
+Math.min(
+
+minF,
+
+clear
+-
+r1*.6
+
+);
+
+
+if(clear<0){
+
+terrainBlocked=true;
+
+}
+
+
+if(
+clear
+<
+r1*.6
+){
+
+fresnelBlocked=true;
+
+}
+
+}
+
+
+let msg=
+
+
+terrainBlocked
+
+?'⛔ LOS bloqueado'
+
+:fresnelBlocked
+
+?'⚠️ Fresnel comprometido'
+
+:'✓ LOS + Fresnel despejados';
+
+
+$('losOut')
+.textContent=
+
+msg
++
+' · '
++
+totalKm.toFixed(2)
++
+' km';
+
+
+$('losDetail')
+.textContent=
+
+`Frecuencia ${Math.round(fMHz)} MHz · margen terreno ${minClear.toFixed(1)} m · margen Fresnel 60% ${minF.toFixed(1)} m`;
+
 
 }catch(e){
 
-el.textContent=
+
+$('losOut')
+.textContent=
+'LOS no disponible';
+
+
+$('losDetail')
+.textContent=
+'No se pudo obtener el perfil de elevación';
+
+}
+
+}
+
+
+$('placePoi').onclick=()=>{
+
+toolMode=
+'placePoi';
+
+
+$('placePoi')
+.classList
+.add('active');
+
+};
+
+
+function addPoi(p){
+
+const type=
+$('poiType').value;
+
+
+const name=
+
+$('poiName')
+.value
+.trim()
+
+||
+
+type.replace(
+/^[^ ]+ /,
+''
+);
+
+
+const obj={
+
+id:Date.now(),
+
+lat:p.lat,
+
+lng:p.lng,
+
+type,
+
+name
+
+};
+
+
+pois.push(obj);
+
+
+renderPoi(obj);
+
+
+refreshPoiList();
+
+
+$('poiName')
+.value='';
+
+}
+
+
+function renderPoi(o){
+
+L.marker(
+
+[
+o.lat,
+o.lng
+]
+
+)
+.addTo(poiLayer)
+
+.bindPopup(
+
+`<b>${esc(o.name)}</b><br>${esc(o.type)}<br>${o.lat.toFixed(6)}, ${o.lng.toFixed(6)}`
+
+);
+
+}
+
+
+function refreshPoiList(){
+
+$('poiList')
+.innerHTML='';
+
+
+pois.forEach(
+
+o=>{
+
+const x=
+document.createElement(
+'span'
+);
+
+
+x.className=
+'poiChip';
+
+
+x.textContent=
+
+o.type.split(' ')[0]
++
+' '
++
+o.name;
+
+
+$('poiList')
+.appendChild(x);
+
+}
+
+);
+
+}
+
+
+function esc(s){
+
+return String(s)
+.replace(
+
+/[&<>"']/g,
+
+c=>({
+
+'&':'&amp;',
+
+'<':'&lt;',
+
+'>':'&gt;',
+
+'"':'&quot;',
+
+"'":'&#39;'
+
+}[c])
+
+);
+
+}
+
+
+function missionObject(){
+
+return{
+
+type:
+'FeatureCollection',
+
+
+properties:{
+
+ecouav:
+'0.5',
+
+name:
+$('missionName').value,
+
+rf:{
+
+azimuth:
++$('azimuth').value,
+
+beam:
++$('beam').value,
+
+rangeKm:
++$('rangeKm').value,
+
+antHeight:
++$('antHeight').value,
+
+freqMHz:
++$('freq').value,
+
+vtxmW:
++$('vtx').value,
+
+txGain:
++$('txGain').value,
+
+rxGain:
++$('rxGain').value,
+
+airHeight:
++$('airHeight').value
+
+}
+
+},
+
+
+features:[
+
+...(antenna?[{
+
+type:'Feature',
+
+properties:{
+
+kind:'antenna',
+
+name:'Antena FPV'
+
+},
+
+geometry:{
+
+type:'Point',
+
+coordinates:[
+
+antenna.lng,
+
+antenna.lat
+
+]
+
+}
+
+}]:[]),
+
+
+...pois.map(
+
+o=>({
+
+type:'Feature',
+
+properties:{
+
+kind:'poi',
+
+name:o.name,
+
+poiType:o.type
+
+},
+
+geometry:{
+
+type:'Point',
+
+coordinates:[
+
+o.lng,
+
+o.lat
+
+]
+
+}
+
+})
+
+)
+
+]
+
+};
+
+}
+
+
+$('saveMission').onclick=()=>{
+
+localStorage.setItem(
+
+'ecouavMission',
+
+JSON.stringify(
+missionObject()
+)
+
+);
+
+
+$('missionInfo')
+.textContent=
+'Misión guardada en este navegador';
+
+};
+
+
+$('loadMission').onclick=()=>{
+
+const s=
+localStorage.getItem(
+'ecouavMission'
+);
+
+
+if(!s){
+
+alert(
+'No hay misión guardada'
+);
+
+return;
+
+}
+
+
+loadMissionObject(
+JSON.parse(s)
+);
+
+};
+
+
+function loadMissionObject(m){
+
+if(
+!m
+||
+m.type!=='FeatureCollection'
+){
+
+alert(
+'Archivo no compatible'
+);
+
+return;
+
+}
+
+
+poiLayer.clearLayers();
+
+pois=[];
+
+
+if(
+m.properties?.name
+){
+
+$('missionName')
+.value=
+m.properties.name;
+
+}
+
+
+const rf=
+m.properties?.rf
+||{};
+
+
+[
+
+['azimuth','azimuth'],
+
+['beam','beam'],
+
+['rangeKm','rangeKm'],
+
+['antHeight','antHeight'],
+
+['freq','freqMHz'],
+
+['vtx','vtxmW'],
+
+['txGain','txGain'],
+
+['rxGain','rxGain'],
+
+['airHeight','airHeight']
+
+]
+.forEach(
+
+([id,k])=>{
+
+if(
+rf[k]!=null
+){
+
+$(id).value=
+rf[k];
+
+}
+
+}
+
+);
+
+
+(m.features||[])
+.forEach(
+
+f=>{
+
+if(
+f.geometry?.type!=='Point'
+)
+return;
+
+
+const [lng,lat]=
+f.geometry.coordinates;
+
+
+if(
+f.properties?.kind==='antenna'
+){
+
+setAntenna(
+L.latLng(
+lat,
+lng
+)
+);
+
+}
+
+
+if(
+f.properties?.kind==='poi'
+){
+
+const o={
+
+id:
+Date.now()
++
+Math.random(),
+
+lat,
+
+lng,
+
+type:
+f.properties.poiType
+||
+'📍 Punto de interés',
+
+name:
+f.properties.name
+||
+'POI'
+
+};
+
+
+pois.push(o);
+
+renderPoi(o);
+
+}
+
+}
+
+);
+
+
+refreshPoiList();
+
+
+$('missionInfo')
+.textContent=
+'Misión cargada';
+
+}
+
+
+function download(
+name,
+text,
+type
+){
+
+const a=
+document.createElement(
+'a'
+);
+
+
+const blob=
+new Blob(
+
+[text],
+
+{
+type
+}
+
+);
+
+
+a.href=
+URL.createObjectURL(
+blob
+);
+
+
+a.download=
+name;
+
+
+a.click();
+
+
+setTimeout(
+
+()=>URL.revokeObjectURL(
+a.href
+),
+
+1000
+
+);
+
+}
+
+
+$('exportGeo').onclick=()=>{
+
+download(
+
+'ECOUAV_mision.geojson',
+
+JSON.stringify(
+missionObject(),
+null,
+2
+),
+
+'application/geo+json'
+
+);
+
+};
+
+
+$('exportKml').onclick=()=>{
+
+const m=
+missionObject();
+
+
+const plac=
+
+m.features
+.map(
+
+f=>
+
+`<Placemark><name>${xml(f.properties.name||'POI')}</name><Point><coordinates>${f.geometry.coordinates[0]},${f.geometry.coordinates[1]},0</coordinates></Point></Placemark>`
+
+)
+.join('');
+
+
+download(
+
+'ECOUAV_mision.kml',
+
+`<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>${xml(m.properties.name)}</name>${plac}</Document></kml>`,
+
+'application/vnd.google-earth.kml+xml'
+
+);
+
+};
+
+
+$('exportGpx').onclick=()=>{
+
+const m=
+missionObject();
+
+
+const w=
+
+m.features
+.map(
+
+f=>
+
+`<wpt lat="${f.geometry.coordinates[1]}" lon="${f.geometry.coordinates[0]}"><name>${xml(f.properties.name||'POI')}</name></wpt>`
+
+)
+.join('');
+
+
+download(
+
+'ECOUAV_mision.gpx',
+
+`<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="ECOUAV">${w}</gpx>`,
+
+'application/gpx+xml'
+
+);
+
+};
+
+
+function xml(s){
+
+return esc(s);
+
+}
+
+
+$('importFake').onclick=()=>{
+
+$('importFile')
+.click();
+
+};
+
+
+$('importFile').onchange=
+async e=>{
+
+
+const f=
+e.target.files[0];
+
+
+if(!f)
+return;
+
+
+const t=
+await f.text();
+
+
+if(
+f.name.match(
+/\.(json|geojson)$/i
+)
+){
+
+try{
+
+loadMissionObject(
+JSON.parse(t)
+);
+
+}catch(_){
+
+alert(
+'GeoJSON no válido'
+);
+
+}
+
+}else{
+
+alert(
+'En v0.5 la importación editable es GeoJSON. KML/GPX se exportan correctamente.'
+);
+
+}
+
+
+e.target.value='';
+
+};
+
+
+async function loadElevation(
+lat,
+lng
+){
+
+$('elev')
+.textContent='…';
+
+
+$('elevNote')
+.textContent=
+'Consultando terreno';
+
+
+try{
+
+
+const r=
+await fetch(
+
+`https://api.open-meteo.com/v1/elevation?latitude=${lat}&longitude=${lng}`
+
+);
+
+
+if(!r.ok)
+throw 0;
+
+
+const d=
+await r.json();
+
+
+const v=
+
+Array.isArray(
+d.elevation
+)
+
+?d.elevation[0]
+
+:d.elevation;
+
+
+if(v==null)
+throw 0;
+
+
+$('elev')
+.textContent=
+
+Math.round(v)
++
+' m';
+
+
+$('elevNote')
+.textContent=
+'Altitud aproximada del terreno';
+
+
+}catch(e){
+
+
+$('elev')
+.textContent=
+'— m';
+
+
+$('elevNote')
+.textContent=
+'Altitud no disponible';
+
+}
+
+}
+
+
+async function loadWeather(
+lat,
+lng
+){
+
+$('wind')
+.textContent='…';
+
+
+$('gust')
+.textContent='…';
+
+
+try{
+
+
+const r=
+await fetch(
+
+`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=wind_speed_10m,wind_gusts_10m,wind_direction_10m&wind_speed_unit=kmh&timezone=auto`
+
+);
+
+
+if(!r.ok)
+throw 0;
+
+
+const c=
+(
+await r.json()
+)
+.current
+||{};
+
+
+$('wind')
+.textContent=
+
+Math.round(
+c.wind_speed_10m
+)
++
+' km/h';
+
+
+$('gust')
+.textContent=
+
+c.wind_gusts_10m==null
+
+?'— km/h'
+
+:Math.round(
+c.wind_gusts_10m
+)
++
+' km/h';
+
+
+$('windNote')
+.textContent=
+
+c.wind_direction_10m==null
+
+?'Viento actual'
+
+:`Dirección ${Math.round(c.wind_direction_10m)}° · 10 m`;
+
+
+$('gustNote')
+.textContent=
+'Racha actual · 10 m';
+
+
+loadWindLevels(
+lat,
+lng
+);
+
+
+updateStatus(
+
+c.wind_speed_10m,
+
+c.wind_gusts_10m
+
+);
+
+
+}catch(e){
+
+
+$('wind')
+.textContent=
+'— km/h';
+
+
+$('gust')
+.textContent=
+'— km/h';
+
+
+$('windNote')
+.textContent=
+'Meteorología no disponible';
+
+
+$('gustNote')
+.textContent=
+'Meteorología no disponible';
+
+}
+
+}
+
+
+async function loadWindLevels(
+lat,
+lng
+){
+
+try{
+
+
+const r=
+await fetch(
+
+`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=wind_speed_10m,wind_speed_80m,wind_speed_120m&wind_speed_unit=kmh&timezone=auto`
+
+);
+
+
+if(!r.ok)
+throw 0;
+
+
+const c=
+(
+await r.json()
+)
+.current
+||{};
+
+
+const f=
+v=>
+
+v==null
+
+?'—'
+
+:Math.round(v)
++
+' km/h';
+
+
+$('windLevels')
+.textContent=
+
+`10 m ${f(c.wind_speed_10m)} · 80 m ${f(c.wind_speed_80m)} · 120 m ${f(c.wind_speed_120m)}`;
+
+
+}catch(e){
+
+
+$('windLevels')
+.textContent=
 'Datos por altura no disponibles';
 
 }
 
 }
 
-function updateStatus(w,g){
+
+function updateStatus(
+w,
+g
+){
 
 const s=
-document.getElementById('flightStatus');
+$('flightStatus');
+
 
 const dot=
-s.querySelector('.dot');
+s.querySelector(
+'.dot'
+);
+
 
 const txt=
-s.querySelector('strong');
+s.querySelector(
+'strong'
+);
+
 
 const m=
 Math.max(
-Number(w)||0,
-Number(g)||0
+
++w||0,
+
++g||0
+
 );
 
+
 if(m>=45){
+
 
 txt.textContent=
 'VIENTO ALTO';
 
+
 dot.style.background=
 'var(--bad)';
 
+
 }else if(m>=25){
+
 
 txt.textContent=
 'PRECAUCIÓN';
 
+
 dot.style.background=
 'var(--warn)';
 
+
 }else{
+
 
 txt.textContent=
 'LISTO';
+
 
 dot.style.background=
 'var(--good)';
@@ -616,6 +2989,15 @@ dot.style.background=
 }
 
 }
+
+
+setTimeout(
+
+()=>map.invalidateSize(),
+
+250
+
+);
 
 </script>
 
