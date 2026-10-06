@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>ECOUAV v0.8.0</title>
+<title>ECOUAV v0.8.1</title>
 
 <link rel="stylesheet"
 href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
@@ -219,7 +219,11 @@ min-height:390px
 .wide{grid-column:span 2}
 
 .top small{display:none}
-
+.toolrow{position:sticky;bottom:0;z-index:900;background:#0b1117ee;padding:8px;overflow-x:auto;flex-wrap:nowrap}
+.toolrow button{flex:0 0 auto;min-height:44px}
+.toolbar button{min-height:42px}
+.card{padding:11px}
+.actions button{min-height:42px}
 }
 </style>
 </head>
@@ -231,7 +235,7 @@ min-height:390px
 <div>
 <h1>
 ECOUAV
-<span style="color:var(--accent)">v0.6</span>
+<span style="color:var(--accent)">v0.8.1</span>
 </h1>
 
 <small>
@@ -457,6 +461,18 @@ preserveAspectRatio="none">
 
 </div>
 
+
+<div class="card wide">
+<div class="label">🧭 TERRENO LOCAL</div>
+<div id="slopeInfo" class="value" style="font-size:17px">Selecciona un punto</div>
+<div id="slopeDetail" class="mini">Pendiente y orientación aproximadas del relieve.</div>
+</div>
+
+<div class="card wide">
+<div class="label">🌦️ METEO AMPLIADA</div>
+<div id="weatherExtra" class="value" style="font-size:17px">Selecciona un punto</div>
+<div id="sunInfo" class="mini">Temperatura · precipitación · nubosidad · visibilidad · sol</div>
+</div>
 
 <div id="routeProfileCard" class="card full">
 <div class="label">📊 PERFIL DE RUTA</div>
@@ -904,7 +920,7 @@ class="danger">
 <div id="missionInfo"
 class="mini">
 
-GeoJSON es el formato editable nativo de ECOUAV v0.8.0.
+GeoJSON es el formato editable nativo de ECOUAV v0.8.1.
 
 </div>
 
@@ -1452,6 +1468,7 @@ loadElevation(
 p.lat,
 p.lng
 );
+analyzeLocalTerrain(p.lat,p.lng);
 
 
 loadWeather(
@@ -3260,7 +3277,7 @@ function setDeleteMode(on){
  document.body.classList.toggle('deleteMode',on);
  $('missionInfo').textContent=on
   ?'🗑️ Eliminar activo: toca un POI, antena o waypoint. También puedes tocar muy cerca del elemento.'
-  :'GeoJSON es el formato editable nativo de ECOUAV v0.8.0.';
+  :'GeoJSON es el formato editable nativo de ECOUAV v0.8.1.';
 }
 function finishDelete(){ setDeleteMode(false); }
 
@@ -3408,6 +3425,8 @@ ecouav:
 
 name:
 $('missionName').value,
+
+home:homePoint?{lat:homePoint.lat,lng:homePoint.lng}:null,
 
 rf:{
 
@@ -3569,6 +3588,14 @@ B:null,
 C:null
 
 };
+
+homePoint=m.properties?.home?L.latLng(m.properties.home.lat,m.properties.home.lng):null;
+if(window.homeMarker){map.removeLayer(window.homeMarker);window.homeMarker=null;}
+if(homePoint){
+ window.homeMarker=L.marker(homePoint,{draggable:true,icon:moveIcon('H','tool'),title:'HOME'}).addTo(map);
+ window.homeMarker.on('dragend',e=>{homePoint=e.target.getLatLng();updateHomeInfo();});
+}
+updateHomeInfo();
 
 
 if(
@@ -3992,6 +4019,10 @@ const m=
 missionObject();
 
 
+const routeKml=(m.properties.route||[]).length>1
+?'<Placemark><name>Ruta ECOUAV</name><LineString><tessellate>1</tessellate><coordinates>'+
+ m.properties.route.map(p=>p.lng+','+p.lat+',0').join(' ')+'</coordinates></LineString></Placemark>':'';
+
 const plac=
 
 m.features
@@ -4009,7 +4040,7 @@ download(
 
 'ECOUAV_mision.kml',
 
-`<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>${xml(m.properties.name)}</name>${plac}</Document></kml>`,
+`<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>${xml(m.properties.name)}</name>${plac}${routeKml}</Document></kml>`,
 
 'application/vnd.google-earth.kml+xml'
 
@@ -4023,6 +4054,9 @@ $('exportGpx').onclick=()=>{
 const m=
 missionObject();
 
+
+const routeGpx=(m.properties.route||[]).length
+?'<trk><name>Ruta ECOUAV</name><trkseg>'+m.properties.route.map(p=>'<trkpt lat="'+p.lat+'" lon="'+p.lng+'"></trkpt>').join('')+'</trkseg></trk>':'';
 
 const w=
 
@@ -4041,7 +4075,7 @@ download(
 
 'ECOUAV_mision.gpx',
 
-`<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="ECOUAV">${w}</gpx>`,
+`<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="ECOUAV">${w}${routeGpx}</gpx>`,
 
 'application/gpx+xml'
 
@@ -4092,6 +4126,31 @@ e.target.value='';
 
 };
 
+
+async function analyzeLocalTerrain(lat,lng){
+ try{
+  const d=.00045; // ~50 m latitude, local estimate
+  const pts=[[lat,lng],[lat+d,lng],[lat-d,lng],[lat,lng+d],[lat,lng-d]];
+  const url='https://api.open-meteo.com/v1/elevation?latitude='+encodeURIComponent(pts.map(p=>p[0]).join(','))+
+   '&longitude='+encodeURIComponent(pts.map(p=>p[1]).join(','));
+  const r=await fetch(url,{cache:'no-store'});if(!r.ok)throw 0;
+  const e=(await r.json()).elevation.map(Number);
+  const ns=map.distance(L.latLng(lat-d,lng),L.latLng(lat+d,lng));
+  const ew=map.distance(L.latLng(lat,lng-d),L.latLng(lat,lng+d));
+  const dzN=e[1]-e[2],dzE=e[3]-e[4];
+  const gx=dzE/ew,gy=dzN/ns;
+  const slope=Math.atan(Math.sqrt(gx*gx+gy*gy))*180/Math.PI;
+  // Downslope aspect, clockwise from north.
+  const aspect=(Math.atan2(-gx,-gy)*180/Math.PI+360)%360;
+  const dirs=['N','NE','E','SE','S','SO','O','NO'];
+  const dir=dirs[Math.round(aspect/45)%8];
+  $('slopeInfo').textContent=slope.toFixed(1)+'° · '+dir+' '+aspect.toFixed(0)+'°';
+  $('slopeDetail').textContent='Pendiente y orientación descendente aproximadas alrededor del punto (~50 m).';
+ }catch(e){
+  $('slopeInfo').textContent='No disponible';
+  $('slopeDetail').textContent='No se pudo analizar el relieve local.';
+ }
+}
 
 async function loadElevation(
 lat,
@@ -4190,7 +4249,7 @@ const r=
 
 await fetch(
 
-`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=wind_speed_10m,wind_gusts_10m,wind_direction_10m,wind_speed_80m,wind_speed_120m&wind_speed_unit=kmh&timezone=auto`
+`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,precipitation,cloud_cover,visibility,wind_speed_10m,wind_gusts_10m,wind_direction_10m,wind_speed_80m,wind_speed_120m&daily=sunrise,sunset&forecast_days=1&wind_speed_unit=kmh&timezone=auto`
 
 );
 
@@ -4199,12 +4258,8 @@ if(!r.ok)
 throw 0;
 
 
-const c=
-(
-await r.json()
-)
-.current
-||{};
+const weatherData=await r.json();
+const c=weatherData.current||{};
 
 
 const f=
@@ -4255,6 +4310,14 @@ $('windLevels')
 `10 m ${f(c.wind_speed_10m)} · 80 m ${f(c.wind_speed_80m)} · 120 m ${f(c.wind_speed_120m)}`;
 
 
+const temp=c.temperature_2m==null?'—':Math.round(c.temperature_2m)+' °C';
+const rain=c.precipitation==null?'—':c.precipitation+' mm';
+const cloud=c.cloud_cover==null?'—':Math.round(c.cloud_cover)+'%';
+const vis=c.visibility==null?'—':(c.visibility/1000).toFixed(1)+' km';
+$('weatherExtra').textContent=temp+' · ☁ '+cloud+' · 🌧 '+rain+' · 👁 '+vis;
+const sr=weatherData.daily?.sunrise?.[0],ss=weatherData.daily?.sunset?.[0];
+$('sunInfo').textContent=sr&&ss?'☀️ Salida '+sr.slice(11,16)+' · 🌇 Puesta '+ss.slice(11,16):'Horario solar no disponible';
+
 updateStatus(
 
 c.wind_speed_10m,
@@ -4280,6 +4343,8 @@ $('gust')
 $('windNote')
 .textContent=
 'Meteorología no disponible';
+$('weatherExtra').textContent='No disponible';
+$('sunInfo').textContent='Datos meteorológicos no disponibles';
 
 }
 
