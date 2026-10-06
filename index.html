@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>ECOUAV v0.8.1</title>
+<title>ECOUAV v0.8.2</title>
 
 <link rel="stylesheet"
 href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
@@ -104,6 +104,8 @@ margin-bottom:5px
 font-size:21px;
 font-weight:750
 }
+.card .actions{display:flex;gap:7px;flex-wrap:wrap}
+.card .actions button{padding:8px 10px}
 
 .coords,.mini{
 font-size:13px;
@@ -235,7 +237,7 @@ min-height:390px
 <div>
 <h1>
 ECOUAV
-<span style="color:var(--accent)">v0.8.1</span>
+<span style="color:var(--accent)">v0.8.2</span>
 </h1>
 
 <small>
@@ -256,7 +258,7 @@ Planificador UAS · Terreno · RF · Rutas · Misiones
 
 <button id="sat" class="active">Satélite</button>
 <button id="topo">Relieve</button>
-<button id="contours">Curvas</button>
+<button id="contours">Topo overlay</button>
 <button id="terrainBtn">⛰️ Desnivel</button>
 <button id="locate">Mi posición</button>
 <button id="center">España</button>\n<button id="coordBtn">⌨️ Coordenadas</button>\n<button id="mapToolsBtn">🧭 Mapa+</button>
@@ -461,6 +463,16 @@ preserveAspectRatio="none">
 
 </div>
 
+
+<div class="card full">
+<div class="label">📍 FICHA DEL PUNTO</div>
+<div id="pointSheet" class="mini">Selecciona un punto del mapa.</div>
+<div class="actions" style="margin-top:8px">
+<button id="pointToPoi">Guardar como POI</button>
+<button id="pointToRoute">Añadir a ruta</button>
+<button id="pointCenter">Centrar</button>
+</div>
+</div>
 
 <div class="card wide">
 <div class="label">🧭 TERRENO LOCAL</div>
@@ -920,7 +932,7 @@ class="danger">
 <div id="missionInfo"
 class="mini">
 
-GeoJSON es el formato editable nativo de ECOUAV v0.8.1.
+GeoJSON es el formato editable nativo de ECOUAV v0.8.2.
 
 </div>
 
@@ -1357,6 +1369,7 @@ function updateHomeInfo(){
  if(!selectedPoint){$('homeInfo').textContent='HOME definido · selecciona un punto';return;}
  const d=map.distance(homePoint,selectedPoint),az=bearingDeg(homePoint,selectedPoint);
  $('homeInfo').textContent='🏠 HOME → punto: '+fmtDist(d)+' · azimut '+az.toFixed(1)+'°';
+ if($('pointSheet'))updatePointSheet();
 }
 $('setHome').onclick=()=>{
  if(!selectedPoint){alert('Selecciona primero un punto');return;}
@@ -1419,6 +1432,35 @@ function drawRouteProfile(e){
 }
 function scheduleRouteProfile(){clearTimeout(routeProfileTimer);routeProfileTimer=setTimeout(analyzeRouteProfile,350);}
 
+function updatePointSheet(){
+ if(!selectedPoint){$('pointSheet').textContent='Selecciona un punto del mapa.';return;}
+ const p=selectedPoint,parts=['Lat/Lon '+p.lat.toFixed(6)+', '+p.lng.toFixed(6)];
+ try{
+  const x=latLonToAll(p.lat,p.lng);
+  parts.push('UTM '+x.zone+x.hem+' '+Math.round(x.e)+' '+Math.round(x.n));
+  parts.push('MGRS '+x.mgrs);
+ }catch(e){}
+ if(homePoint){
+  parts.push('HOME '+fmtDist(map.distance(homePoint,p))+' / '+bearingDeg(homePoint,p).toFixed(1)+'°');
+ }
+ parts.push('Terreno '+$('elev').textContent);
+ parts.push('Viento '+$('wind').textContent);
+ $('pointSheet').textContent=parts.join(' · ');
+}
+$('pointToPoi').onclick=()=>{
+ if(!selectedPoint)return;
+ pushHistory();
+ const old=$('poiName').value;
+ $('poiName').value='Punto '+(pois.length+1);
+ addPoi(selectedPoint);
+ $('poiName').value=old;
+};
+$('pointToRoute').onclick=()=>{
+ if(!selectedPoint)return;
+ pushHistory();route.push({lat:selectedPoint.lat,lng:selectedPoint.lng});renderRoute();
+};
+$('pointCenter').onclick=()=>{if(selectedPoint)map.setView(selectedPoint,Math.max(16,map.getZoom()));};
+
 function selectPoint(p){
 
 selectedPoint=
@@ -1476,6 +1518,7 @@ p.lat,
 p.lng
 );
 updateHomeInfo();
+updatePointSheet();
 
 }
 
@@ -3204,13 +3247,24 @@ route.forEach((p,i)=>{
   renderRoute();
  });
  m.on('click',e=>{
+  if(e.originalEvent)L.DomEvent.stopPropagation(e.originalEvent);
   if(toolMode==='delete'){
-   if(e.originalEvent)L.DomEvent.stopPropagation(e.originalEvent);
-   pushHistory();
-   route.splice(i,1);
-   renderRoute();
-   finishDelete();
+   pushHistory(); route.splice(i,1); renderRoute(); finishDelete();
+  }else{
+   selectPoint(e.target.getLatLng());
+   $('pointSheet').textContent='WP '+(i+1)+' · '+$('pointSheet').textContent;
   }
+ });
+ m.on('dblclick',e=>{
+  if(e.originalEvent)L.DomEvent.stopPropagation(e.originalEvent);
+  const cur=route[i];
+  const raw=prompt('WP '+(i+1)+' · Latitud, Longitud',cur.lat.toFixed(6)+', '+cur.lng.toFixed(6));
+  if(!raw)return;
+  const a=raw.split(/[,; ]+/).filter(Boolean).map(Number);
+  if(a.length<2||!Number.isFinite(a[0])||!Number.isFinite(a[1])||Math.abs(a[0])>90||Math.abs(a[1])>180){
+   alert('Coordenadas no válidas');return;
+  }
+  pushHistory();route[i]={lat:a[0],lng:a[1]};renderRoute();selectPoint(L.latLng(a[0],a[1]));
  });
 });
 
@@ -3277,7 +3331,7 @@ function setDeleteMode(on){
  document.body.classList.toggle('deleteMode',on);
  $('missionInfo').textContent=on
   ?'🗑️ Eliminar activo: toca un POI, antena o waypoint. También puedes tocar muy cerca del elemento.'
-  :'GeoJSON es el formato editable nativo de ECOUAV v0.8.1.';
+  :'GeoJSON es el formato editable nativo de ECOUAV v0.8.2.';
 }
 function finishDelete(){ setDeleteMode(false); }
 
@@ -3421,12 +3475,13 @@ type:
 properties:{
 
 ecouav:
-'0.8.0',
+'0.8.2',
 
 name:
 $('missionName').value,
 
 home:homePoint?{lat:homePoint.lat,lng:homePoint.lng}:null,
+selected:selectedPoint?{lat:selectedPoint.lat,lng:selectedPoint.lng}:null,
 
 rf:{
 
@@ -3596,6 +3651,7 @@ if(homePoint){
  window.homeMarker.on('dragend',e=>{homePoint=e.target.getLatLng();updateHomeInfo();});
 }
 updateHomeInfo();
+if(m.properties?.selected)selectPoint(L.latLng(m.properties.selected.lat,m.properties.selected.lng));
 
 
 if(
@@ -4127,7 +4183,7 @@ e.target.value='';
 };
 
 
-async function analyzeLocalTerrain(lat,lng){
+async async function analyzeLocalTerrain(lat,lng){
  try{
   const d=.00045; // ~50 m latitude, local estimate
   const pts=[[lat,lng],[lat+d,lng],[lat-d,lng],[lat,lng+d],[lat,lng-d]];
@@ -4210,6 +4266,7 @@ Math.round(v)
 $('elevNote')
 .textContent=
 'Altitud aproximada del terreno';
+if($('pointSheet'))updatePointSheet();
 
 
 }catch{
@@ -4308,6 +4365,7 @@ $('windLevels')
 .textContent=
 
 `10 m ${f(c.wind_speed_10m)} · 80 m ${f(c.wind_speed_80m)} · 120 m ${f(c.wind_speed_120m)}`;
+if($('pointSheet'))updatePointSheet();
 
 
 const temp=c.temperature_2m==null?'—':Math.round(c.temperature_2m)+' °C';
