@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>ECOUAV v0.7.1</title>
+<title>ECOUAV v0.7.2</title>
 
 <link rel="stylesheet"
 href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
@@ -699,6 +699,16 @@ value="30">
 </div>
 
 
+<div class="formgrid">
+<div class="field wide">
+<label>Origen del análisis LOS</label>
+<select id="losOrigin">
+<option value="active">📡 Antena activa A/B/C</option>
+<option value="manual">👁 Dos puntos manuales A/B</option>
+</select>
+</div>
+</div>
+
 <div class="actions">
 
 <button id="placeAntenna">
@@ -710,7 +720,7 @@ Actualizar sector
 </button>
 
 <button id="testLink">
-Enlace al punto seleccionado
+Calcular LOS de antena → punto
 </button>
 
 <button id="compareABC">
@@ -883,7 +893,7 @@ class="danger">
 <div id="missionInfo"
 class="mini">
 
-GeoJSON es el formato editable nativo de ECOUAV v0.7.1.
+GeoJSON es el formato editable nativo de ECOUAV v0.7.2.
 
 </div>
 
@@ -1410,8 +1420,18 @@ $('measureBtn').onclick=
 ()=>setTool('measure');
 
 
-$('losBtn').onclick=
-()=>setTool('los');
+$('losBtn').onclick=()=>{
+ // If the user has placed the active antenna and selected a destination,
+ // LOS uses that pair directly. Otherwise fall back to the original A/B tool.
+ const id=$('antId').value;
+ if($('losOrigin') && $('losOrigin').value==='active' && antennas[id] && selectedPoint){
+  runActiveAntennaLOS();
+ }else{
+  setTool('los');
+  if($('antennaCard').classList.contains('hidden')) $('antennaCard').classList.remove('hidden');
+  $('antennaInfo').textContent='Para LOS enlazado: coloca A/B/C, selecciona un destino y vuelve a pulsar 👁 LOS / Enlace. También puedes elegir dos puntos manuales.';
+ }
+};
 
 
 $('routeBtn').onclick=
@@ -2109,6 +2129,9 @@ lng:q.lng
 
 
 drawSector(id);
+if(selectedPoint && $('antId').value===id && $('losOrigin') && $('losOrigin').value==='active'){
+ runActiveAntennaLOS();
+}
 
 }
 
@@ -2338,6 +2361,13 @@ fillOpacity:.08
 }
 
 
+$('antId').onchange=()=>{
+ const id=$('antId').value;
+ $('antennaInfo').textContent=antennas[id]
+  ?'Antena '+id+' activa. Selecciona un punto de destino y pulsa 👁 LOS / Enlace.'
+  :'Antena '+id+' no colocada.';
+};
+
 $('updateSector').onclick=()=>{
 
 const id=
@@ -2361,82 +2391,23 @@ alert(
 };
 
 
-$('testLink').onclick=()=>{
-
-const id=
-$('antId').value;
-
-
-const a=
-antennas[id];
-
-
-if(
-!a
-||
-!selectedPoint
-){
-
-alert(
-'Coloca la antena '+id+' y selecciona un punto'
-);
-
-return;
-
+async function runActiveAntennaLOS(){
+ const id=$('antId').value;
+ const a=antennas[id];
+ if(!a||!selectedPoint){
+  alert('Coloca la antena '+id+' y selecciona un punto de destino');
+  return;
+ }
+ const p=L.latLng(a.lat,a.lng);
+ const d=map.distance(p,selectedPoint);
+ const az=bearingDeg(p,selectedPoint);
+ toolLayer.clearLayers();
+ L.polyline([p,selectedPoint],{weight:3,dashArray:'8,5'}).addTo(toolLayer);
+ $('antennaInfo').textContent='Antena '+id+' → destino · '+(d/1000).toFixed(2)+' km · azimut '+az.toFixed(1)+'°';
+ await runLOS(p,selectedPoint,d,+$('antHeight').value||2,+$('airHeight').value||30,+$('freq').value||5800,true);
 }
 
-
-const p=
-
-L.latLng(
-a.lat,
-a.lng
-);
-
-
-const d=
-map.distance(
-p,
-selectedPoint
-);
-
-
-toolLayer.clearLayers();
-
-
-L.polyline(
-
-[
-p,
-selectedPoint
-],
-
-{
-weight:3
-}
-
-)
-.addTo(toolLayer);
-
-
-runLOS(
-
-p,
-selectedPoint,
-d,
-
-+$('antHeight').value||2,
-
-+$('airHeight').value||30,
-
-+$('freq').value||5800,
-
-true
-
-);
-
-};
-
+$('testLink').onclick=runActiveAntennaLOS;
 
 $('compareABC').onclick=
 async()=>{
@@ -3198,7 +3169,7 @@ function setDeleteMode(on){
  document.body.classList.toggle('deleteMode',on);
  $('missionInfo').textContent=on
   ?'🗑️ Eliminar activo: toca un POI, antena o waypoint. También puedes tocar muy cerca del elemento.'
-  :'GeoJSON es el formato editable nativo de ECOUAV v0.7.1.';
+  :'GeoJSON es el formato editable nativo de ECOUAV v0.7.2.';
 }
 function finishDelete(){ setDeleteMode(false); }
 
@@ -3342,7 +3313,7 @@ type:
 properties:{
 
 ecouav:
-'0.6',
+'0.7.2',
 
 name:
 $('missionName').value,
