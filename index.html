@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>ECOUAV v0.6.3</title>
+<title>ECOUAV v0.7.0</title>
 
 <link rel="stylesheet"
 href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
@@ -253,7 +253,7 @@ Planificador UAS · Terreno · RF · Rutas · Misiones
 <button id="contours">Curvas</button>
 <button id="terrainBtn">⛰️ Desnivel</button>
 <button id="locate">Mi posición</button>
-<button id="center">España</button>\n<button id="coordBtn">⌨️ Coordenadas</button>
+<button id="center">España</button>\n<button id="coordBtn">⌨️ Coordenadas</button>\n<button id="mapToolsBtn">🧭 Mapa+</button>
 
 </div>
 
@@ -450,6 +450,30 @@ preserveAspectRatio="none">
 
 </div>
 
+
+<div id="mapToolsCard" class="card full hidden">
+<div class="label">🧭 MAPA+ · HERRAMIENTAS DE PLANIFICACIÓN</div>
+<div class="actions">
+ <button id="quickMeasure">📐 Distancia / azimut</button>
+ <button id="radiusTool">⭕ Radio</button>
+ <button id="areaTool">▱ Área</button>
+ <button id="gridToggle"># Cuadrícula</button>
+ <button id="layersToggle">☰ Capas</button>
+</div>
+<div id="radiusControls" class="formgrid hidden">
+ <div class="field"><label>Radio</label><select id="radiusValue">
+  <option value="500">500 m</option><option value="1000" selected>1 km</option>
+  <option value="2000">2 km</option><option value="5000">5 km</option><option value="10000">10 km</option>
+ </select></div>
+</div>
+<div id="layerControls" class="formgrid hidden">
+ <div class="field"><label><input id="showPois" type="checkbox" checked> POI</label></div>
+ <div class="field"><label><input id="showRoute" type="checkbox" checked> Ruta</label></div>
+ <div class="field"><label><input id="showAnt" type="checkbox" checked> Antenas</label></div>
+ <div class="field"><label><input id="showTools" type="checkbox" checked> Medidas / áreas</label></div>
+</div>
+<div id="mapToolsInfo" class="mini">Herramientas cartográficas inspiradas en flujos ATAK/DELTA: medición, zonas, capas y referencia de coordenadas.</div>
+</div>
 
 <div id="coordCard" class="card full hidden">
 <div class="label">⌨️ INTRODUCIR / CONVERTIR COORDENADAS</div>
@@ -857,7 +881,7 @@ class="danger">
 <div id="missionInfo"
 class="mini">
 
-GeoJSON es el formato editable nativo de ECOUAV v0.6.3.
+GeoJSON es el formato editable nativo de ECOUAV v0.7.0.
 
 </div>
 
@@ -1667,6 +1691,103 @@ $('losBtn')
 
 }
 
+
+// MAPA+ cartographic planning tools
+let mapPlusMode=null, mapPlusPts=[], mapPlusLayer=L.layerGroup().addTo(map);
+let gridLayer=L.layerGroup().addTo(map);
+
+function bearingDeg(a,b){
+ const r=Math.PI/180,p1=a.lat*r,p2=b.lat*r,dl=(b.lng-a.lng)*r;
+ return (Math.atan2(Math.sin(dl)*Math.cos(p2),Math.cos(p1)*Math.sin(p2)-Math.sin(p1)*Math.cos(p2)*Math.cos(dl))*180/Math.PI+360)%360;
+}
+function mapPlusReset(clear=true){
+ mapPlusMode=null; mapPlusPts=[];
+ if(clear) mapPlusLayer.clearLayers();
+}
+$('mapToolsBtn').onclick=()=>{
+ $('mapToolsCard').classList.toggle('hidden');
+ $('mapToolsBtn').classList.toggle('active');
+};
+$('quickMeasure').onclick=()=>{
+ mapPlusReset(); mapPlusMode='quickMeasure';
+ $('mapToolsInfo').textContent='📐 Marca A y B para obtener distancia y azimut.';
+};
+$('radiusTool').onclick=()=>{
+ mapPlusReset(); mapPlusMode='radius';
+ $('radiusControls').classList.remove('hidden');
+ $('mapToolsInfo').textContent='⭕ Toca el centro del radio.';
+};
+$('areaTool').onclick=()=>{
+ mapPlusReset(); mapPlusMode='area';
+ $('mapToolsInfo').textContent='▱ Marca al menos 3 vértices. Pulsa de nuevo Área para cerrar/calcular.';
+};
+$('areaTool').ondblclick=()=>finishMapPlusArea();
+
+function finishMapPlusArea(){
+ if(mapPlusPts.length<3) return;
+ const pts=mapPlusPts.slice();
+ L.polygon(pts,{weight:2,fillOpacity:.15}).addTo(mapPlusLayer);
+ let perimeter=0;
+ for(let i=0;i<pts.length;i++) perimeter+=map.distance(pts[i],pts[(i+1)%pts.length]);
+ // Local planar approximation for area, sufficient for compact planning polygons.
+ const lat0=pts.reduce((a,p)=>a+p.lat,0)/pts.length*Math.PI/180;
+ const xy=pts.map(p=>[p.lng*111320*Math.cos(lat0),p.lat*110540]);
+ let area=0;
+ for(let i=0;i<xy.length;i++){const q=xy[(i+1)%xy.length];area+=xy[i][0]*q[1]-q[0]*xy[i][1];}
+ area=Math.abs(area)/2;
+ $('mapToolsInfo').textContent='Área ≈ '+(area>=1e6?(area/1e6).toFixed(2)+' km²':Math.round(area)+' m²')+
+  ' · Perímetro '+(perimeter>=1000?(perimeter/1000).toFixed(2)+' km':Math.round(perimeter)+' m');
+ mapPlusMode=null;
+}
+
+function drawCoordGrid(){
+ gridLayer.clearLayers();
+ if(!$('gridToggle').classList.contains('active')) return;
+ const b=map.getBounds(),z=map.getZoom();
+ const step=z>=14?.01:z>=11?.05:z>=8?.25:1;
+ const south=Math.floor(b.getSouth()/step)*step,north=Math.ceil(b.getNorth()/step)*step;
+ const west=Math.floor(b.getWest()/step)*step,east=Math.ceil(b.getEast()/step)*step;
+ for(let lat=south;lat<=north;lat+=step) L.polyline([[lat,west],[lat,east]],{weight:1,opacity:.28,dashArray:'3,5'}).addTo(gridLayer);
+ for(let lng=west;lng<=east;lng+=step) L.polyline([[south,lng],[north,lng]],{weight:1,opacity:.28,dashArray:'3,5'}).addTo(gridLayer);
+}
+$('gridToggle').onclick=()=>{
+ $('gridToggle').classList.toggle('active'); drawCoordGrid();
+};
+map.on('moveend zoomend',drawCoordGrid);
+
+$('layersToggle').onclick=()=> $('layerControls').classList.toggle('hidden');
+function setLayerVisible(layer,show){ if(!layer)return; if(show){if(!map.hasLayer(layer))map.addLayer(layer)}else if(map.hasLayer(layer))map.removeLayer(layer); }
+$('showPois').onchange=e=>setLayerVisible(poiLayer,e.target.checked);
+$('showRoute').onchange=e=>setLayerVisible(routeLayer,e.target.checked);
+$('showAnt').onchange=e=>setLayerVisible(antennaLayer,e.target.checked);
+$('showTools').onchange=e=>setLayerVisible(mapPlusLayer,e.target.checked);
+
+map.on('click',e=>{
+ if(!mapPlusMode)return;
+ const p=e.latlng;
+ if(mapPlusMode==='quickMeasure'){
+  mapPlusPts.push(p);
+  L.marker(p,{icon:moveIcon(mapPlusPts.length===1?'A':'B','tool')}).addTo(mapPlusLayer);
+  if(mapPlusPts.length===2){
+   const a=mapPlusPts[0],b=mapPlusPts[1],d=map.distance(a,b),az=bearingDeg(a,b),rev=(az+180)%360;
+   L.polyline([a,b],{weight:3,dashArray:'7,5'}).addTo(mapPlusLayer);
+   $('mapToolsInfo').textContent='Distancia '+(d>=1000?(d/1000).toFixed(2)+' km':Math.round(d)+' m')+
+    ' · Azimut '+az.toFixed(1)+'° · Inverso '+rev.toFixed(1)+'°';
+   mapPlusMode=null;
+  }
+ }else if(mapPlusMode==='radius'){
+  const radius=+$('radiusValue').value;
+  L.marker(p,{icon:moveIcon('●','tool')}).addTo(mapPlusLayer);
+  L.circle(p,{radius,weight:2,fillOpacity:.10}).addTo(mapPlusLayer);
+  $('mapToolsInfo').textContent='Radio '+(radius>=1000?(radius/1000)+' km':radius+' m')+' · '+p.lat.toFixed(6)+', '+p.lng.toFixed(6);
+  mapPlusMode=null;
+ }else if(mapPlusMode==='area'){
+  mapPlusPts.push(p);
+  L.circleMarker(p,{radius:5}).addTo(mapPlusLayer);
+  if(mapPlusPts.length>1)L.polyline(mapPlusPts,{weight:2,dashArray:'5,5'}).addTo(mapPlusLayer);
+  $('mapToolsInfo').textContent='▱ '+mapPlusPts.length+' vértices. Doble clic en Área para cerrar/calcular.';
+ }
+});
 
 $('coordBtn').onclick=()=>{
  $('coordCard').classList.toggle('hidden');
@@ -3128,7 +3249,7 @@ toolMode==='delete'
 
 ?'Toca un POI, antena o waypoint para eliminarlo'
 
-:'GeoJSON es el formato editable nativo de ECOUAV v0.6.3.';
+:'GeoJSON es el formato editable nativo de ECOUAV v0.7.0.';
 
 };
 
