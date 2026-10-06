@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>ECOUAV v0.8.3</title>
+<title>ECOUAV v0.8.4</title>
 
 <link rel="stylesheet"
 href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
@@ -237,7 +237,7 @@ min-height:390px
 <div>
 <h1>
 ECOUAV
-<span style="color:var(--accent)">v0.8.3</span>
+<span style="color:var(--accent)">v0.8.4</span>
 </h1>
 
 <small>
@@ -515,6 +515,9 @@ preserveAspectRatio="none">
  <div class="field"><label><input id="showTools" type="checkbox" checked> Medidas / áreas</label></div>
  <div class="field"><label><input id="showHome" type="checkbox" checked> HOME</label></div>
  <div class="field"><label><input id="showSelected" type="checkbox" checked> Punto seleccionado</label></div>
+ <div class="field"><label><input id="showSlope" type="checkbox" checked> Pendiente DEM</label></div>
+ <div class="field"><label>Opacidad topo <span id="topoOpacityVal">48%</span></label><input id="topoOpacity" type="range" min="0" max="100" value="48"></div>
+ <div class="field"><label>Opacidad pendiente <span id="slopeOpacityVal">100%</span></label><input id="slopeOpacity" type="range" min="20" max="100" value="100"></div>
 </div>
 <div id="mapToolsInfo" class="mini">Herramientas cartográficas inspiradas en flujos ATAK/DELTA: medición, zonas, capas y referencia de coordenadas.</div>
 </div>
@@ -935,7 +938,7 @@ class="danger">
 <div id="missionInfo"
 class="mini">
 
-GeoJSON es el formato editable nativo de ECOUAV v0.8.3.
+GeoJSON es el formato editable nativo de ECOUAV v0.8.4.
 
 </div>
 
@@ -1869,6 +1872,7 @@ let mapPlusMode=null, mapPlusPts=[], mapPlusLayer=L.layerGroup().addTo(map);
 let gridLayer=L.layerGroup().addTo(map);
 let terrainShadeLayer=L.layerGroup().addTo(map);
 let terrainShadeBusy=false;
+let slopeOpacityScale=1;
 
 function bearingDeg(a,b){
  const r=Math.PI/180,p1=a.lat*r,p2=b.lat*r,dl=(b.lng-a.lng)*r;
@@ -1930,7 +1934,7 @@ $('gridToggle').onclick=()=>{
 map.on('moveend zoomend',drawCoordGrid);
 async function drawTerrainShade(){
  terrainShadeLayer.clearLayers();
- if(!$('terrainShadeToggle').classList.contains('active'))return;
+ if(!$('terrainShadeToggle').classList.contains('active')||!$('showSlope').checked)return;
  if(terrainShadeBusy)return;
  terrainShadeBusy=true;
  $('mapToolsInfo').textContent='⛰️ Analizando pendiente del área visible…';
@@ -1958,7 +1962,7 @@ async function drawTerrainShade(){
    const dzx=((at(y,x+1)+at(y+1,x+1))-(at(y,x)+at(y+1,x)))/2;
    const dzy=((at(y+1,x)+at(y+1,x+1))-(at(y,x)+at(y,x+1)))/2;
    const deg=Math.atan(Math.sqrt((dzx/dx)**2+(dzy/dy)**2))*180/Math.PI;
-   const opacity=Math.min(.48,.07+deg/55);
+   const opacity=Math.min(.48,.07+deg/55)*slopeOpacityScale;
    L.rectangle([sw,ne],{weight:0,fillOpacity:opacity,fill:true})
     .bindTooltip('Pendiente aprox. '+deg.toFixed(1)+'°').addTo(terrainShadeLayer);
   }
@@ -1974,7 +1978,10 @@ $('terrainShadeToggle').onclick=()=>{
 map.on('moveend zoomend',()=>{if($('terrainShadeToggle').classList.contains('active'))drawTerrainShade();});
 
 
-$('layersToggle').onclick=()=> $('layerControls').classList.toggle('hidden');
+$('layersToggle').onclick=()=>{
+ $('layerControls').classList.toggle('hidden');
+ $('mapToolsInfo').textContent='☰ Capas: activa, oculta y ajusta la transparencia de la información del mapa.';
+};
 function setLayerVisible(layer,show){ if(!layer)return; if(show){if(!map.hasLayer(layer))map.addLayer(layer)}else if(map.hasLayer(layer))map.removeLayer(layer); }
 $('showPois').onchange=e=>setLayerVisible(poiLayer,e.target.checked);
 $('showRoute').onchange=e=>setLayerVisible(routeLayer,e.target.checked);
@@ -1986,6 +1993,20 @@ $('showAnt').onchange=e=>{
 $('showTools').onchange=e=>setLayerVisible(mapPlusLayer,e.target.checked);
 $('showHome').onchange=e=>{if(window.homeMarker)setLayerVisible(window.homeMarker,e.target.checked);};
 $('showSelected').onchange=e=>{if(selectMarker)setLayerVisible(selectMarker,e.target.checked);};
+$('showSlope').onchange=e=>{
+ if(e.target.checked){
+  if($('terrainShadeToggle').classList.contains('active'))drawTerrainShade();
+ }else terrainShadeLayer.clearLayers();
+};
+$('topoOpacity').oninput=e=>{
+ const v=+e.target.value/100; contourOverlay.setOpacity(v);
+ $('topoOpacityVal').textContent=Math.round(v*100)+'%';
+};
+$('slopeOpacity').oninput=e=>{
+ slopeOpacityScale=+e.target.value/100;
+ $('slopeOpacityVal').textContent=Math.round(slopeOpacityScale*100)+'%';
+ if($('terrainShadeToggle').classList.contains('active')&&$('showSlope').checked)drawTerrainShade();
+};
 
 map.on('click',e=>{
  if(!mapPlusMode)return;
@@ -2561,6 +2582,7 @@ fillOpacity:.08
 
 )
 .addTo(map);
+if($('showAnt')&&!$('showAnt').checked)map.removeLayer(sectorLayers[id]);
 
 }
 
@@ -3192,12 +3214,15 @@ refreshPoiList();
 
 
 m.on('click',e=>{
+ if(e.originalEvent)L.DomEvent.stopPropagation(e.originalEvent);
  if(toolMode==='delete'){
-  if(e.originalEvent)L.DomEvent.stopPropagation(e.originalEvent);
   pushHistory();
   pois=pois.filter(x=>x.id!==o.id);
   renderPois();
   finishDelete();
+ }else{
+  selectPoint(e.target.getLatLng());
+  $('pointSheet').textContent=esc(o.name)+' · '+$('pointSheet').textContent;
  }
 });
 
@@ -3336,15 +3361,12 @@ let i=1;
 i<pts.length;
 i++
 ){
-
-d+=
-map.distance(
-
-pts[i-1],
-pts[i]
-
-);
-
+ const segD=map.distance(pts[i-1],pts[i]);
+ d+=segD;
+ const a=L.latLng(pts[i-1]),b=L.latLng(pts[i]);
+ const mid=L.latLng((a.lat+b.lat)/2,(a.lng+b.lng)/2);
+ const az=bearingDeg(a,b);
+ L.marker(mid,{interactive:false,icon:L.divIcon({className:'',html:'<div style="font-size:16px;text-shadow:0 1px 3px #000;transform:rotate('+az+'deg)">↑</div>',iconSize:[18,18],iconAnchor:[9,9]})}).addTo(routeLayer);
 }
 
 
@@ -3391,7 +3413,7 @@ function setDeleteMode(on){
  document.body.classList.toggle('deleteMode',on);
  $('missionInfo').textContent=on
   ?'🗑️ Eliminar activo: toca un POI, antena o waypoint. También puedes tocar muy cerca del elemento.'
-  :'GeoJSON es el formato editable nativo de ECOUAV v0.8.3.';
+  :'GeoJSON es el formato editable nativo de ECOUAV v0.8.4.';
 }
 function finishDelete(){ setDeleteMode(false); }
 
@@ -3535,7 +3557,7 @@ type:
 properties:{
 
 ecouav:
-'0.8.3',
+'0.8.4',
 
 name:
 $('missionName').value,
