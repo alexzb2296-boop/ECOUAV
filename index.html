@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>ECOUAV v0.6.1.1</title>
+<title>ECOUAV v0.6.1</title>
 
 <link rel="stylesheet"
 href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
@@ -250,7 +250,8 @@ Planificador UAS · Terreno · RF · Rutas · Misiones
 
 <button id="sat" class="active">Satélite</button>
 <button id="topo">Relieve</button>
-<button id="contours">Curvas</button>\n<button id="terrainBtn">⛰️ Desnivel</button>
+<button id="contours">Curvas</button>
+<button id="terrainBtn">⛰️ Desnivel</button>
 <button id="locate">Mi posición</button>
 <button id="center">España</button>
 
@@ -814,7 +815,7 @@ class="danger">
 <div id="missionInfo"
 class="mini">
 
-GeoJSON es el formato editable nativo de ECOUAV v0.6.1.1.
+GeoJSON es el formato editable nativo de ECOUAV v0.6.1.
 
 </div>
 
@@ -872,6 +873,15 @@ c=>({
 
 );
 
+
+function moveIcon(text,kind='route'){
+ return L.divIcon({
+  className:'',
+  html:'<div class="movePin '+kind+'">'+esc(text)+'</div>',
+  iconSize:[38,38],
+  iconAnchor:[19,19]
+ });
+}
 
 const map=
 
@@ -954,7 +964,11 @@ let toolPoints=[];
 
 let pois=[];
 
-let route=[];\n\nlet terrainPoints=[];\nlet terrainMarkers=[];\nlet terrainLine=null;
+let route=[];
+
+let terrainPoints=[];
+let terrainMarkers=[];
+let terrainLine=null;
 
 
 let antennas={
@@ -1241,16 +1255,7 @@ selectMarker
 
 selectMarker=
 
-L.marker(
-
-p,
-
-{
-draggable:true
-}
-
-)
-.addTo(map);
+L.marker(p,{draggable:true,icon:moveIcon('●','sel')}).addTo(map);
 
 
 selectMarker.on(
@@ -1759,7 +1764,8 @@ a.lng
 
 {
 draggable:true,
-title:'Antena '+id
+title:'Antena '+id,
+icon:moveIcon(id,'ant')
 }
 
 )
@@ -2716,9 +2722,7 @@ o.lat,
 o.lng
 ],
 
-{
-draggable:true
-}
+{draggable:true,icon:moveIcon('📍','poi')}
 
 )
 .addTo(poiLayer)
@@ -2872,11 +2876,15 @@ route.forEach((p,i)=>{
   icon:moveIcon(String(i+1),'route'),
   title:'Waypoint '+(i+1)
  }).addTo(routeLayer);
+
  m.on('dragstart',pushHistory);
  m.on('drag',e=>{
   const q=e.target.getLatLng();
   route[i]={lat:q.lat,lng:q.lng};
-  updateRouteGeometry();
+  const ptsNow=route.map(x=>[x.lat,x.lng]);
+  routeLayer.eachLayer(l=>{
+   if(l instanceof L.Polyline && !(l instanceof L.Polygon)) l.setLatLngs(ptsNow);
+  });
  });
  m.on('dragend',e=>{
   const q=e.target.getLatLng();
@@ -2891,7 +2899,6 @@ route.forEach((p,i)=>{
   }
  });
 });
-
 
 let d=0;
 
@@ -2978,7 +2985,7 @@ toolMode==='delete'
 
 ?'Toca un POI, antena o waypoint para eliminarlo'
 
-:'GeoJSON es el formato editable nativo de ECOUAV v0.6.1.1.';
+:'GeoJSON es el formato editable nativo de ECOUAV v0.6.1.';
 
 };
 
