@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>ECOUAV v0.6.1</title>
+<title>ECOUAV v0.6.2</title>
 
 <link rel="stylesheet"
 href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
@@ -253,7 +253,7 @@ Planificador UAS · Terreno · RF · Rutas · Misiones
 <button id="contours">Curvas</button>
 <button id="terrainBtn">⛰️ Desnivel</button>
 <button id="locate">Mi posición</button>
-<button id="center">España</button>
+<button id="center">España</button>\n<button id="coordBtn">⌨️ Coordenadas</button>
 
 </div>
 
@@ -450,6 +450,31 @@ preserveAspectRatio="none">
 
 </div>
 
+
+<div id="coordCard" class="card full hidden">
+<div class="label">⌨️ INTRODUCIR COORDENADAS</div>
+<div class="formgrid">
+ <div class="field"><label>Latitud</label><input id="coordLat" type="text" inputmode="decimal" placeholder="Ej. 38.8794"></div>
+ <div class="field"><label>Longitud</label><input id="coordLng" type="text" inputmode="decimal" placeholder="Ej. -6.9707"></div>
+ <div class="field wide"><label>Usar coordenada como</label>
+  <select id="coordUse">
+   <option value="select">📍 Punto seleccionado</option>
+   <option value="poi">📍 POI</option>
+   <option value="route">✈️ Waypoint de ruta</option>
+   <option value="antA">📡 Antena A</option>
+   <option value="antB">📡 Antena B</option>
+   <option value="antC">📡 Antena C</option>
+   <option value="losA">👁 LOS · Punto A</option>
+   <option value="losB">👁 LOS · Punto B</option>
+  </select>
+ </div>
+</div>
+<div class="actions">
+ <button id="coordGo">Ir / Colocar</button>
+ <button id="coordFromSelected">Usar punto seleccionado</button>
+</div>
+<div id="coordInfo" class="mini">Formato decimal WGS84. Acepta punto o coma decimal.</div>
+</div>
 
 <div id="terrainCard" class="card full hidden">
 <div class="label">⛰️ PERFIL DE DESNIVEL</div>
@@ -815,7 +840,7 @@ class="danger">
 <div id="missionInfo"
 class="mini">
 
-GeoJSON es el formato editable nativo de ECOUAV v0.6.1.
+GeoJSON es el formato editable nativo de ECOUAV v0.6.2.
 
 </div>
 
@@ -1621,6 +1646,74 @@ $('losBtn')
 
 }
 
+
+$('coordBtn').onclick=()=>{
+ $('coordCard').classList.toggle('hidden');
+ $('coordBtn').classList.toggle('active');
+};
+
+$('coordFromSelected').onclick=()=>{
+ if(!selectedPoint){alert('Selecciona primero un punto en el mapa');return;}
+ $('coordLat').value=selectedPoint.lat.toFixed(6);
+ $('coordLng').value=selectedPoint.lng.toFixed(6);
+};
+
+function parseCoordValue(v){
+ return Number(String(v).trim().replace(',','.'));
+}
+
+$('coordGo').onclick=()=>{
+ const lat=parseCoordValue($('coordLat').value);
+ const lng=parseCoordValue($('coordLng').value);
+ if(!Number.isFinite(lat)||!Number.isFinite(lng)||lat<-90||lat>90||lng<-180||lng>180){
+  $('coordInfo').textContent='⚠️ Coordenadas no válidas. Latitud -90…90 · Longitud -180…180.';
+  return;
+ }
+ const p=L.latLng(lat,lng);
+ const use=$('coordUse').value;
+ map.setView(p,Math.max(map.getZoom(),15));
+
+ if(use==='select'){
+  selectPoint(p);
+ }else if(use==='poi'){
+  pushHistory();
+  addPoi(p);
+ }else if(use==='route'){
+  pushHistory();
+  route.push({lat:p.lat,lng:p.lng});
+  renderRoute();
+ }else if(use.startsWith('ant')){
+  pushHistory();
+  const id=use.slice(-1);
+  setAntenna(id,p);
+  $('antId').value=id;
+ }else if(use==='losA'||use==='losB'){
+  // Store/edit the requested LOS endpoint and render the pair when both exist.
+  const idx=use==='losA'?0:1;
+  if(!window.manualLosPts) window.manualLosPts=[null,null];
+  window.manualLosPts[idx]=p;
+  toolLayer.clearLayers();
+  window.manualLosPts.forEach((q,i)=>{
+   if(q)L.marker(q,{draggable:true,icon:moveIcon(i===0?'A':'B','tool')})
+    .addTo(toolLayer)
+    .on('dragend',e=>{
+      window.manualLosPts[i]=e.target.getLatLng();
+      if(window.manualLosPts[0]&&window.manualLosPts[1]){
+       const a=window.manualLosPts[0],b=window.manualLosPts[1],d=map.distance(a,b);
+       runLOS(a,b,d,+$('antHeight').value||2,+$('airHeight').value||30,+$('freq').value||5800,true);
+      }
+    });
+  });
+  if(window.manualLosPts[0]&&window.manualLosPts[1]){
+   const a=window.manualLosPts[0],b=window.manualLosPts[1],d=map.distance(a,b);
+   L.polyline([a,b],{weight:3}).addTo(toolLayer);
+   runLOS(a,b,d,+$('antHeight').value||2,+$('airHeight').value||30,+$('freq').value||5800,true);
+  }else{
+   $('losOut').textContent='Falta el otro punto LOS';
+  }
+ }
+ $('coordInfo').textContent='✓ '+lat.toFixed(6)+', '+lng.toFixed(6)+' colocado.';
+};
 
 $('terrainBtn').onclick=()=>{
  $('terrainCard').classList.toggle('hidden');
@@ -2950,7 +3043,7 @@ toolMode==='delete'
 
 ?'Toca un POI, antena o waypoint para eliminarlo'
 
-:'GeoJSON es el formato editable nativo de ECOUAV v0.6.1.';
+:'GeoJSON es el formato editable nativo de ECOUAV v0.6.2.';
 
 };
 
