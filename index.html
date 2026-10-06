@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>ECOUAV v0.5</title>
+<title>ECOUAV v0.6</title>
 
 <link rel="stylesheet"
 href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
@@ -44,15 +44,8 @@ justify-content:space-between
 .top small,.mini,.coords{color:var(--muted)}
 
 #map{
-height:60vh;
+height:58vh;
 min-height:420px
-}
-
-.leaflet-control-layers,
-.leaflet-bar a{
-background:#111c25!important;
-color:#fff!important;
-border-color:#314252!important
 }
 
 .toolbar{
@@ -115,19 +108,6 @@ font-weight:750
 .coords,.mini{
 font-size:13px;
 margin-top:5px
-}
-
-.status{
-display:flex;
-align-items:center;
-gap:8px
-}
-
-.dot{
-width:12px;
-height:12px;
-border-radius:50%;
-background:var(--good)
 }
 
 .toolrow{
@@ -195,6 +175,17 @@ font-size:12px
 
 input[type=file]{display:none}
 
+.profile{
+width:100%;
+height:180px;
+background:#0d161e;
+border:1px solid var(--line);
+border-radius:10px;
+margin-top:10px
+}
+
+.danger{border-color:#743c3c}
+
 @media(max-width:720px){
 
 .panel{
@@ -206,7 +197,7 @@ grid-template-columns:repeat(2,1fr)
 }
 
 #map{
-height:55vh;
+height:54vh;
 min-height:390px
 }
 
@@ -225,16 +216,15 @@ min-height:390px
 <div>
 <h1>
 ECOUAV
-<span style="color:var(--accent)">v0.5</span>
+<span style="color:var(--accent)">v0.6</span>
 </h1>
 
 <small>
-Planificador UAS · Terreno · RF · Misiones
+Planificador UAS · Terreno · RF · Rutas · Misiones
 </small>
 </div>
 
-<div id="flightStatus" class="status">
-<span class="dot"></span>
+<div id="flightStatus">
 <strong>LISTO</strong>
 </div>
 
@@ -245,25 +235,11 @@ Planificador UAS · Terreno · RF · Misiones
 
 <div class="toolbar">
 
-<button id="sat" class="active">
-Satélite
-</button>
-
-<button id="topo">
-Relieve
-</button>
-
-<button id="contours">
-Curvas
-</button>
-
-<button id="locate">
-Mi posición
-</button>
-
-<button id="center">
-España
-</button>
+<button id="sat" class="active">Satélite</button>
+<button id="topo">Relieve</button>
+<button id="contours">Curvas</button>
+<button id="locate">Mi posición</button>
+<button id="center">España</button>
 
 </div>
 
@@ -354,12 +330,28 @@ Selecciona un punto
 👁 LOS
 </button>
 
+<button id="routeBtn">
+✈️ Ruta
+</button>
+
 <button id="antennaBtn">
-📡 Antena
+📡 Antenas
 </button>
 
 <button id="poiBtn">
 📍 POI
+</button>
+
+<button id="deleteBtn">
+🗑️ Eliminar
+</button>
+
+<button id="undoBtn">
+↩️
+</button>
+
+<button id="redoBtn">
+↪️
 </button>
 
 <button id="missionBtn">
@@ -367,14 +359,13 @@ Selecciona un punto
 </button>
 
 <button id="clearBtn">
-✕ Limpiar herramientas
+✕ Herramientas
 </button>
 
 </div>
 
 
 <section class="panel" style="padding-top:0">
-
 
 <div class="card">
 
@@ -400,7 +391,7 @@ Estimación meteorológica
 <div class="card">
 
 <div class="label">
-MEDICIÓN
+MEDICIÓN / RUTA
 </div>
 
 <div id="measureOut"
@@ -411,8 +402,8 @@ Sin medición
 
 </div>
 
-<div class="mini">
-Marca dos puntos
+<div id="routeOut" class="mini">
+Sin ruta
 </div>
 
 </div>
@@ -436,6 +427,13 @@ Sin cálculo
 Análisis del relieve y primera zona de Fresnel
 </div>
 
+<svg
+id="profile"
+class="profile hidden"
+viewBox="0 0 800 180"
+preserveAspectRatio="none">
+</svg>
+
 </div>
 
 
@@ -443,11 +441,26 @@ Análisis del relieve y primera zona de Fresnel
 class="card full hidden">
 
 <div class="label">
-📡 CONFIGURACIÓN DE ANTENA / ENLACE FPV
+📡 ANTENAS CANDIDATAS A / B / C
 </div>
 
 
 <div class="formgrid">
+
+<div class="field">
+
+<label>
+Antena activa
+</label>
+
+<select id="antId">
+<option>A</option>
+<option>B</option>
+<option>C</option>
+</select>
+
+</div>
+
 
 <div class="field">
 
@@ -484,7 +497,7 @@ value="90">
 <div class="field">
 
 <label>
-Alcance máximo km
+Alcance km
 </label>
 
 <input
@@ -594,7 +607,7 @@ value="30">
 <div class="actions">
 
 <button id="placeAntenna">
-Colocar antena en mapa
+Colocar A/B/C
 </button>
 
 <button id="updateSector">
@@ -602,7 +615,11 @@ Actualizar sector
 </button>
 
 <button id="testLink">
-Comprobar enlace al punto seleccionado
+Enlace al punto seleccionado
+</button>
+
+<button id="compareABC">
+Comparar A/B/C
 </button>
 
 </div>
@@ -610,7 +627,7 @@ Comprobar enlace al punto seleccionado
 
 <div id="antennaInfo" class="mini">
 
-Coloca la antena para dibujar su sector teórico.
+Coloca hasta tres posiciones candidatas y compáralas con el mismo punto seleccionado.
 
 </div>
 
@@ -635,41 +652,15 @@ Tipo
 
 <select id="poiType">
 
-<option>
-🚦 Cruce de caminos
-</option>
-
-<option>
-💧 Charca / agua
-</option>
-
-<option>
-🌲 Línea de árboles
-</option>
-
-<option>
-🏠 Edificación
-</option>
-
-<option>
-🚙 Vehículo
-</option>
-
-<option>
-📡 Antena
-</option>
-
-<option>
-🛫 Punto de despegue
-</option>
-
-<option>
-📍 Punto de interés
-</option>
-
-<option>
-✏️ Personalizado
-</option>
+<option>🚦 Cruce de caminos</option>
+<option>💧 Charca / agua</option>
+<option>🌲 Línea de árboles</option>
+<option>🏠 Edificación</option>
+<option>🚙 Vehículo</option>
+<option>📡 Antena</option>
+<option>🛫 Punto de despegue</option>
+<option>📍 Punto de interés</option>
+<option>✏️ Personalizado</option>
 
 </select>
 
@@ -694,7 +685,7 @@ placeholder="Ej. cruce norte">
 <div class="actions">
 
 <button id="placePoi">
-Colocar POI en mapa
+Colocar POI
 </button>
 
 </div>
@@ -711,7 +702,7 @@ class="poiList">
 class="card full hidden">
 
 <div class="label">
-💾 MISIÓN
+💾 MISIONES
 </div>
 
 
@@ -720,12 +711,24 @@ class="card full hidden">
 <div class="field wide">
 
 <label>
-Nombre de misión
+Nombre
 </label>
 
 <input
 id="missionName"
 value="Misión ECOUAV">
+
+</div>
+
+
+<div class="field wide">
+
+<label>
+Misiones guardadas
+</label>
+
+<select id="missionSelect">
+</select>
 
 </div>
 
@@ -735,38 +738,49 @@ value="Misión ECOUAV">
 <div class="actions">
 
 <button id="saveMission">
-Guardar en este dispositivo
+Guardar
 </button>
 
 <button id="loadMission">
-Cargar guardada
+Cargar
+</button>
+
+<button id="deleteMission">
+Eliminar misión
 </button>
 
 <button id="exportGeo">
-Exportar GeoJSON
+GeoJSON
 </button>
 
 <button id="exportKml">
-Exportar KML
+KML
 </button>
 
 <button id="exportGpx">
-Exportar GPX
+GPX
 </button>
 
 <label>
 
 <button type="button"
 id="importFake">
-Importar archivo
+Importar
 </button>
 
 <input
 id="importFile"
 type="file"
-accept=".json,.geojson,.kml,.gpx">
+accept=".json,.geojson">
 
 </label>
+
+<button id="wipeMap"
+class="danger">
+
+🗑️ Borrar mapa
+
+</button>
 
 </div>
 
@@ -774,9 +788,7 @@ accept=".json,.geojson,.kml,.gpx">
 <div id="missionInfo"
 class="mini">
 
-La misión incluye antena y puntos de referencia.
-
-GeoJSON es el formato nativo de ECOUAV v0.5.
+GeoJSON es el formato editable nativo de ECOUAV v0.6.
 
 </div>
 
@@ -789,11 +801,13 @@ GeoJSON es el formato nativo de ECOUAV v0.5.
 
 <b>Importante:</b>
 
-la cobertura RF, LOS y Fresnel son estimaciones de planificación.
+LOS, Fresnel, alcance y perfiles son estimaciones de planificación basadas en terreno.
 
-No garantizan enlace real: vegetación, edificios,
-interferencias, orientación/polarización,
-receptor y otros factores pueden cambiar el resultado.
+No representan una garantía de cobertura radio.
+
+Vegetación, edificios, interferencias,
+orientación/polarización y características del receptor
+pueden cambiar el resultado.
 
 Comprueba también las zonas geográficas UAS oficiales antes de volar.
 
@@ -807,19 +821,55 @@ src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
 
 <script>
 
-const $=id=>document.getElementById(id);
+const $=
+id=>document.getElementById(id);
+
+
+const esc=
+s=>String(s).replace(
+
+/[&<>"']/g,
+
+c=>({
+
+'&':'&amp;',
+
+'<':'&lt;',
+
+'>':'&gt;',
+
+'"':'&quot;',
+
+"'":'&#39;'
+
+}[c])
+
+);
+
 
 const map=
-L.map('map',{
-zoomControl:true
-})
+
+L.map(
+
+'map',
+
+{
+zoomControl:true,
+preferCanvas:true
+}
+
+)
 .setView(
+
 [40.2,-3.7],
+
 6
+
 );
 
 
 const satellite=
+
 L.tileLayer(
 
 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
@@ -832,7 +882,8 @@ attribution:'Tiles © Esri'
 );
 
 
-const topo=
+const topoBase=
+
 L.tileLayer(
 
 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
@@ -845,33 +896,127 @@ attribution:'© OpenTopoMap contributors'
 );
 
 
+const contourOverlay=
+
+L.tileLayer(
+
+'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+
+{
+maxZoom:17,
+opacity:.48,
+attribution:'© OpenTopoMap contributors'
+}
+
+);
+
+
 satellite.addTo(map);
 
 
 let current=satellite;
 
-let marker;
+let contourOn=false;
 
 let selectedPoint=null;
+
+let selectMarker=null;
 
 let toolMode=null;
 
 let toolPoints=[];
 
-let antenna=null;
-
-let antennaMarker=null;
-
-let sectorLayer=null;
-
 let pois=[];
+
+let route=[];
+
+
+let antennas={
+
+A:null,
+B:null,
+C:null
+
+};
+
+
+let antennaMarkers={};
+
+let sectorLayers={};
 
 
 const toolLayer=
-L.layerGroup().addTo(map);
+L.layerGroup()
+.addTo(map);
+
 
 const poiLayer=
-L.layerGroup().addTo(map);
+L.layerGroup()
+.addTo(map);
+
+
+const routeLayer=
+L.layerGroup()
+.addTo(map);
+
+
+let history=[];
+
+let future=[];
+
+
+function snapshot(){
+
+return JSON.stringify({
+
+pois,
+route,
+antennas
+
+});
+
+}
+
+
+function pushHistory(){
+
+history.push(
+snapshot()
+);
+
+if(
+history.length>30
+)
+history.shift();
+
+future=[];
+
+}
+
+
+function restore(s){
+
+const x=
+JSON.parse(s);
+
+pois=
+x.pois||[];
+
+route=
+x.route||[];
+
+antennas=
+x.antennas
+||
+{
+A:null,
+B:null,
+C:null
+};
+
+renderAll();
+
+}
 
 
 function base(layer){
@@ -882,6 +1027,14 @@ map.removeLayer(current);
 current=layer;
 
 layer.addTo(map);
+
+
+if(
+contourOn
+&&
+layer!==topoBase
+)
+contourOverlay.addTo(map);
 
 }
 
@@ -903,11 +1056,19 @@ $('topo')
 
 $('topo').onclick=()=>{
 
-base(topo);
+if(
+map.hasLayer(contourOverlay)
+)
+map.removeLayer(contourOverlay);
+
+
+base(topoBase);
+
 
 $('topo')
 .classList
 .add('active');
+
 
 $('sat')
 .classList
@@ -918,27 +1079,31 @@ $('sat')
 
 $('contours').onclick=()=>{
 
-const on=
-!map.hasLayer(topo);
+contourOn=
+!contourOn;
 
-if(on){
-
-topo.setOpacity(.55);
-
-topo.addTo(map);
 
 $('contours')
 .classList
-.add('active');
+.toggle(
+'active',
+contourOn
+);
 
-}else{
 
-if(current!==topo)
-map.removeLayer(topo);
+if(
+contourOn
+&&
+current!==topoBase
+){
 
-$('contours')
-.classList
-.remove('active');
+contourOverlay.addTo(map);
+
+}else if(
+map.hasLayer(contourOverlay)
+){
+
+map.removeLayer(contourOverlay);
 
 }
 
@@ -957,7 +1122,9 @@ map.setView(
 
 $('locate').onclick=()=>{
 
-if(!navigator.geolocation){
+if(
+!navigator.geolocation
+){
 
 alert(
 'Geolocalización no disponible'
@@ -967,6 +1134,7 @@ return;
 
 }
 
+
 navigator
 .geolocation
 .getCurrentPosition(
@@ -974,6 +1142,7 @@ navigator
 p=>{
 
 const q=
+
 L.latLng(
 
 p.coords.latitude,
@@ -982,7 +1151,12 @@ p.coords.longitude
 
 );
 
-map.setView(q,15);
+
+map.setView(
+q,
+15
+);
+
 
 selectPoint(q);
 
@@ -1002,6 +1176,7 @@ alert(
 
 
 map.on(
+
 'click',
 
 e=>{
@@ -1030,39 +1205,45 @@ function selectPoint(p){
 selectedPoint=
 L.latLng(p);
 
-if(marker){
 
-marker.setLatLng(p);
+if(selectMarker){
+
+selectMarker
+.setLatLng(p);
 
 }else{
 
-marker=
+selectMarker=
+
 L.marker(
+
 p,
+
 {
 draggable:true
 }
+
 )
 .addTo(map);
 
-marker.on(
+
+selectMarker.on(
 
 'dragend',
 
-e=>{
+e=>
 
 selectPoint(
 e.target.getLatLng()
-);
-
-}
+)
 
 );
 
 }
 
 
-$('coords').textContent=
+$('coords')
+.textContent=
 
 p.lat.toFixed(6)
 +
@@ -1071,29 +1252,34 @@ p.lat.toFixed(6)
 p.lng.toFixed(6);
 
 
-Promise.allSettled([
-
 loadElevation(
 p.lat,
 p.lng
-),
+);
+
 
 loadWeather(
 p.lat,
 p.lng
-)
-
-]);
+);
 
 }
 
 
-$('measureBtn').onclick=
-()=>setTool('measure');
+function toggleCard(
+card,
+btn
+){
 
+$(card)
+.classList
+.toggle('hidden');
 
-$('losBtn').onclick=
-()=>setTool('los');
+$(btn)
+.classList
+.toggle('active');
+
+}
 
 
 $('antennaBtn').onclick=
@@ -1117,18 +1303,62 @@ $('missionBtn').onclick=
 );
 
 
-function toggleCard(
-card,
-btn
+$('measureBtn').onclick=
+()=>setTool('measure');
+
+
+$('losBtn').onclick=
+()=>setTool('los');
+
+
+$('routeBtn').onclick=
+()=>setTool('route');
+
+
+function setTool(m){
+
+toolMode=m;
+
+toolPoints=[];
+
+toolLayer.clearLayers();
+
+
+[
+'measureBtn',
+'losBtn',
+'routeBtn',
+'deleteBtn'
+]
+.forEach(
+
+id=>
+
+$(id)
+.classList
+.toggle(
+'active',
+id===m+'Btn'
+)
+
+);
+
+
+if(
+m==='measure'
+||
+m==='los'
 ){
 
-$(card)
-.classList
-.toggle('hidden');
+$(
+m==='measure'
+?'measureOut'
+:'losOut'
+)
+.textContent=
+'Marca punto A';
 
-$(btn)
-.classList
-.toggle('active');
+}
 
 }
 
@@ -1141,68 +1371,23 @@ toolPoints=[];
 
 toolLayer.clearLayers();
 
-$('measureOut')
-.textContent=
-'Sin medición';
-
-$('losOut')
-.textContent=
-'Sin cálculo';
-
-$('losDetail')
-.textContent=
-'Análisis del relieve y primera zona de Fresnel';
 
 [
 'measureBtn',
-'losBtn'
+'losBtn',
+'routeBtn',
+'deleteBtn'
 ]
 .forEach(
 
-x=>
-$(x)
+id=>
+$(id)
 .classList
 .remove('active')
 
 );
 
 };
-
-
-function setTool(m){
-
-toolMode=m;
-
-toolPoints=[];
-
-toolLayer.clearLayers();
-
-
-$('measureBtn')
-.classList
-.toggle(
-'active',
-m==='measure'
-);
-
-
-$('losBtn')
-.classList
-.toggle(
-'active',
-m==='los'
-);
-
-
-$(
-m==='measure'
-?'measureOut'
-:'losOut'
-)
-.textContent=
-'Marca punto A';
-
-}
 
 
 function handleToolPoint(p){
@@ -1212,7 +1397,12 @@ if(
 toolMode==='placeAntenna'
 ){
 
-setAntenna(p);
+pushHistory();
+
+setAntenna(
+$('antId').value,
+p
+);
 
 toolMode=null;
 
@@ -1229,6 +1419,8 @@ if(
 toolMode==='placePoi'
 ){
 
+pushHistory();
+
 addPoi(p);
 
 toolMode=null;
@@ -1242,16 +1434,42 @@ return;
 }
 
 
+if(
+toolMode==='route'
+){
+
+pushHistory();
+
+
+route.push({
+
+lat:p.lat,
+lng:p.lng
+
+});
+
+
+renderRoute();
+
+return;
+
+}
+
+
 toolPoints.push(p);
 
 
 L.circleMarker(
+
 p,
+
 {
 radius:6
 }
+
 )
 .addTo(toolLayer)
+
 .bindTooltip(
 
 toolPoints.length===1
@@ -1295,10 +1513,13 @@ b
 
 
 L.polyline(
+
 [a,b],
+
 {
 weight:3
 }
+
 )
 .addTo(toolLayer);
 
@@ -1327,17 +1548,13 @@ a,
 b,
 d,
 
-Number(
-$('antHeight').value
-)||2,
++$('antHeight').value||2,
 
-Number(
-$('airHeight').value
-)||30,
++$('airHeight').value||30,
 
-Number(
-$('freq').value
-)||5800
++$('freq').value||5800,
+
+true
 
 );
 
@@ -1364,67 +1581,96 @@ $('placeAntenna').onclick=()=>{
 toolMode=
 'placeAntenna';
 
+
 $('placeAntenna')
 .classList
 .add('active');
 
+
 $('antennaInfo')
 .textContent=
-'Pulsa en el mapa para colocar la antena';
+
+'Pulsa en el mapa para colocar la antena '
++
+$('antId').value;
 
 };
 
 
-$('updateSector').onclick=()=>{
+function setAntenna(
+id,
+p
+){
 
-if(antenna){
+antennas[id]={
 
-drawSector();
+lat:p.lat,
+lng:p.lng
 
-}else{
+};
 
-alert(
-'Primero coloca la antena'
-);
+
+drawAntenna(id);
+
+drawSector(id);
 
 }
 
-};
+
+function drawAntenna(id){
+
+const a=
+antennas[id];
 
 
-function setAntenna(p){
-
-antenna={
-lat:p.lat,
-lng:p.lng
-};
+if(!a)
+return;
 
 
-if(antennaMarker){
+if(
+antennaMarkers[id]
+)
+map.removeLayer(
+antennaMarkers[id]
+);
 
-antennaMarker
-.setLatLng(p);
 
-}else{
+const m=
 
-antennaMarker=
 L.marker(
 
-p,
+[
+a.lat,
+a.lng
+],
 
 {
 draggable:true,
-title:'Antena FPV'
+title:'Antena '+id
 }
 
 )
 .addTo(map)
+
 .bindTooltip(
-'📡 Antena'
+
+'📡 '+id,
+
+{
+permanent:true,
+direction:'top'
+}
+
 );
 
 
-antennaMarker.on(
+m.on(
+'dragstart',
+pushHistory
+);
+
+
+m.on(
 
 'dragend',
 
@@ -1433,33 +1679,46 @@ e=>{
 const q=
 e.target.getLatLng();
 
-antenna={
+
+antennas[id]={
+
 lat:q.lat,
 lng:q.lng
+
 };
 
-drawSector();
+
+drawSector(id);
 
 }
 
 );
 
+
+m.on(
+
+'click',
+
+()=>{
+
+if(
+toolMode==='delete'
+){
+
+pushHistory();
+
+antennas[id]=null;
+
+renderAll();
+
 }
 
+}
 
-drawSector();
+);
 
 
-$('antennaInfo')
-.textContent=
-
-'Antena: '
-+
-p.lat.toFixed(5)
-+
-', '
-+
-p.lng.toFixed(5);
+antennaMarkers[id]=m;
 
 }
 
@@ -1489,6 +1748,7 @@ p.lng
 
 
 const lat2=
+
 Math.asin(
 
 Math.sin(lat1)
@@ -1534,15 +1794,21 @@ lon2*180/Math.PI
 }
 
 
-function drawSector(){
+function drawSector(id){
 
-if(!antenna)
+const a=
+antennas[id];
+
+
+if(!a)
 return;
 
 
-if(sectorLayer)
+if(
+sectorLayers[id]
+)
 map.removeLayer(
-sectorLayer
+sectorLayers[id]
 );
 
 
@@ -1550,9 +1816,8 @@ let az=
 
 (
 (
-Number(
-$('azimuth').value
-)||0
++$('azimuth').value
+||0
 )
 %360
 +360
@@ -1561,6 +1826,7 @@ $('azimuth').value
 
 
 let beam=
+
 Math.max(
 
 1,
@@ -1569,9 +1835,8 @@ Math.min(
 
 360,
 
-Number(
-$('beam').value
-)||90
++$('beam').value
+||90
 
 )
 
@@ -1579,13 +1844,13 @@ $('beam').value
 
 
 let range=
+
 Math.max(
 
 .1,
 
-Number(
-$('rangeKm').value
-)||5
++$('rangeKm').value
+||5
 
 );
 
@@ -1593,14 +1858,15 @@ $('rangeKm').value
 let pts=[
 
 L.latLng(
-antenna.lat,
-antenna.lng
+a.lat,
+a.lng
 )
 
 ];
 
 
 const steps=
+
 Math.max(
 
 12,
@@ -1622,7 +1888,7 @@ pts.push(
 
 destination(
 
-antenna,
+a,
 
 az
 -beam/2
@@ -1640,14 +1906,14 @@ range
 pts.push(
 
 L.latLng(
-antenna.lat,
-antenna.lng
+a.lat,
+a.lng
 )
 
 );
 
 
-sectorLayer=
+sectorLayers[id]=
 
 L.polygon(
 
@@ -1655,7 +1921,7 @@ pts,
 
 {
 weight:2,
-fillOpacity:.15
+fillOpacity:.08
 }
 
 )
@@ -1664,16 +1930,47 @@ fillOpacity:.15
 }
 
 
-$('testLink').onclick=()=>{
+$('updateSector').onclick=()=>{
+
+const id=
+$('antId').value;
+
 
 if(
-!antenna
+antennas[id]
+){
+
+drawSector(id);
+
+}else{
+
+alert(
+'Primero coloca la antena '+id
+);
+
+}
+
+};
+
+
+$('testLink').onclick=()=>{
+
+const id=
+$('antId').value;
+
+
+const a=
+antennas[id];
+
+
+if(
+!a
 ||
 !selectedPoint
 ){
 
 alert(
-'Coloca la antena y selecciona un punto de vuelo'
+'Coloca la antena '+id+' y selecciona un punto'
 );
 
 return;
@@ -1681,16 +1978,17 @@ return;
 }
 
 
-const a=
+const p=
+
 L.latLng(
-antenna.lat,
-antenna.lng
+a.lat,
+a.lng
 );
 
 
 const d=
 map.distance(
-a,
+p,
 selectedPoint
 );
 
@@ -1701,7 +1999,7 @@ toolLayer.clearLayers();
 L.polyline(
 
 [
-a,
+p,
 selectedPoint
 ],
 
@@ -1715,25 +2013,125 @@ weight:3
 
 runLOS(
 
-a,
-
+p,
 selectedPoint,
-
 d,
 
-Number(
-$('antHeight').value
-)||2,
++$('antHeight').value||2,
 
-Number(
-$('airHeight').value
-)||30,
++$('airHeight').value||30,
 
-Number(
-$('freq').value
-)||5800
++$('freq').value||5800,
+
+true
 
 );
+
+};
+
+
+$('compareABC').onclick=
+async()=>{
+
+if(
+!selectedPoint
+){
+
+alert(
+'Selecciona primero el punto a comparar'
+);
+
+return;
+
+}
+
+
+$('antennaInfo')
+.textContent=
+'Comparando…';
+
+
+let out=[];
+
+
+for(
+const id of
+[
+'A',
+'B',
+'C'
+]
+){
+
+const a=
+antennas[id];
+
+
+if(!a)
+continue;
+
+
+try{
+
+
+const p=
+L.latLng(
+a.lat,
+a.lng
+);
+
+
+const d=
+map.distance(
+p,
+selectedPoint
+);
+
+
+const r=
+
+await losResult(
+
+p,
+selectedPoint,
+d,
+
++$('antHeight').value||2,
+
++$('airHeight').value||30,
+
++$('freq').value||5800
+
+);
+
+
+out.push(
+
+`${id}: ${(d/1000).toFixed(2)} km · ${r.label} · margen terreno ${r.minClear.toFixed(1)} m`
+
+);
+
+
+}catch(e){
+
+
+out.push(
+id+': sin datos'
+);
+
+}
+
+}
+
+
+$('antennaInfo')
+.textContent=
+
+out.length
+
+?out.join(' | ')
+
+:'No hay antenas A/B/C colocadas';
 
 };
 
@@ -1782,6 +2180,7 @@ a.lng
 
 
 const r=
+
 await fetch(
 
 `https://api.open-meteo.com/v1/elevation?latitude=${lat.join(',')}&longitude=${lon.join(',')}`
@@ -1810,29 +2209,17 @@ return d.elevation;
 }
 
 
-async function runLOS(
+async function losResult(
 a,
 b,
 d,
-hA=2,
-hB=30,
-fMHz=5800
+hA,
+hB,
+fMHz
 ){
 
-$('losOut')
-.textContent=
-'Calculando…';
-
-
-$('losDetail')
-.textContent=
-'Consultando perfil del terreno';
-
-
-try{
-
-
 const e=
+
 await elevationsBetween(
 a,
 b
@@ -1847,8 +2234,14 @@ const end=
 e[e.length-1]+hB;
 
 
-const totalKm=
-d/1000;
+const wavelength=
+
+299792458
+/
+(
+fMHz
+*1e6
+);
 
 
 let terrainBlocked=false;
@@ -1885,19 +2278,8 @@ line-e[i];
 const d1=
 d*t;
 
-
 const d2=
 d*(1-t);
-
-
-const wavelength=
-
-299792458
-/
-(
-fMHz
-*1000000
-);
 
 
 const r1=
@@ -1931,48 +2313,105 @@ r1*.6
 );
 
 
-if(clear<0){
-
+if(
+clear<0
+)
 terrainBlocked=true;
-
-}
 
 
 if(
 clear
 <
 r1*.6
-){
-
+)
 fresnelBlocked=true;
 
 }
 
-}
 
+return{
 
-let msg=
+e,
+start,
+end,
+minClear,
+minF,
 
+label:
 
 terrainBlocked
 
-?'⛔ LOS bloqueado'
+?'LOS bloqueado'
 
 :fresnelBlocked
 
-?'⚠️ Fresnel comprometido'
+?'Fresnel comprometido'
 
-:'✓ LOS + Fresnel despejados';
+:'LOS + Fresnel despejados'
+
+};
+
+}
+
+
+async function runLOS(
+a,
+b,
+d,
+hA,
+hB,
+fMHz,
+profile=false
+){
+
+$('losOut')
+.textContent=
+'Calculando…';
+
+
+$('losDetail')
+.textContent=
+'Consultando perfil del terreno';
+
+
+try{
+
+
+const r=
+
+await losResult(
+
+a,
+b,
+d,
+hA,
+hB,
+fMHz
+
+);
 
 
 $('losOut')
 .textContent=
 
-msg
+(
+r.label==='LOS bloqueado'
+
+?'⛔ '
+
+:r.label==='Fresnel comprometido'
+
+?'⚠️ '
+
+:'✓ '
+)
+
++
+r.label
 +
 ' · '
 +
-totalKm.toFixed(2)
+(d/1000).toFixed(2)
 +
 ' km';
 
@@ -1980,7 +2419,20 @@ totalKm.toFixed(2)
 $('losDetail')
 .textContent=
 
-`Frecuencia ${Math.round(fMHz)} MHz · margen terreno ${minClear.toFixed(1)} m · margen Fresnel 60% ${minF.toFixed(1)} m`;
+`Frecuencia ${Math.round(fMHz)} MHz · margen terreno ${r.minClear.toFixed(1)} m · margen Fresnel 60% ${r.minF.toFixed(1)} m`;
+
+
+if(profile){
+
+drawProfile(
+
+r.e,
+r.start,
+r.end
+
+);
+
+}
 
 
 }catch(e){
@@ -1996,6 +2448,78 @@ $('losDetail')
 'No se pudo obtener el perfil de elevación';
 
 }
+
+}
+
+
+function drawProfile(
+e,
+start,
+end
+){
+
+const svg=
+$('profile');
+
+
+svg.classList
+.remove('hidden');
+
+
+const min=
+
+Math.min(
+...e
+)
+-10;
+
+
+const max=
+
+Math.max(
+...e,
+start,
+end
+)
++10;
+
+
+const W=800;
+
+const H=180;
+
+
+const y=
+
+v=>
+
+H
+-
+(
+(v-min)
+/
+(max-min)
+)
+*H;
+
+
+let pts=
+
+e.map(
+
+(v,i)=>
+
+`${i/(e.length-1)*W},${y(v)}`
+
+)
+.join(' ');
+
+
+svg.innerHTML=
+
+`<polyline points="${pts}" fill="none" stroke="currentColor" stroke-width="3"/>
+<line x1="0" y1="${y(start)}" x2="${W}" y2="${y(end)}" stroke="#ffb020" stroke-width="2" stroke-dasharray="8 5"/>
+<text x="8" y="18" fill="currentColor" font-size="13">Perfil del terreno · línea geométrica</text>`;
 
 }
 
@@ -2033,9 +2557,12 @@ type.replace(
 );
 
 
-const obj={
+pois.push({
 
-id:Date.now(),
+id:
+Date.now()
++
+Math.random(),
 
 lat:p.lat,
 
@@ -2045,32 +2572,40 @@ type,
 
 name
 
-};
-
-
-pois.push(obj);
-
-
-renderPoi(obj);
-
-
-refreshPoiList();
+});
 
 
 $('poiName')
 .value='';
 
+
+renderPois();
+
 }
 
 
-function renderPoi(o){
+function renderPois(){
+
+poiLayer.clearLayers();
+
+
+pois.forEach(
+
+o=>{
+
+
+const m=
 
 L.marker(
 
 [
 o.lat,
 o.lng
-]
+],
+
+{
+draggable:true
+}
 
 )
 .addTo(poiLayer)
@@ -2080,6 +2615,70 @@ o.lng
 `<b>${esc(o.name)}</b><br>${esc(o.type)}<br>${o.lat.toFixed(6)}, ${o.lng.toFixed(6)}`
 
 );
+
+
+m.on(
+'dragstart',
+pushHistory
+);
+
+
+m.on(
+
+'dragend',
+
+e=>{
+
+const q=
+e.target.getLatLng();
+
+
+o.lat=q.lat;
+
+o.lng=q.lng;
+
+
+refreshPoiList();
+
+}
+
+);
+
+
+m.on(
+
+'click',
+
+()=>{
+
+if(
+toolMode==='delete'
+){
+
+pushHistory();
+
+
+pois=
+pois.filter(
+
+x=>
+x.id!==o.id
+
+);
+
+
+renderPois();
+
+}
+
+}
+
+);
+
+});
+
+
+refreshPoiList();
 
 }
 
@@ -2123,26 +2722,248 @@ $('poiList')
 }
 
 
-function esc(s){
+function renderRoute(){
 
-return String(s)
-.replace(
+routeLayer.clearLayers();
 
-/[&<>"']/g,
 
-c=>({
+if(route.length){
 
-'&':'&amp;',
+const pts=
 
-'<':'&lt;',
+route.map(
 
-'>':'&gt;',
+x=>[
+x.lat,
+x.lng
+]
 
-'"':'&quot;',
+);
 
-"'":'&#39;'
 
-}[c])
+L.polyline(
+
+pts,
+
+{
+weight:3
+}
+
+)
+.addTo(routeLayer);
+
+
+route.forEach(
+
+(p,i)=>
+
+L.circleMarker(
+
+[
+p.lat,
+p.lng
+],
+
+{
+radius:6
+}
+
+)
+.addTo(routeLayer)
+
+.bindTooltip(
+
+String(i+1),
+
+{
+permanent:true,
+direction:'top'
+}
+
+)
+
+);
+
+
+let d=0;
+
+
+for(
+let i=1;
+i<pts.length;
+i++
+){
+
+d+=
+map.distance(
+
+pts[i-1],
+pts[i]
+
+);
+
+}
+
+
+$('routeOut')
+.textContent=
+
+`${route.length} waypoint(s) · `
+
++
+
+(
+d>=1000
+
+?(d/1000).toFixed(2)+' km'
+
+:Math.round(d)+' m'
+);
+
+}else{
+
+$('routeOut')
+.textContent=
+'Sin ruta';
+
+}
+
+}
+
+
+$('deleteBtn').onclick=()=>{
+
+toolMode=
+
+toolMode==='delete'
+
+?null
+
+:'delete';
+
+
+$('deleteBtn')
+.classList
+.toggle(
+
+'active',
+
+toolMode==='delete'
+
+);
+
+
+$('missionInfo')
+.textContent=
+
+toolMode==='delete'
+
+?'Toca un POI o antena para eliminarlo'
+
+:'GeoJSON es el formato editable nativo de ECOUAV v0.6.';
+
+};
+
+
+$('undoBtn').onclick=()=>{
+
+if(
+!history.length
+)
+return;
+
+
+future.push(
+snapshot()
+);
+
+
+restore(
+history.pop()
+);
+
+};
+
+
+$('redoBtn').onclick=()=>{
+
+if(
+!future.length
+)
+return;
+
+
+history.push(
+snapshot()
+);
+
+
+restore(
+future.pop()
+);
+
+};
+
+
+function renderAll(){
+
+poiLayer.clearLayers();
+
+routeLayer.clearLayers();
+
+
+Object.values(
+antennaMarkers
+)
+.forEach(
+
+m=>
+m&&map.removeLayer(m)
+
+);
+
+
+Object.values(
+sectorLayers
+)
+.forEach(
+
+m=>
+m&&map.removeLayer(m)
+
+);
+
+
+antennaMarkers={};
+
+sectorLayers={};
+
+
+renderPois();
+
+renderRoute();
+
+
+[
+'A',
+'B',
+'C'
+]
+.forEach(
+
+id=>{
+
+if(
+antennas[id]
+){
+
+drawAntenna(id);
+
+drawSector(id);
+
+}
+
+}
 
 );
 
@@ -2156,11 +2977,10 @@ return{
 type:
 'FeatureCollection',
 
-
 properties:{
 
 ecouav:
-'0.5',
+'0.6',
 
 name:
 $('missionName').value,
@@ -2194,14 +3014,29 @@ rxGain:
 airHeight:
 +$('airHeight').value
 
-}
+},
+
+route
 
 },
 
-
 features:[
 
-...(antenna?[{
+
+...[
+'A',
+'B',
+'C'
+]
+.filter(
+
+id=>
+antennas[id]
+
+)
+.map(
+
+id=>({
 
 type:'Feature',
 
@@ -2209,7 +3044,10 @@ properties:{
 
 kind:'antenna',
 
-name:'Antena FPV'
+id,
+
+name:
+'Antena '+id
 
 },
 
@@ -2219,15 +3057,17 @@ type:'Point',
 
 coordinates:[
 
-antenna.lng,
+antennas[id].lng,
 
-antenna.lat
+antennas[id].lat
 
 ]
 
 }
 
-}]:[]),
+})
+
+),
 
 
 ...pois.map(
@@ -2271,52 +3111,6 @@ o.lat
 }
 
 
-$('saveMission').onclick=()=>{
-
-localStorage.setItem(
-
-'ecouavMission',
-
-JSON.stringify(
-missionObject()
-)
-
-);
-
-
-$('missionInfo')
-.textContent=
-'Misión guardada en este navegador';
-
-};
-
-
-$('loadMission').onclick=()=>{
-
-const s=
-localStorage.getItem(
-'ecouavMission'
-);
-
-
-if(!s){
-
-alert(
-'No hay misión guardada'
-);
-
-return;
-
-}
-
-
-loadMissionObject(
-JSON.parse(s)
-);
-
-};
-
-
 function loadMissionObject(m){
 
 if(
@@ -2334,20 +3128,30 @@ return;
 }
 
 
-poiLayer.clearLayers();
+pushHistory();
+
 
 pois=[];
+
+route=
+m.properties?.route
+||[];
+
+
+antennas={
+
+A:null,
+B:null,
+C:null
+
+};
 
 
 if(
 m.properties?.name
-){
-
-$('missionName')
-.value=
+)
+$('missionName').value=
 m.properties.name;
-
-}
 
 
 const rf=
@@ -2382,19 +3186,19 @@ m.properties?.rf
 
 if(
 rf[k]!=null
-){
-
+)
 $(id).value=
 rf[k];
-
-}
 
 }
 
 );
 
 
-(m.features||[])
+(
+m.features
+||[]
+)
 .forEach(
 
 f=>{
@@ -2413,21 +3217,23 @@ if(
 f.properties?.kind==='antenna'
 ){
 
-setAntenna(
-L.latLng(
+const id=
+f.properties.id
+||'A';
+
+
+antennas[id]={
+
 lat,
 lng
-)
-);
 
-}
+};
 
-
-if(
+}else if(
 f.properties?.kind==='poi'
 ){
 
-const o={
+pois.push({
 
 id:
 Date.now()
@@ -2448,12 +3254,7 @@ f.properties.name
 ||
 'POI'
 
-};
-
-
-pois.push(o);
-
-renderPoi(o);
+});
 
 }
 
@@ -2462,7 +3263,7 @@ renderPoi(o);
 );
 
 
-refreshPoiList();
+renderAll();
 
 
 $('missionInfo')
@@ -2470,6 +3271,215 @@ $('missionInfo')
 'Misión cargada';
 
 }
+
+
+function missions(){
+
+try{
+
+return JSON.parse(
+
+localStorage.getItem(
+'ecouavMissions'
+)
+
+||
+'{}'
+
+);
+
+}catch{
+
+return{};
+
+}
+
+}
+
+
+function refreshMissions(){
+
+const m=
+missions();
+
+
+const s=
+$('missionSelect');
+
+
+s.innerHTML='';
+
+
+Object.keys(m)
+.sort()
+.forEach(
+
+k=>{
+
+const o=
+document.createElement(
+'option'
+);
+
+
+o.value=k;
+
+o.textContent=k;
+
+
+s.appendChild(o);
+
+}
+
+);
+
+}
+
+
+$('saveMission').onclick=()=>{
+
+const name=
+
+$('missionName')
+.value
+.trim()
+
+||
+'Misión ECOUAV';
+
+
+const m=
+missions();
+
+
+m[name]=
+missionObject();
+
+
+localStorage.setItem(
+
+'ecouavMissions',
+
+JSON.stringify(m)
+
+);
+
+
+refreshMissions();
+
+
+$('missionSelect')
+.value=name;
+
+
+$('missionInfo')
+.textContent=
+'Misión guardada';
+
+};
+
+
+$('loadMission').onclick=()=>{
+
+const m=
+missions();
+
+
+const n=
+$('missionSelect').value;
+
+
+if(
+!n
+||
+!m[n]
+){
+
+alert(
+'No hay misión seleccionada'
+);
+
+return;
+
+}
+
+
+loadMissionObject(
+m[n]
+);
+
+};
+
+
+$('deleteMission').onclick=()=>{
+
+const n=
+$('missionSelect').value;
+
+
+if(!n)
+return;
+
+
+if(
+confirm(
+'¿Eliminar la misión guardada?'
+)
+){
+
+const m=
+missions();
+
+
+delete m[n];
+
+
+localStorage.setItem(
+
+'ecouavMissions',
+
+JSON.stringify(m)
+
+);
+
+
+refreshMissions();
+
+}
+
+};
+
+
+$('wipeMap').onclick=()=>{
+
+if(
+confirm(
+'¿Borrar antenas, POI y ruta del mapa?'
+)
+){
+
+pushHistory();
+
+
+pois=[];
+
+route=[];
+
+
+antennas={
+
+A:null,
+B:null,
+C:null
+
+};
+
+
+renderAll();
+
+}
+
+};
 
 
 function download(
@@ -2529,9 +3539,13 @@ download(
 'ECOUAV_mision.geojson',
 
 JSON.stringify(
+
 missionObject(),
+
 null,
+
 2
+
 ),
 
 'application/geo+json'
@@ -2539,6 +3553,13 @@ null,
 );
 
 };
+
+
+function xml(s){
+
+return esc(s);
+
+}
 
 
 $('exportKml').onclick=()=>{
@@ -2605,13 +3626,6 @@ download(
 };
 
 
-function xml(s){
-
-return esc(s);
-
-}
-
-
 $('importFake').onclick=()=>{
 
 $('importFile')
@@ -2623,7 +3637,6 @@ $('importFile')
 $('importFile').onchange=
 async e=>{
 
-
 const f=
 e.target.files[0];
 
@@ -2632,34 +3645,20 @@ if(!f)
 return;
 
 
-const t=
-await f.text();
-
-
-if(
-f.name.match(
-/\.(json|geojson)$/i
-)
-){
-
 try{
 
 loadMissionObject(
-JSON.parse(t)
+
+JSON.parse(
+await f.text()
+)
+
 );
 
-}catch(_){
+}catch{
 
 alert(
 'GeoJSON no válido'
-);
-
-}
-
-}else{
-
-alert(
-'En v0.5 la importación editable es GeoJSON. KML/GPX se exportan correctamente.'
 );
 
 }
@@ -2676,18 +3675,15 @@ lng
 ){
 
 $('elev')
-.textContent='…';
-
-
-$('elevNote')
 .textContent=
-'Consultando terreno';
+'…';
 
 
 try{
 
 
 const r=
+
 await fetch(
 
 `https://api.open-meteo.com/v1/elevation?latitude=${lat}&longitude=${lng}`
@@ -2714,7 +3710,9 @@ d.elevation
 :d.elevation;
 
 
-if(v==null)
+if(
+v==null
+)
 throw 0;
 
 
@@ -2731,7 +3729,7 @@ $('elevNote')
 'Altitud aproximada del terreno';
 
 
-}catch(e){
+}catch{
 
 
 $('elev')
@@ -2765,118 +3763,10 @@ try{
 
 
 const r=
+
 await fetch(
 
-`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=wind_speed_10m,wind_gusts_10m,wind_direction_10m&wind_speed_unit=kmh&timezone=auto`
-
-);
-
-
-if(!r.ok)
-throw 0;
-
-
-const c=
-(
-await r.json()
-)
-.current
-||{};
-
-
-$('wind')
-.textContent=
-
-Math.round(
-c.wind_speed_10m
-)
-+
-' km/h';
-
-
-$('gust')
-.textContent=
-
-c.wind_gusts_10m==null
-
-?'— km/h'
-
-:Math.round(
-c.wind_gusts_10m
-)
-+
-' km/h';
-
-
-$('windNote')
-.textContent=
-
-c.wind_direction_10m==null
-
-?'Viento actual'
-
-:`Dirección ${Math.round(c.wind_direction_10m)}° · 10 m`;
-
-
-$('gustNote')
-.textContent=
-'Racha actual · 10 m';
-
-
-loadWindLevels(
-lat,
-lng
-);
-
-
-updateStatus(
-
-c.wind_speed_10m,
-
-c.wind_gusts_10m
-
-);
-
-
-}catch(e){
-
-
-$('wind')
-.textContent=
-'— km/h';
-
-
-$('gust')
-.textContent=
-'— km/h';
-
-
-$('windNote')
-.textContent=
-'Meteorología no disponible';
-
-
-$('gustNote')
-.textContent=
-'Meteorología no disponible';
-
-}
-
-}
-
-
-async function loadWindLevels(
-lat,
-lng
-){
-
-try{
-
-
-const r=
-await fetch(
-
-`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=wind_speed_10m,wind_speed_80m,wind_speed_120m&wind_speed_unit=kmh&timezone=auto`
+`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=wind_speed_10m,wind_gusts_10m,wind_direction_10m,wind_speed_80m,wind_speed_120m&wind_speed_unit=kmh&timezone=auto`
 
 );
 
@@ -2894,6 +3784,7 @@ await r.json()
 
 
 const f=
+
 v=>
 
 v==null
@@ -2905,18 +3796,66 @@ v==null
 ' km/h';
 
 
+$('wind')
+.textContent=
+f(
+c.wind_speed_10m
+);
+
+
+$('gust')
+.textContent=
+f(
+c.wind_gusts_10m
+);
+
+
+$('windNote')
+.textContent=
+
+c.wind_direction_10m==null
+
+?'Viento actual'
+
+:`Dirección ${Math.round(c.wind_direction_10m)}° · 10 m`;
+
+
+$('gustNote')
+.textContent=
+'Racha actual · 10 m';
+
+
 $('windLevels')
 .textContent=
 
 `10 m ${f(c.wind_speed_10m)} · 80 m ${f(c.wind_speed_80m)} · 120 m ${f(c.wind_speed_120m)}`;
 
 
-}catch(e){
+updateStatus(
+
+c.wind_speed_10m,
+
+c.wind_gusts_10m
+
+);
 
 
-$('windLevels')
+}catch{
+
+
+$('wind')
 .textContent=
-'Datos por altura no disponibles';
+'— km/h';
+
+
+$('gust')
+.textContent=
+'— km/h';
+
+
+$('windNote')
+.textContent=
+'Meteorología no disponible';
 
 }
 
@@ -2928,23 +3867,16 @@ w,
 g
 ){
 
-const s=
-$('flightStatus');
+const t=
 
-
-const dot=
-s.querySelector(
-'.dot'
-);
-
-
-const txt=
-s.querySelector(
+$('flightStatus')
+.querySelector(
 'strong'
 );
 
 
 const m=
+
 Math.max(
 
 +w||0,
@@ -2954,41 +3886,35 @@ Math.max(
 );
 
 
-if(m>=45){
+t.textContent=
+
+m>=45
+
+?'VIENTO ALTO'
+
+:m>=25
+
+?'PRECAUCIÓN'
+
+:'LISTO';
 
 
-txt.textContent=
-'VIENTO ALTO';
+t.style.color=
 
+m>=45
 
-dot.style.background=
-'var(--bad)';
+?'var(--bad)'
 
+:m>=25
 
-}else if(m>=25){
+?'var(--warn)'
 
-
-txt.textContent=
-'PRECAUCIÓN';
-
-
-dot.style.background=
-'var(--warn)';
-
-
-}else{
-
-
-txt.textContent=
-'LISTO';
-
-
-dot.style.background=
-'var(--good)';
+:'var(--good)';
 
 }
 
-}
+
+refreshMissions();
 
 
 setTimeout(
