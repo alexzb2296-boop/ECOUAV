@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>ECOUAV v0.8.5</title>
+<title>ECOUAV v0.8.6</title>
 
 <link rel="stylesheet"
-href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
 
 <style>
 :root{
@@ -45,6 +45,7 @@ justify-content:space-between
 
 #map{
 height:58vh;
+background:#16222c;
 min-height:420px
 }
 
@@ -237,7 +238,7 @@ min-height:390px
 <div>
 <h1>
 ECOUAV
-<span style="color:var(--accent)">v0.8.5</span>
+<span style="color:var(--accent)">v0.8.6</span>
 </h1>
 
 <small>
@@ -932,7 +933,7 @@ class="danger">
 <div id="missionInfo"
 class="mini">
 
-GeoJSON es el formato editable nativo de ECOUAV v0.8.5.
+GeoJSON es el formato editable nativo de ECOUAV v0.8.6.
 
 </div>
 
@@ -959,7 +960,7 @@ Comprueba también las zonas geográficas UAS oficiales antes de volar.
 
 
 <script
-src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
+src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js">
 </script>
 <script src="https://cdn.jsdelivr.net/npm/proj4@2.12.1/dist/proj4.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mgrs@2.1.0/dist/mgrs.min.js"></script>
@@ -1037,6 +1038,22 @@ attribution:'Tiles © Esri'
 );
 
 
+const fallbackBase=L.tileLayer(
+'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+{maxZoom:19,attribution:'© OpenStreetMap contributors'}
+);
+
+let satelliteFailures=0;
+satellite.on('tileerror',()=>{
+ satelliteFailures++;
+ if(satelliteFailures===4 && current===satellite){
+  map.removeLayer(satellite);
+  current=fallbackBase;
+  fallbackBase.addTo(map);
+ }
+});
+
+
 const topoBase=
 
 L.tileLayer(
@@ -1067,6 +1084,7 @@ attribution:'© OpenTopoMap contributors'
 
 
 satellite.addTo(map);
+window.addEventListener('load',()=>setTimeout(()=>map.invalidateSize(true),150));
 
 
 let current=satellite;
@@ -3331,7 +3349,7 @@ function setDeleteMode(on){
  document.body.classList.toggle('deleteMode',on);
  $('missionInfo').textContent=on
   ?'🗑️ Eliminar activo: toca un POI, antena o waypoint. También puedes tocar muy cerca del elemento.'
-  :'GeoJSON es el formato editable nativo de ECOUAV v0.8.5.';
+  :'GeoJSON es el formato editable nativo de ECOUAV v0.8.6.';
 }
 function finishDelete(){ setDeleteMode(false); }
 
@@ -3475,7 +3493,7 @@ type:
 properties:{
 
 ecouav:
-'0.8.5',
+'0.8.6',
 
 name:
 $('missionName').value,
