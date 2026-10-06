@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>ECOUAV v0.7.2</title>
+<title>ECOUAV v0.8.0</title>
 
 <link rel="stylesheet"
 href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
@@ -279,6 +279,11 @@ PUNTO SELECCIONADO
 <div id="coords" class="coords">
 Pulsa en el mapa
 </div>
+<div class="actions" style="margin-top:8px">
+<button id="setHome">🏠 HOME aquí</button>
+<button id="copyPoint">Copiar</button>
+</div>
+<div id="homeInfo" class="mini">HOME no definido</div>
 
 </div>
 
@@ -452,6 +457,12 @@ preserveAspectRatio="none">
 
 </div>
 
+
+<div id="routeProfileCard" class="card full">
+<div class="label">📊 PERFIL DE RUTA</div>
+<div id="routeStats" class="mini">Crea una ruta para analizar distancia, cotas y desnivel.</div>
+<svg id="routeProfile" class="profile hidden" viewBox="0 0 800 180" preserveAspectRatio="none"></svg>
+</div>
 
 <div id="mapToolsCard" class="card full hidden">
 <div class="label">🧭 MAPA+ · HERRAMIENTAS DE PLANIFICACIÓN</div>
@@ -893,7 +904,7 @@ class="danger">
 <div id="missionInfo"
 class="mini">
 
-GeoJSON es el formato editable nativo de ECOUAV v0.7.2.
+GeoJSON es el formato editable nativo de ECOUAV v0.8.0.
 
 </div>
 
@@ -1320,6 +1331,78 @@ e.latlng
 );
 
 
+let homePoint=null;
+let routeProfileTimer=null;
+
+function fmtDist(m){return m>=1000?(m/1000).toFixed(2)+' km':Math.round(m)+' m';}
+
+function updateHomeInfo(){
+ if(!homePoint){$('homeInfo').textContent='HOME no definido';return;}
+ if(!selectedPoint){$('homeInfo').textContent='HOME definido · selecciona un punto';return;}
+ const d=map.distance(homePoint,selectedPoint),az=bearingDeg(homePoint,selectedPoint);
+ $('homeInfo').textContent='🏠 HOME → punto: '+fmtDist(d)+' · azimut '+az.toFixed(1)+'°';
+}
+$('setHome').onclick=()=>{
+ if(!selectedPoint){alert('Selecciona primero un punto');return;}
+ homePoint=L.latLng(selectedPoint);
+ if(window.homeMarker)map.removeLayer(window.homeMarker);
+ window.homeMarker=L.marker(homePoint,{draggable:true,icon:moveIcon('H','tool'),title:'HOME'}).addTo(map);
+ window.homeMarker.on('dragend',e=>{homePoint=e.target.getLatLng();updateHomeInfo();});
+ updateHomeInfo();
+};
+$('copyPoint').onclick=async()=>{
+ if(!selectedPoint)return;
+ let t=$('coords').textContent;
+ try{await navigator.clipboard.writeText(t);$('homeInfo').textContent='✓ Coordenadas copiadas';}
+ catch(e){$('homeInfo').textContent=t;}
+};
+
+async function analyzeRouteProfile(){
+ if(route.length<2){
+  $('routeStats').textContent=route.length?'Añade otro waypoint para generar el perfil.':'Crea una ruta para analizar distancia, cotas y desnivel.';
+  $('routeProfile').classList.add('hidden'); return;
+ }
+ try{
+  // Sample each leg with a bounded number of points.
+  let samples=[], total=0, legs=[];
+  for(let i=1;i<route.length;i++){
+   const a=L.latLng(route[i-1]),b=L.latLng(route[i]),d=map.distance(a,b);
+   total+=d; legs.push({a,b,d});
+  }
+  const budget=80;
+  for(let k=0;k<legs.length;k++){
+   const g=legs[k], n=Math.max(3,Math.round(budget*g.d/total));
+   for(let i=0;i<n-(k<legs.length-1?1:0);i++){
+    const t=i/(n-1);
+    samples.push(L.latLng(g.a.lat+(g.b.lat-g.a.lat)*t,g.a.lng+(g.b.lng-g.a.lng)*t));
+   }
+  }
+  const elev=[];
+  for(let i=0;i<samples.length;i+=20){
+   const b=samples.slice(i,i+20),url='https://api.open-meteo.com/v1/elevation?latitude='+
+    encodeURIComponent(b.map(x=>x.lat).join(','))+'&longitude='+encodeURIComponent(b.map(x=>x.lng).join(','));
+   const rr=await fetch(url,{cache:'no-store'}); if(!rr.ok)throw 0;
+   const dd=await rr.json(),ee=Array.isArray(dd.elevation)?dd.elevation:[dd.elevation];
+   elev.push(...ee.map(Number));
+  }
+  let up=0,down=0,maxSlope=0;
+  for(let i=1;i<elev.length;i++){
+   const dz=elev[i]-elev[i-1]; if(dz>0)up+=dz;else down-=dz;
+   const ds=map.distance(samples[i-1],samples[i]); if(ds>0)maxSlope=Math.max(maxSlope,Math.abs(dz/ds*100));
+  }
+  $('routeStats').textContent=route.length+' WP · '+fmtDist(total)+' · cota '+Math.round(Math.min(...elev))+'–'+Math.round(Math.max(...elev))+
+   ' m · +'+Math.round(up)+' / -'+Math.round(down)+' m · pendiente máx. aprox. '+maxSlope.toFixed(1)+'%';
+  drawRouteProfile(elev);
+ }catch(e){$('routeStats').textContent='Perfil de ruta no disponible. Reintenta más tarde.';}
+}
+function drawRouteProfile(e){
+ const svg=$('routeProfile');svg.classList.remove('hidden');
+ const min=Math.min(...e)-5,max=Math.max(...e)+5,W=800,H=180;
+ const pts=e.map((v,i)=>[(i/(e.length-1))*W,H-((v-min)/(max-min||1))*H]);
+ svg.innerHTML='<polyline points="'+pts.map(p=>p.join(',')).join(' ')+'" fill="none" stroke="currentColor" stroke-width="3"/>';
+}
+function scheduleRouteProfile(){clearTimeout(routeProfileTimer);routeProfileTimer=setTimeout(analyzeRouteProfile,350);}
+
 function selectPoint(p){
 
 selectedPoint=
@@ -1375,6 +1458,7 @@ loadWeather(
 p.lat,
 p.lng
 );
+updateHomeInfo();
 
 }
 
@@ -3081,6 +3165,12 @@ route.forEach((p,i)=>{
   icon:moveIcon(String(i+1),'route'),
   title:'Waypoint '+(i+1)
  }).addTo(routeLayer);
+ let tip='WP '+(i+1);
+ if(i>0){
+  const prev=L.latLng(route[i-1]),cur=L.latLng(p);
+  tip+=' · '+fmtDist(map.distance(prev,cur))+' · '+bearingDeg(prev,cur).toFixed(0)+'°';
+ }
+ m.bindTooltip(tip,{direction:'top'});
 
  m.on('dragstart',pushHistory);
  m.on('drag',e=>{
@@ -3149,6 +3239,7 @@ $('routeOut')
 'Sin ruta';
 
 }
+scheduleRouteProfile();
 
 }
 
@@ -3169,7 +3260,7 @@ function setDeleteMode(on){
  document.body.classList.toggle('deleteMode',on);
  $('missionInfo').textContent=on
   ?'🗑️ Eliminar activo: toca un POI, antena o waypoint. También puedes tocar muy cerca del elemento.'
-  :'GeoJSON es el formato editable nativo de ECOUAV v0.7.2.';
+  :'GeoJSON es el formato editable nativo de ECOUAV v0.8.0.';
 }
 function finishDelete(){ setDeleteMode(false); }
 
@@ -3313,7 +3404,7 @@ type:
 properties:{
 
 ecouav:
-'0.7.2',
+'0.8.0',
 
 name:
 $('missionName').value,
