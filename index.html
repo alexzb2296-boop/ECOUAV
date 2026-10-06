@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>ECOUAV v0.8.2</title>
+<title>ECOUAV v0.8.3</title>
 
 <link rel="stylesheet"
 href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
@@ -237,7 +237,7 @@ min-height:390px
 <div>
 <h1>
 ECOUAV
-<span style="color:var(--accent)">v0.8.2</span>
+<span style="color:var(--accent)">v0.8.3</span>
 </h1>
 
 <small>
@@ -500,6 +500,7 @@ preserveAspectRatio="none">
  <button id="areaTool">▱ Área</button>
  <button id="gridToggle"># Cuadrícula</button>
  <button id="layersToggle">☰ Capas</button>
+ <button id="terrainShadeToggle">⛰️ Pendiente</button>
 </div>
 <div id="radiusControls" class="formgrid hidden">
  <div class="field"><label>Radio</label><select id="radiusValue">
@@ -512,6 +513,8 @@ preserveAspectRatio="none">
  <div class="field"><label><input id="showRoute" type="checkbox" checked> Ruta</label></div>
  <div class="field"><label><input id="showAnt" type="checkbox" checked> Antenas</label></div>
  <div class="field"><label><input id="showTools" type="checkbox" checked> Medidas / áreas</label></div>
+ <div class="field"><label><input id="showHome" type="checkbox" checked> HOME</label></div>
+ <div class="field"><label><input id="showSelected" type="checkbox" checked> Punto seleccionado</label></div>
 </div>
 <div id="mapToolsInfo" class="mini">Herramientas cartográficas inspiradas en flujos ATAK/DELTA: medición, zonas, capas y referencia de coordenadas.</div>
 </div>
@@ -568,7 +571,7 @@ preserveAspectRatio="none">
 <div id="terrainInfo" class="value" style="font-size:17px;margin-top:10px">Sin perfil</div>
 <div id="terrainDetail" class="mini">Altitud mínima/máxima · desnivel positivo/negativo · pendiente media</div>
 <svg id="terrainProfile" class="profile hidden" viewBox="0 0 800 180" preserveAspectRatio="none"></svg>
-<div class="terrainLegend">Curvas: superposición topográfica semitransparente sobre satélite · Perfil: elevación estimada mediante DEM</div>
+<div class="terrainLegend">Topo overlay: referencia cartográfica semitransparente · Pendiente: análisis DEM aproximado del área visible · Perfil: elevación estimada mediante DEM</div>
 </div>
 
 <div id="antennaCard"
@@ -932,7 +935,7 @@ class="danger">
 <div id="missionInfo"
 class="mini">
 
-GeoJSON es el formato editable nativo de ECOUAV v0.8.2.
+GeoJSON es el formato editable nativo de ECOUAV v0.8.3.
 
 </div>
 
@@ -1377,6 +1380,7 @@ $('setHome').onclick=()=>{
  if(window.homeMarker)map.removeLayer(window.homeMarker);
  window.homeMarker=L.marker(homePoint,{draggable:true,icon:moveIcon('H','tool'),title:'HOME'}).addTo(map);
  window.homeMarker.on('dragend',e=>{homePoint=e.target.getLatLng();updateHomeInfo();});
+ if($('showHome')&&!$('showHome').checked)map.removeLayer(window.homeMarker);
  updateHomeInfo();
 };
 $('copyPoint').onclick=async()=>{
@@ -1478,6 +1482,8 @@ selectMarker=
 
 L.marker(p,{draggable:true,icon:moveIcon('●','sel')}).addTo(map);
 
+
+if($('showSelected')&&!$('showSelected').checked)map.removeLayer(selectMarker);
 
 selectMarker.on(
 
@@ -1861,6 +1867,8 @@ $('losBtn')
 // MAPA+ cartographic planning tools
 let mapPlusMode=null, mapPlusPts=[], mapPlusLayer=L.layerGroup().addTo(map);
 let gridLayer=L.layerGroup().addTo(map);
+let terrainShadeLayer=L.layerGroup().addTo(map);
+let terrainShadeBusy=false;
 
 function bearingDeg(a,b){
  const r=Math.PI/180,p1=a.lat*r,p2=b.lat*r,dl=(b.lng-a.lng)*r;
@@ -1920,13 +1928,64 @@ $('gridToggle').onclick=()=>{
  $('gridToggle').classList.toggle('active'); drawCoordGrid();
 };
 map.on('moveend zoomend',drawCoordGrid);
+async function drawTerrainShade(){
+ terrainShadeLayer.clearLayers();
+ if(!$('terrainShadeToggle').classList.contains('active'))return;
+ if(terrainShadeBusy)return;
+ terrainShadeBusy=true;
+ $('mapToolsInfo').textContent='⛰️ Analizando pendiente del área visible…';
+ try{
+  const b=map.getBounds(),rows=6,cols=6;
+  const lat=[],lon=[];
+  for(let y=0;y<=rows;y++)for(let x=0;x<=cols;x++){
+   lat.push(b.getSouth()+(b.getNorth()-b.getSouth())*y/rows);
+   lon.push(b.getWest()+(b.getEast()-b.getWest())*x/cols);
+  }
+  const z=[];
+  for(let i=0;i<lat.length;i+=20){
+   const la=lat.slice(i,i+20),lo=lon.slice(i,i+20);
+   const url='https://api.open-meteo.com/v1/elevation?latitude='+encodeURIComponent(la.join(','))+'&longitude='+encodeURIComponent(lo.join(','));
+   const rr=await fetch(url,{cache:'no-store'});if(!rr.ok)throw 0;
+   const d=await rr.json(),ee=Array.isArray(d.elevation)?d.elevation:[d.elevation];
+   z.push(...ee.map(Number));
+  }
+  const at=(y,x)=>z[y*(cols+1)+x];
+  for(let y=0;y<rows;y++)for(let x=0;x<cols;x++){
+   const sw=L.latLng(lat[y*(cols+1)+x],lon[y*(cols+1)+x]);
+   const ne=L.latLng(lat[(y+1)*(cols+1)+x+1],lon[(y+1)*(cols+1)+x+1]);
+   const dx=map.distance(L.latLng(sw.lat,sw.lng),L.latLng(sw.lat,ne.lng));
+   const dy=map.distance(L.latLng(sw.lat,sw.lng),L.latLng(ne.lat,sw.lng));
+   const dzx=((at(y,x+1)+at(y+1,x+1))-(at(y,x)+at(y+1,x)))/2;
+   const dzy=((at(y+1,x)+at(y+1,x+1))-(at(y,x)+at(y,x+1)))/2;
+   const deg=Math.atan(Math.sqrt((dzx/dx)**2+(dzy/dy)**2))*180/Math.PI;
+   const opacity=Math.min(.48,.07+deg/55);
+   L.rectangle([sw,ne],{weight:0,fillOpacity:opacity,fill:true})
+    .bindTooltip('Pendiente aprox. '+deg.toFixed(1)+'°').addTo(terrainShadeLayer);
+  }
+  $('mapToolsInfo').textContent='⛰️ Pendiente DEM estimada · toca una celda para ver el valor. Cuadrícula de análisis 6×6.';
+ }catch(e){
+  $('mapToolsInfo').textContent='No se pudo cargar el análisis de pendiente.';
+ }finally{terrainShadeBusy=false;}
+}
+$('terrainShadeToggle').onclick=()=>{
+ $('terrainShadeToggle').classList.toggle('active');
+ if($('terrainShadeToggle').classList.contains('active'))drawTerrainShade();else terrainShadeLayer.clearLayers();
+};
+map.on('moveend zoomend',()=>{if($('terrainShadeToggle').classList.contains('active'))drawTerrainShade();});
+
 
 $('layersToggle').onclick=()=> $('layerControls').classList.toggle('hidden');
 function setLayerVisible(layer,show){ if(!layer)return; if(show){if(!map.hasLayer(layer))map.addLayer(layer)}else if(map.hasLayer(layer))map.removeLayer(layer); }
 $('showPois').onchange=e=>setLayerVisible(poiLayer,e.target.checked);
 $('showRoute').onchange=e=>setLayerVisible(routeLayer,e.target.checked);
-$('showAnt').onchange=e=>setLayerVisible(antennaLayer,e.target.checked);
+$('showAnt').onchange=e=>{
+ const show=e.target.checked;
+ Object.values(antennaMarkers).forEach(x=>{if(x)setLayerVisible(x,show)});
+ Object.values(sectorLayers).forEach(x=>{if(x)setLayerVisible(x,show)});
+};
 $('showTools').onchange=e=>setLayerVisible(mapPlusLayer,e.target.checked);
+$('showHome').onchange=e=>{if(window.homeMarker)setLayerVisible(window.homeMarker,e.target.checked);};
+$('showSelected').onchange=e=>{if(selectMarker)setLayerVisible(selectMarker,e.target.checked);};
 
 map.on('click',e=>{
  if(!mapPlusMode)return;
@@ -2294,6 +2353,7 @@ m.on('click',e=>{
 
 
 antennaMarkers[id]=m;
+if($('showAnt')&&!$('showAnt').checked)map.removeLayer(m);
 
 }
 
@@ -3331,7 +3391,7 @@ function setDeleteMode(on){
  document.body.classList.toggle('deleteMode',on);
  $('missionInfo').textContent=on
   ?'🗑️ Eliminar activo: toca un POI, antena o waypoint. También puedes tocar muy cerca del elemento.'
-  :'GeoJSON es el formato editable nativo de ECOUAV v0.8.2.';
+  :'GeoJSON es el formato editable nativo de ECOUAV v0.8.3.';
 }
 function finishDelete(){ setDeleteMode(false); }
 
@@ -3475,7 +3535,7 @@ type:
 properties:{
 
 ecouav:
-'0.8.2',
+'0.8.3',
 
 name:
 $('missionName').value,
