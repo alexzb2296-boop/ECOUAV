@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>ECOUAV v0.9.1</title>
+<title>ECOUAV v0.9.2</title>
 
 <link rel="stylesheet"
 href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
@@ -241,7 +241,7 @@ min-height:390px
 <div>
 <h1>
 ECOUAV
-<span style="color:var(--accent)">v0.9.1</span>
+<span style="color:var(--accent)">v0.9.2</span>
 </h1>
 
 <small>
@@ -494,6 +494,11 @@ preserveAspectRatio="none">
 <div class="label">📊 PERFIL DE RUTA</div>
 <div id="routeStats" class="mini">Crea una ruta para analizar distancia, cotas y desnivel.</div>
 <svg id="routeProfile" class="profile hidden" viewBox="0 0 800 180" preserveAspectRatio="none"></svg>
+<div class="actions">
+ <button id="routeTerrainBtn">⛰️ Analizar relieve de ruta</button>
+ <button id="routeTerrainClear">Limpiar análisis</button>
+</div>
+<div id="routeTerrainInfo" class="mini">Muestra cotas y tramos de subida/bajada sobre la ruta.</div>
 </div>
 
 <div id="mapToolsCard" class="card full hidden">
@@ -519,6 +524,13 @@ preserveAspectRatio="none">
   <option value="500">500 m</option><option value="1000" selected>1 km</option>
   <option value="2000">2 km</option><option value="5000">5 km</option><option value="10000">10 km</option>
  </select></div>
+</div>
+<div id="contourControls" class="formgrid hidden">
+ <div class="field"><label>Intervalo curvas DEM</label><select id="contourInterval">
+  <option value="10">10 m</option><option value="20" selected>20 m</option><option value="50">50 m</option>
+ </select></div>
+ <div class="actions wide"><button id="refreshContours">Actualizar curvas</button><button id="clearContours">Ocultar curvas</button></div>
+ <div class="field wide"><div id="contourInfo" class="mini">Curvas DEM estimadas · usa una vista local del mapa.</div></div>
 </div>
 <div id="layerControls" class="formgrid hidden">
  <div class="field"><label><input id="showPois" type="checkbox" checked> POI</label></div>
@@ -945,7 +957,7 @@ class="danger">
 <div id="missionInfo"
 class="mini">
 
-GeoJSON es el formato editable nativo de ECOUAV v0.9.1.
+GeoJSON es el formato editable nativo de ECOUAV v0.9.2.
 
 </div>
 
@@ -1150,6 +1162,9 @@ L.layerGroup()
 
 const zoneGridLayer=L.layerGroup().addTo(map);
 let zoneGrid=null;
+const routeTerrainLayer=L.layerGroup().addTo(map);
+const demContourLayer=L.layerGroup().addTo(map);
+let demContoursOn=false;
 
 
 
@@ -1222,12 +1237,7 @@ current=layer;
 layer.addTo(map);
 
 
-if(
-contourOn
-&&
-layer!==topoBase
-)
-contourOverlay.addTo(map);
+
 
 }
 
@@ -1271,35 +1281,8 @@ $('sat')
 
 
 $('contours').onclick=()=>{
-
-contourOn=
-!contourOn;
-
-
-$('contours')
-.classList
-.toggle(
-'active',
-contourOn
-);
-
-
-if(
-contourOn
-&&
-current!==topoBase
-){
-
-contourOverlay.addTo(map);
-
-}else if(
-map.hasLayer(contourOverlay)
-){
-
-map.removeLayer(contourOverlay);
-
-}
-
+ $('contourControls').classList.toggle('hidden');
+ $('contours').classList.toggle('active',!$('contourControls').classList.contains('hidden'));
 };
 
 
@@ -3368,7 +3351,7 @@ function setDeleteMode(on){
  document.body.classList.toggle('deleteMode',on);
  $('missionInfo').textContent=on
   ?'🗑️ Eliminar activo: toca un POI, antena o waypoint. También puedes tocar muy cerca del elemento.'
-  :'GeoJSON es el formato editable nativo de ECOUAV v0.9.1.';
+  :'GeoJSON es el formato editable nativo de ECOUAV v0.9.2.';
 }
 function finishDelete(){ setDeleteMode(false); }
 
@@ -3512,7 +3495,7 @@ type:
 properties:{
 
 ecouav:
-'0.9.1',
+'0.9.2',
 
 name:
 $('missionName').value,
@@ -4499,6 +4482,96 @@ m>=45
 
 }
 
+
+
+/* v0.9.2 · Análisis cartográfico de relieve de ruta */
+async function fetchElevPoints(points){
+ const out=[];
+ for(let i=0;i<points.length;i+=20){
+  const b=points.slice(i,i+20);
+  const url='https://api.open-meteo.com/v1/elevation?latitude='+encodeURIComponent(b.map(p=>p.lat).join(','))+
+   '&longitude='+encodeURIComponent(b.map(p=>p.lng).join(','));
+  const rr=await fetch(url,{cache:'no-store'});if(!rr.ok)throw new Error('DEM');
+  let e=(await rr.json()).elevation;if(!Array.isArray(e))e=[e];
+  out.push(...e.map(Number));
+ }
+ return out;
+}
+async function analyzeRouteTerrainMap(){
+ if(route.length<2){$('routeTerrainInfo').textContent='Crea una ruta con al menos 2 waypoints.';return;}
+ $('routeTerrainInfo').textContent='Analizando relieve…';
+ try{
+  let total=0,legs=[];
+  for(let i=1;i<route.length;i++){const a=L.latLng(route[i-1]),b=L.latLng(route[i]),d=map.distance(a,b);legs.push({a,b,d});total+=d;}
+  const samples=[];
+  for(let k=0;k<legs.length;k++){
+   const g=legs[k],n=Math.max(3,Math.round(60*g.d/Math.max(total,1)));
+   for(let i=0;i<n-(k<legs.length-1?1:0);i++){const t=i/(n-1);samples.push(L.latLng(g.a.lat+(g.b.lat-g.a.lat)*t,g.a.lng+(g.b.lng-g.a.lng)*t));}
+  }
+  const e=await fetchElevPoints(samples);routeTerrainLayer.clearLayers();
+  let up=0,down=0;
+  for(let i=1;i<samples.length;i++){
+   const dz=e[i]-e[i-1];if(dz>0)up+=dz;else down-=dz;
+   const color=Math.abs(dz)<2?'#91a5b5':dz>0?'#ffb020':'#59c3ff';
+   L.polyline([samples[i-1],samples[i]],{weight:7,opacity:.78,color}).addTo(routeTerrainLayer);
+  }
+  const min=Math.min(...e),max=Math.max(...e);
+  for(let i=0;i<samples.length;i+=Math.max(1,Math.floor(samples.length/10))){
+   L.circleMarker(samples[i],{radius:4,weight:1,color:'#fff',fillOpacity:.9})
+    .bindTooltip(Math.round(e[i])+' m',{direction:'top'}).addTo(routeTerrainLayer);
+  }
+  $('routeTerrainInfo').textContent='Cotas '+Math.round(min)+'–'+Math.round(max)+' m · subida +'+Math.round(up)+' m · bajada −'+Math.round(down)+' m · naranja subida · azul bajada.';
+ }catch(e){$('routeTerrainInfo').textContent='No se pudo obtener el relieve de la ruta.';}
+}
+$('routeTerrainBtn').onclick=analyzeRouteTerrainMap;
+$('routeTerrainClear').onclick=()=>{routeTerrainLayer.clearLayers();$('routeTerrainInfo').textContent='Análisis limpiado.';};
+
+/* Curvas DEM reales aproximadas, generadas en cliente con marching squares */
+function interpEdge(level,a,b,za,zb){
+ const den=zb-za,t=Math.abs(den)<1e-9?.5:(level-za)/den;
+ return [a[0]+(b[0]-a[0])*Math.max(0,Math.min(1,t)),a[1]+(b[1]-a[1])*Math.max(0,Math.min(1,t))];
+}
+function contourSegments(vals,rows,cols,bounds,level){
+ const seg=[],south=bounds.getSouth(),north=bounds.getNorth(),west=bounds.getWest(),east=bounds.getEast();
+ const pt=(r,c)=>[south+(north-south)*r/(rows-1),west+(east-west)*c/(cols-1)];
+ for(let r=0;r<rows-1;r++)for(let c=0;c<cols-1;c++){
+  const z0=vals[r*cols+c],z1=vals[r*cols+c+1],z2=vals[(r+1)*cols+c+1],z3=vals[(r+1)*cols+c];
+  const p0=pt(r,c),p1=pt(r,c+1),p2=pt(r+1,c+1),p3=pt(r+1,c);
+  const hits=[];
+  if((z0<level)!=(z1<level))hits.push(interpEdge(level,p0,p1,z0,z1));
+  if((z1<level)!=(z2<level))hits.push(interpEdge(level,p1,p2,z1,z2));
+  if((z2<level)!=(z3<level))hits.push(interpEdge(level,p2,p3,z2,z3));
+  if((z3<level)!=(z0<level))hits.push(interpEdge(level,p3,p0,z3,z0));
+  if(hits.length===2)seg.push([hits[0],hits[1]]);
+  else if(hits.length===4){seg.push([hits[0],hits[1]],[hits[2],hits[3]]);}
+ }
+ return seg;
+}
+async function drawDemContours(){
+ const z=map.getZoom();
+ if(z<11){$('contourInfo').textContent='Acerca el mapa hasta zoom 11 o superior para generar curvas DEM.';return;}
+ const b=map.getBounds(),rows=18,cols=18,pts=[];
+ for(let r=0;r<rows;r++)for(let c=0;c<cols;c++)pts.push(L.latLng(b.getSouth()+(b.getNorth()-b.getSouth())*r/(rows-1),b.getWest()+(b.getEast()-b.getWest())*c/(cols-1)));
+ $('contourInfo').textContent='Calculando DEM 18×18…';
+ try{
+  const vals=await fetchElevPoints(pts),interval=+$('contourInterval').value||20;
+  const lo=Math.ceil(Math.min(...vals)/interval)*interval,hi=Math.floor(Math.max(...vals)/interval)*interval;
+  demContourLayer.clearLayers();let count=0;
+  for(let level=lo;level<=hi;level+=interval){
+   const segs=contourSegments(vals,rows,cols,b,level);
+   segs.forEach((x,i)=>{
+    const line=L.polyline(x,{weight:level%(interval*5)===0?2:1,opacity:.78,color:'#ffffff'}).addTo(demContourLayer);
+    if(i===0)L.marker(x[0],{interactive:false,icon:L.divIcon({className:'gridCellLabel',html:level+' m',iconSize:[46,18],iconAnchor:[23,9]})}).addTo(demContourLayer);
+   });
+   count+=segs.length;
+  }
+  demContoursOn=true;$('contours').classList.add('active');
+  $('contourInfo').textContent='Curvas DEM estimadas · intervalo '+interval+' m · '+count+' segmentos.';
+ }catch(e){$('contourInfo').textContent='No se pudo obtener el DEM para esta vista.';}
+}
+$('refreshContours').onclick=drawDemContours;
+$('clearContours').onclick=()=>{demContourLayer.clearLayers();demContoursOn=false;$('contours').classList.remove('active');$('contourInfo').textContent='Curvas DEM ocultas.';};
+$('contourInterval').onchange=()=>{if(demContoursOn)drawDemContours();};
 
 function gridLetters(n){let x=n+1,out='';while(x){x--;out=String.fromCharCode(65+x%26)+out;x=Math.floor(x/26);}return out;}
 function metersToLat(m){return m/111320;}
