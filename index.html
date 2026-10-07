@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>ECOUAV v0.9.2</title>
+<title>ECOUAV v0.9.3</title>
 
 <link rel="stylesheet"
 href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
@@ -241,7 +241,7 @@ min-height:390px
 <div>
 <h1>
 ECOUAV
-<span style="color:var(--accent)">v0.9.2</span>
+<span style="color:var(--accent)">v0.9.3</span>
 </h1>
 
 <small>
@@ -270,6 +270,13 @@ Planificador UAS · Terreno · RF · Rutas · Misiones
 </div>
 
 <div id="map"></div>
+<div id="contourControls" class="card hidden" style="position:absolute;z-index:1100;top:64px;left:12px;max-width:430px;background:#101922ee">
+ <div class="field"><label>Intervalo curvas DEM</label><select id="contourInterval">
+  <option value="10">10 m</option><option value="20" selected>20 m</option><option value="50">50 m</option>
+ </select></div>
+ <div class="actions wide"><button id="refreshContours">Actualizar curvas</button><button id="clearContours">Ocultar curvas</button></div>
+ <div class="field wide"><div id="contourInfo" class="mini">Curvas DEM estimadas · usa una vista local del mapa.</div></div>
+</div>
 
 </div>
 
@@ -525,13 +532,7 @@ preserveAspectRatio="none">
   <option value="2000">2 km</option><option value="5000">5 km</option><option value="10000">10 km</option>
  </select></div>
 </div>
-<div id="contourControls" class="formgrid hidden">
- <div class="field"><label>Intervalo curvas DEM</label><select id="contourInterval">
-  <option value="10">10 m</option><option value="20" selected>20 m</option><option value="50">50 m</option>
- </select></div>
- <div class="actions wide"><button id="refreshContours">Actualizar curvas</button><button id="clearContours">Ocultar curvas</button></div>
- <div class="field wide"><div id="contourInfo" class="mini">Curvas DEM estimadas · usa una vista local del mapa.</div></div>
-</div>
+
 <div id="layerControls" class="formgrid hidden">
  <div class="field"><label><input id="showPois" type="checkbox" checked> POI</label></div>
  <div class="field"><label><input id="showRoute" type="checkbox" checked> Ruta</label></div>
@@ -957,7 +958,7 @@ class="danger">
 <div id="missionInfo"
 class="mini">
 
-GeoJSON es el formato editable nativo de ECOUAV v0.9.2.
+GeoJSON es el formato editable nativo de ECOUAV v0.9.3.
 
 </div>
 
@@ -1281,8 +1282,9 @@ $('sat')
 
 
 $('contours').onclick=()=>{
- $('contourControls').classList.toggle('hidden');
- $('contours').classList.toggle('active',!$('contourControls').classList.contains('hidden'));
+ $('contourControls').classList.remove('hidden');
+ $('contours').classList.add('active');
+ drawDemContours();
 };
 
 
@@ -3351,7 +3353,7 @@ function setDeleteMode(on){
  document.body.classList.toggle('deleteMode',on);
  $('missionInfo').textContent=on
   ?'🗑️ Eliminar activo: toca un POI, antena o waypoint. También puedes tocar muy cerca del elemento.'
-  :'GeoJSON es el formato editable nativo de ECOUAV v0.9.2.';
+  :'GeoJSON es el formato editable nativo de ECOUAV v0.9.3.';
 }
 function finishDelete(){ setDeleteMode(false); }
 
@@ -3495,7 +3497,7 @@ type:
 properties:{
 
 ecouav:
-'0.9.2',
+'0.9.3',
 
 name:
 $('missionName').value,
@@ -4484,7 +4486,7 @@ m>=45
 
 
 
-/* v0.9.2 · Análisis cartográfico de relieve de ruta */
+/* v0.9.3 · Análisis cartográfico de relieve de ruta */
 async function fetchElevPoints(points){
  const out=[];
  for(let i=0;i<points.length;i+=20){
@@ -4549,10 +4551,9 @@ function contourSegments(vals,rows,cols,bounds,level){
 }
 async function drawDemContours(){
  const z=map.getZoom();
- if(z<11){$('contourInfo').textContent='Acerca el mapa hasta zoom 11 o superior para generar curvas DEM.';return;}
- const b=map.getBounds(),rows=18,cols=18,pts=[];
+ const b=map.getBounds(),rows=z>=13?20:z>=9?18:14,cols=rows,pts=[];
  for(let r=0;r<rows;r++)for(let c=0;c<cols;c++)pts.push(L.latLng(b.getSouth()+(b.getNorth()-b.getSouth())*r/(rows-1),b.getWest()+(b.getEast()-b.getWest())*c/(cols-1)));
- $('contourInfo').textContent='Calculando DEM 18×18…';
+ $('contourInfo').textContent='Calculando curvas DEM…';
  try{
   const vals=await fetchElevPoints(pts),interval=+$('contourInterval').value||20;
   const lo=Math.ceil(Math.min(...vals)/interval)*interval,hi=Math.floor(Math.max(...vals)/interval)*interval;
@@ -4565,12 +4566,13 @@ async function drawDemContours(){
    });
    count+=segs.length;
   }
+  if(!map.hasLayer(demContourLayer))demContourLayer.addTo(map);
   demContoursOn=true;$('contours').classList.add('active');
   $('contourInfo').textContent='Curvas DEM estimadas · intervalo '+interval+' m · '+count+' segmentos.';
  }catch(e){$('contourInfo').textContent='No se pudo obtener el DEM para esta vista.';}
 }
 $('refreshContours').onclick=drawDemContours;
-$('clearContours').onclick=()=>{demContourLayer.clearLayers();demContoursOn=false;$('contours').classList.remove('active');$('contourInfo').textContent='Curvas DEM ocultas.';};
+$('clearContours').onclick=()=>{demContourLayer.clearLayers();demContoursOn=false;$('contours').classList.remove('active');$('contourControls').classList.add('hidden');$('contourInfo').textContent='Curvas DEM ocultas.';};
 $('contourInterval').onchange=()=>{if(demContoursOn)drawDemContours();};
 
 function gridLetters(n){let x=n+1,out='';while(x){x--;out=String.fromCharCode(65+x%26)+out;x=Math.floor(x/26);}return out;}
