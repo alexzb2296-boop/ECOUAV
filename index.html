@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>ECOUAV v0.9.0</title>
+<title>ECOUAV v0.9.1</title>
 
 <link rel="stylesheet"
 href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
@@ -241,7 +241,7 @@ min-height:390px
 <div>
 <h1>
 ECOUAV
-<span style="color:var(--accent)">v0.9.0</span>
+<span style="color:var(--accent)">v0.9.1</span>
 </h1>
 
 <small>
@@ -945,7 +945,7 @@ class="danger">
 <div id="missionInfo"
 class="mini">
 
-GeoJSON es el formato editable nativo de ECOUAV v0.9.0.
+GeoJSON es el formato editable nativo de ECOUAV v0.9.1.
 
 </div>
 
@@ -1959,7 +1959,10 @@ $('layersToggle').onclick=()=> $('layerControls').classList.toggle('hidden');
 function setLayerVisible(layer,show){ if(!layer)return; if(show){if(!map.hasLayer(layer))map.addLayer(layer)}else if(map.hasLayer(layer))map.removeLayer(layer); }
 $('showPois').onchange=e=>setLayerVisible(poiLayer,e.target.checked);
 $('showRoute').onchange=e=>setLayerVisible(routeLayer,e.target.checked);
-$('showAnt').onchange=e=>setLayerVisible(antennaLayer,e.target.checked);
+$('showAnt').onchange=e=>{
+ Object.values(antennaMarkers).forEach(m=>{if(!m)return;e.target.checked?m.addTo(map):map.removeLayer(m);});
+ Object.values(sectorLayers).forEach(x=>{if(!x)return;e.target.checked?x.addTo(map):map.removeLayer(x);});
+};
 $('showTools').onchange=e=>setLayerVisible(mapPlusLayer,e.target.checked);
 
 map.on('click',e=>{
@@ -3365,7 +3368,7 @@ function setDeleteMode(on){
  document.body.classList.toggle('deleteMode',on);
  $('missionInfo').textContent=on
   ?'🗑️ Eliminar activo: toca un POI, antena o waypoint. También puedes tocar muy cerca del elemento.'
-  :'GeoJSON es el formato editable nativo de ECOUAV v0.9.0.';
+  :'GeoJSON es el formato editable nativo de ECOUAV v0.9.1.';
 }
 function finishDelete(){ setDeleteMode(false); }
 
@@ -3509,7 +3512,7 @@ type:
 properties:{
 
 ecouav:
-'0.9.0',
+'0.9.1',
 
 name:
 $('missionName').value,
@@ -3906,45 +3909,7 @@ JSON.stringify(m)
 );
 
 
-function gridLetters(n){let x=n+1,out='';while(x){x--;out=String.fromCharCode(65+x%26)+out;x=Math.floor(x/26);}return out;}
-function metersToLat(m){return m/111320;}
-function metersToLng(m,lat){return m/(111320*Math.max(.2,Math.cos(lat*Math.PI/180)));}
 
-function initZoneGrid(){
- const c=map.getCenter(),cell=+$('zoneCellSize').value||100,half=cell*5;
- zoneGrid={south:c.lat-metersToLat(half),north:c.lat+metersToLat(half),west:c.lng-metersToLng(half,c.lat),east:c.lng+metersToLng(half,c.lat),cell};
- renderZoneGrid();
-}
-function renderZoneGrid(){
- zoneGridLayer.clearLayers();if(!zoneGrid)return;
- const g=zoneGrid,cell=g.cell||100,mid=(g.north+g.south)/2;
- const hm=map.distance(L.latLng(g.south,(g.west+g.east)/2),L.latLng(g.north,(g.west+g.east)/2));
- const wm=map.distance(L.latLng(mid,g.west),L.latLng(mid,g.east));
- const rows=Math.max(1,Math.min(20,Math.round(hm/cell))),cols=Math.max(1,Math.min(20,Math.round(wm/cell)));
- g.north=g.south+metersToLat(rows*cell);g.east=g.west+metersToLng(cols*cell,(g.south+g.north)/2);
- const dy=(g.north-g.south)/rows,dx=(g.east-g.west)/cols;
- for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){
-  const so=g.north-(r+1)*dy,no=g.north-r*dy,we=g.west+c*dx,ea=g.west+(c+1)*dx;
-  L.rectangle([[so,we],[no,ea]],{weight:1,color:'#fff',opacity:.72,fillOpacity:.035}).addTo(zoneGridLayer);
-  L.marker([(so+no)/2,(we+ea)/2],{interactive:false,icon:L.divIcon({className:'gridCellLabel',html:gridLetters(r)+(c+1),iconSize:[34,20],iconAnchor:[17,10]})}).addTo(zoneGridLayer);
- }
- const center=L.latLng((g.south+g.north)/2,(g.west+g.east)/2);
- const move=L.marker(center,{draggable:true,icon:L.divIcon({className:'',html:'<div class="gridMove"></div>',iconSize:[30,30],iconAnchor:[15,15]})}).addTo(zoneGridLayer);
- [['nw',g.north,g.west],['ne',g.north,g.east],['sw',g.south,g.west],['se',g.south,g.east]].forEach(a=>{
-  const m=L.marker([a[1],a[2]],{draggable:true,icon:L.divIcon({className:'',html:'<div class="gridHandle"></div>',iconSize:[24,24],iconAnchor:[12,12]})}).addTo(zoneGridLayer);
-  m.on('dragend',e=>{const q=e.target.getLatLng(),key=a[0],ml=(g.north+g.south)/2;
-   if(key.includes('n'))g.north=Math.max(q.lat,g.south+metersToLat(cell));else g.south=Math.min(q.lat,g.north-metersToLat(cell));
-   if(key.includes('e'))g.east=Math.max(q.lng,g.west+metersToLng(cell,ml));else g.west=Math.min(q.lng,g.east-metersToLng(cell,ml));
-   renderZoneGrid();
-  });
- });
- move.on('dragend',e=>{const q=e.target.getLatLng(),dy=q.lat-center.lat,dx=q.lng-center.lng;g.south+=dy;g.north+=dy;g.west+=dx;g.east+=dx;renderZoneGrid();});
- $('zoneGridInfo').textContent=rows+' × '+cols+' · '+(rows*cols)+' celdas · '+cell+' m';
-}
-$('zoneGridBtn').onclick=()=>$('zoneGridControls').classList.toggle('hidden');
-$('createZoneGrid').onclick=initZoneGrid;
-$('removeZoneGrid').onclick=()=>{zoneGrid=null;zoneGridLayer.clearLayers();$('zoneGridInfo').textContent='Sin cuadrícula';};
-$('zoneCellSize').onchange=()=>{if(zoneGrid){zoneGrid.cell=+$('zoneCellSize').value;renderZoneGrid();}};
 
 refreshMissions();
 
@@ -4534,6 +4499,46 @@ m>=45
 
 }
 
+
+function gridLetters(n){let x=n+1,out='';while(x){x--;out=String.fromCharCode(65+x%26)+out;x=Math.floor(x/26);}return out;}
+function metersToLat(m){return m/111320;}
+function metersToLng(m,lat){return m/(111320*Math.max(.2,Math.cos(lat*Math.PI/180)));}
+
+function initZoneGrid(){
+ const c=map.getCenter(),cell=+$('zoneCellSize').value||100,half=cell*5;
+ zoneGrid={south:c.lat-metersToLat(half),north:c.lat+metersToLat(half),west:c.lng-metersToLng(half,c.lat),east:c.lng+metersToLng(half,c.lat),cell};
+ renderZoneGrid();
+}
+function renderZoneGrid(){
+ zoneGridLayer.clearLayers();if(!zoneGrid)return;
+ const g=zoneGrid,cell=g.cell||100,mid=(g.north+g.south)/2;
+ const hm=map.distance(L.latLng(g.south,(g.west+g.east)/2),L.latLng(g.north,(g.west+g.east)/2));
+ const wm=map.distance(L.latLng(mid,g.west),L.latLng(mid,g.east));
+ const rows=Math.max(1,Math.min(20,Math.round(hm/cell))),cols=Math.max(1,Math.min(20,Math.round(wm/cell)));
+ g.north=g.south+metersToLat(rows*cell);g.east=g.west+metersToLng(cols*cell,(g.south+g.north)/2);
+ const dy=(g.north-g.south)/rows,dx=(g.east-g.west)/cols;
+ for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){
+  const so=g.north-(r+1)*dy,no=g.north-r*dy,we=g.west+c*dx,ea=g.west+(c+1)*dx;
+  L.rectangle([[so,we],[no,ea]],{weight:1,color:'#fff',opacity:.72,fillOpacity:.035}).addTo(zoneGridLayer);
+  L.marker([(so+no)/2,(we+ea)/2],{interactive:false,icon:L.divIcon({className:'gridCellLabel',html:gridLetters(r)+(c+1),iconSize:[34,20],iconAnchor:[17,10]})}).addTo(zoneGridLayer);
+ }
+ const center=L.latLng((g.south+g.north)/2,(g.west+g.east)/2);
+ const move=L.marker(center,{draggable:true,icon:L.divIcon({className:'',html:'<div class="gridMove"></div>',iconSize:[30,30],iconAnchor:[15,15]})}).addTo(zoneGridLayer);
+ [['nw',g.north,g.west],['ne',g.north,g.east],['sw',g.south,g.west],['se',g.south,g.east]].forEach(a=>{
+  const m=L.marker([a[1],a[2]],{draggable:true,icon:L.divIcon({className:'',html:'<div class="gridHandle"></div>',iconSize:[24,24],iconAnchor:[12,12]})}).addTo(zoneGridLayer);
+  m.on('dragend',e=>{const q=e.target.getLatLng(),key=a[0],ml=(g.north+g.south)/2;
+   if(key.includes('n'))g.north=Math.max(q.lat,g.south+metersToLat(cell));else g.south=Math.min(q.lat,g.north-metersToLat(cell));
+   if(key.includes('e'))g.east=Math.max(q.lng,g.west+metersToLng(cell,ml));else g.west=Math.min(q.lng,g.east-metersToLng(cell,ml));
+   renderZoneGrid();
+  });
+ });
+ move.on('dragend',e=>{const q=e.target.getLatLng(),dy=q.lat-center.lat,dx=q.lng-center.lng;g.south+=dy;g.north+=dy;g.west+=dx;g.east+=dx;renderZoneGrid();});
+ $('zoneGridInfo').textContent=rows+' × '+cols+' · '+(rows*cols)+' celdas · '+cell+' m';
+}
+$('zoneGridBtn').onclick=()=>$('zoneGridControls').classList.toggle('hidden');
+$('createZoneGrid').onclick=initZoneGrid;
+$('removeZoneGrid').onclick=()=>{zoneGrid=null;zoneGridLayer.clearLayers();$('zoneGridInfo').textContent='Sin cuadrícula';};
+$('zoneCellSize').onchange=()=>{if(zoneGrid){zoneGrid.cell=+$('zoneCellSize').value;renderZoneGrid();}};
 
 refreshMissions();
 
