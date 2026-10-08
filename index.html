@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>ECOUAV v0.9.3</title>
+<title>ECOUAV v0.9.4</title>
 
 <link rel="stylesheet"
 href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
@@ -241,7 +241,7 @@ min-height:390px
 <div>
 <h1>
 ECOUAV
-<span style="color:var(--accent)">v0.9.3</span>
+<span style="color:var(--accent)">v0.9.4</span>
 </h1>
 
 <small>
@@ -497,6 +497,17 @@ preserveAspectRatio="none">
 <div id="sunInfo" class="mini">Temperatura · precipitación · nubosidad · visibilidad · sol</div>
 </div>
 
+<div class="card full" id="somaViewer">
+<div class="label">📡 SOMA PATCH 3.3 · VISOR EDUCATIVO</div>
+<div class="mini">Modelo ilustrativo, no diagrama medido. No permite inferir alcance ni cobertura real.</div>
+<div class="formgrid" style="margin-top:10px">
+<div class="field"><label>Frecuencia (MHz)</label><input id="somaFreq" type="number" min="3000" max="3500" value="3300"></div>
+<div class="field"><label>Apertura ilustrativa (°)</label><input id="somaAngle" type="range" min="20" max="120" value="60"></div>
+</div>
+<div id="somaStats" class="mini"></div>
+<svg id="somaPolar" viewBox="0 0 640 310" style="width:100%;max-height:310px;background:#0d161e;border-radius:10px;margin-top:10px" aria-label="Diagramas polares ilustrativos horizontal y vertical"></svg>
+<div class="mini">Polarización circular RHCP: el campo eléctrico rota durante la propagación. La apertura real horizontal/vertical requiere datos medidos del fabricante. Este dibujo no representa una medición.</div>
+</div>
 <div id="routeProfileCard" class="card full">
 <div class="label">📊 PERFIL DE RUTA</div>
 <div id="routeStats" class="mini">Crea una ruta para analizar distancia, cotas y desnivel.</div>
@@ -958,7 +969,7 @@ class="danger">
 <div id="missionInfo"
 class="mini">
 
-GeoJSON es el formato editable nativo de ECOUAV v0.9.3.
+GeoJSON es el formato editable nativo de ECOUAV v0.9.4.
 
 </div>
 
@@ -3353,7 +3364,7 @@ function setDeleteMode(on){
  document.body.classList.toggle('deleteMode',on);
  $('missionInfo').textContent=on
   ?'🗑️ Eliminar activo: toca un POI, antena o waypoint. También puedes tocar muy cerca del elemento.'
-  :'GeoJSON es el formato editable nativo de ECOUAV v0.9.3.';
+  :'GeoJSON es el formato editable nativo de ECOUAV v0.9.4.';
 }
 function finishDelete(){ setDeleteMode(false); }
 
@@ -3496,8 +3507,7 @@ type:
 
 properties:{
 
-ecouav:
-'0.9.3',
+ecouav:'0.9.4',
 
 name:
 $('missionName').value,
@@ -4486,7 +4496,7 @@ m>=45
 
 
 
-/* v0.9.3 · Análisis cartográfico de relieve de ruta */
+/* v0.9.4 · Análisis cartográfico de relieve de ruta */
 async function fetchElevPoints(points){
  const out=[];
  for(let i=0;i<points.length;i+=20){
@@ -4574,6 +4584,35 @@ async function drawDemContours(){
 $('refreshContours').onclick=drawDemContours;
 $('clearContours').onclick=()=>{demContourLayer.clearLayers();demContoursOn=false;$('contours').classList.remove('active');$('contourControls').classList.add('hidden');$('contourInfo').textContent='Curvas DEM ocultas.';};
 $('contourInterval').onchange=()=>{if(demContoursOn)drawDemContours();};
+
+
+function renderSomaViewer(){
+ const f=Number(document.getElementById('somaFreq').value)||3300;
+ const angle=Number(document.getElementById('somaAngle').value)||60;
+ const lambda=299792458/(f*1e6);
+ document.getElementById('somaStats').textContent='Frecuencia '+f.toFixed(0)+' MHz · longitud de onda '+(lambda*100).toFixed(2)+' cm · apertura ilustrativa '+angle+'° · RHCP (según especificación indicada)';
+ const svg=document.getElementById('somaPolar');
+ const parts=[];
+ for(const [cx,title] of [[160,'Horizontal'],[480,'Vertical']]){
+  const cy=155,R=105;
+  for(const rr of [35,70,105])parts.push('<circle cx="'+cx+'" cy="'+cy+'" r="'+rr+'" fill="none" stroke="#33485a"/>');
+  parts.push('<path d="M'+(cx-R)+' '+cy+'h'+(2*R)+' M'+cx+' '+(cy-R)+'v'+(2*R)+'" stroke="#33485a"/>');
+  const coords=[];
+  for(let i=-180;i<=180;i+=2){
+   const a=i*Math.PI/180;
+   const spread=(angle/2)/Math.sqrt(Math.log(2));
+   const radius=R*(0.08+0.92*Math.exp(-0.5*Math.pow(i/spread,2)));
+   coords.push((cx+radius*Math.cos(a)).toFixed(1)+','+(cy-radius*Math.sin(a)).toFixed(1));
+  }
+  parts.push('<polyline points="'+coords.join(' ')+'" fill="none" stroke="#59c3ff" stroke-width="3"/>');
+  parts.push('<text x="'+cx+'" y="24" text-anchor="middle" fill="#edf5fb" font-size="16">'+title+' · ejemplo</text>');
+  parts.push('<text x="'+cx+'" y="290" text-anchor="middle" fill="#91a5b5" font-size="12">Frente → derecha</text>');
+ }
+ svg.innerHTML=parts.join('');
+}
+document.getElementById('somaFreq').addEventListener('input',renderSomaViewer);
+document.getElementById('somaAngle').addEventListener('input',renderSomaViewer);
+renderSomaViewer();
 
 function gridLetters(n){let x=n+1,out='';while(x){x--;out=String.fromCharCode(65+x%26)+out;x=Math.floor(x/26);}return out;}
 function metersToLat(m){return m/111320;}
