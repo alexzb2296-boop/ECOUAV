@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>ECOUAV v0.9.6</title>
+<title>ECOUAV v0.9.7</title>
 
 <link rel="stylesheet"
 href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
@@ -241,7 +241,7 @@ min-height:390px
 <div>
 <h1>
 ECOUAV
-<span style="color:var(--accent)">v0.9.6</span>
+<span style="color:var(--accent)">v0.9.7</span>
 </h1>
 
 <small>
@@ -507,6 +507,10 @@ preserveAspectRatio="none">
 </div>
 <div id="somaStats" class="mini"></div>
 <svg id="somaPolar" viewBox="0 0 640 310" style="width:100%;max-height:310px;background:#0d161e;border-radius:10px;margin-top:10px" aria-label="Diagramas polares ilustrativos horizontal y vertical"></svg>
+<div class="label" style="margin-top:12px">🧊 HAZ 3D · MODELO ILUSTRATIVO</div>
+<div class="formgrid"><div class="field"><label>Girar vista (°)</label><input id="somaRotate" type="range" min="0" max="360" value="35"></div><div class="field"><label>Inclinación (°)</label><input id="somaTilt" type="range" min="10" max="80" value="30"></div></div>
+<svg id="soma3d" viewBox="0 0 640 350" style="width:100%;max-height:350px;background:#0d161e;border-radius:10px" aria-label="Representación tridimensional ilustrativa del lóbulo de antena"></svg>
+<div class="mini">Vista 3D esquemática y giratoria; no representa ganancia, alcance ni patrón de radiación medido.</div>
 <div class="mini">Polarización circular RHCP: el campo eléctrico rota durante la propagación. La apertura real horizontal/vertical requiere datos medidos del fabricante. Este dibujo no representa una medición.</div>
 </div>
 <div id="routeProfileCard" class="card full">
@@ -970,7 +974,7 @@ class="danger">
 <div id="missionInfo"
 class="mini">
 
-GeoJSON es el formato editable nativo de ECOUAV v0.9.6.
+GeoJSON es el formato editable nativo de ECOUAV v0.9.7.
 
 </div>
 
@@ -3321,7 +3325,7 @@ function setDeleteMode(on){
  document.body.classList.toggle('deleteMode',on);
  $('missionInfo').textContent=on
   ?'🗑️ Eliminar activo: toca un POI, antena o waypoint. También puedes tocar muy cerca del elemento.'
-  :'GeoJSON es el formato editable nativo de ECOUAV v0.9.6.';
+  :'GeoJSON es el formato editable nativo de ECOUAV v0.9.7.';
 }
 function finishDelete(){ setDeleteMode(false); }
 
@@ -4453,7 +4457,7 @@ m>=45
 
 
 
-/* v0.9.6 · Análisis cartográfico de relieve de ruta */
+/* v0.9.7 · Análisis cartográfico de relieve de ruta */
 async function fetchElevPoints(points){
  const out=[];
  for(let i=0;i<points.length;i+=20){
@@ -4577,7 +4581,41 @@ document.getElementById('antennaModel').addEventListener('change',()=>{
 });
 document.getElementById('somaFreq').addEventListener('input',renderSomaViewer);
 document.getElementById('somaAngle').addEventListener('input',renderSomaViewer);
+
+function renderSoma3D(){
+ const svg=document.getElementById('soma3d'),a=Number(document.getElementById('somaAngle').value)||60;
+ const yaw=Number(document.getElementById('somaRotate').value)*Math.PI/180;
+ const tilt=Number(document.getElementById('somaTilt').value)*Math.PI/180;
+ const project=(x,y,z)=>{
+  const xx=x*Math.cos(yaw)-y*Math.sin(yaw),yy=x*Math.sin(yaw)+y*Math.cos(yaw);
+  return [(320+xx*155).toFixed(1),(185+(yy*Math.sin(tilt)-z*Math.cos(tilt))*155).toFixed(1)];
+ };
+ const point=(u,v)=>{
+  const x=1.8*u,rad=0.58*Math.sin(Math.PI*u)*Math.tan(a*Math.PI/360)/Math.tan(Math.PI/6);
+  return project(x,rad*Math.cos(v),rad*Math.sin(v));
+ };
+ const paths=[];
+ for(let j=0;j<=12;j++){
+  const v=j*2*Math.PI/12,p=[];
+  for(let k=0;k<=40;k++)p.push(point(k/40,v).join(','));
+  paths.push('<polyline points="'+p.join(' ')+'" fill="none" stroke="#59c3ff" stroke-opacity=".6" stroke-width="1.5"/>');
+ }
+ for(let k=1;k<10;k++){
+  const p=[];for(let j=0;j<=48;j++)p.push(point(k/10,j*2*Math.PI/48).join(','));
+  paths.push('<polygon points="'+p.join(' ')+'" fill="#59c3ff" fill-opacity=".025" stroke="#59c3ff" stroke-opacity=".5"/>');
+ }
+ const o=project(0,0,0),tip=project(1.8,0,0);
+ paths.push('<path d="M'+o.join(' ')+' L'+tip.join(' ')+'" stroke="#fbbf24" stroke-dasharray="5 5" stroke-width="2"/>');
+ paths.push('<circle cx="'+o[0]+'" cy="'+o[1]+'" r="6" fill="#fbbf24"/>');
+ paths.push('<text x="18" y="28" fill="#edf5fb" font-size="15">Lóbulo 3D orientativo · no a escala</text>');
+ svg.innerHTML=paths.join('');
+}
+document.getElementById('somaRotate').addEventListener('input',renderSoma3D);
+document.getElementById('somaTilt').addEventListener('input',renderSoma3D);
+
+document.getElementById('somaAngle').addEventListener('input',renderSoma3D);
 renderSomaViewer();
+renderSoma3D();
 
 function gridLetters(n){let x=n+1,out='';while(x){x--;out=String.fromCharCode(65+x%26)+out;x=Math.floor(x/26);}return out;}
 function metersToLat(m){return m/111320;}
