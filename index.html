@@ -499,7 +499,7 @@ preserveAspectRatio="none">
 
 <div class="card full" id="somaViewer">
 <div class="label">📡 ANTENAS · VISOR EDUCATIVO</div>
-<div class="field" style="margin-top:8px"><label>Modelo de antena</label><select id="antennaModel"><option value="soma">SOMA Patch 3.3 · RHCP</option><option value="true">TrueRC Sniper 5.8 · RHCP</option></select></div>
+<div class="field" style="margin-top:8px"><label>Modelo de antena</label><select id="antennaModel"><option value="soma">SOMA Patch 3.3 · RHCP</option><option value="true">TrueRC Sniper 5.8 · RHCP</option><option value="x2air5">TrueRC X²-AIR 5 · RHCP/LHCP</option></select></div>
 <div class="mini">Modelo ilustrativo, no diagrama medido. No permite inferir alcance ni cobertura real.</div>
 <div class="formgrid" style="margin-top:10px">
 <div class="field"><label>Frecuencia (MHz)</label><input id="somaFreq" type="number" min="3000" max="3500" value="3300"></div>
@@ -4549,10 +4549,11 @@ $('contourInterval').onchange=()=>{if(demContoursOn)drawDemContours();};
 
 function renderSomaViewer(){
  const model=document.getElementById('antennaModel').value;
- const f=Number(document.getElementById('somaFreq').value)||(model==='true'?5800:3300);
+ const f=Number(document.getElementById('somaFreq').value)||(model==='soma'?3300:5800);
  const angle=Number(document.getElementById('somaAngle').value)||60;
+ const isX2=model==='x2air5';
  const lambda=299792458/(f*1e6);
- document.getElementById('somaStats').textContent=(model==='true'?'TrueRC Sniper 5.8 RHCP':'SOMA Patch 3.3 RHCP')+' · Frecuencia '+f.toFixed(0)+' MHz · longitud de onda '+(lambda*100).toFixed(2)+' cm · apertura ilustrativa '+angle+'° · RHCP (según especificación indicada)';
+ document.getElementById('somaStats').textContent=isX2?'TrueRC X²-AIR 5 · 4.3–6.3 GHz · 11.5 dBic a 5 GHz / 14 dBic a 5.8 GHz · RHCP o LHCP · haz a −3 dB: H 70° / V 30° · longitud de onda '+(lambda*100).toFixed(2)+' cm · curvas esquemáticas, no mediciones':(model==='true'?'TrueRC Sniper 5.8 RHCP':'SOMA Patch 3.3 RHCP')+' · Frecuencia '+f.toFixed(0)+' MHz · longitud de onda '+(lambda*100).toFixed(2)+' cm · apertura ilustrativa '+angle+'° · RHCP (según especificación indicada)';
  const svg=document.getElementById('somaPolar');
  const parts=[];
  for(const [cx,title] of [[160,'Horizontal'],[480,'Vertical']]){
@@ -4562,28 +4563,32 @@ function renderSomaViewer(){
   const coords=[];
   for(let i=-180;i<=180;i+=2){
    const a=i*Math.PI/180;
-   const spread=(angle/2)/Math.sqrt(Math.log(2));
+   const sectionAngle=isX2?(title==='Horizontal'?70:30):angle;
+   const spread=(sectionAngle/2)/Math.sqrt(Math.log(2));
    const radius=R*(0.08+0.92*Math.exp(-0.5*Math.pow(i/spread,2)));
    coords.push((cx+radius*Math.cos(a)).toFixed(1)+','+(cy-radius*Math.sin(a)).toFixed(1));
   }
   parts.push('<polyline points="'+coords.join(' ')+'" fill="none" stroke="#59c3ff" stroke-width="3"/>');
-  parts.push('<text x="'+cx+'" y="24" text-anchor="middle" fill="#edf5fb" font-size="16">'+title+' · ejemplo</text>');
+  parts.push('<text x="'+cx+'" y="24" text-anchor="middle" fill="#edf5fb" font-size="16">'+title+(isX2?' · −3 dB '+(title==='Horizontal'?70:30)+'°':' · ejemplo')+'</text>');
   parts.push('<text x="'+cx+'" y="290" text-anchor="middle" fill="#91a5b5" font-size="12">Frente → derecha</text>');
  }
  svg.innerHTML=parts.join('');
 }
 document.getElementById('antennaModel').addEventListener('change',()=>{
- const isTrue=document.getElementById('antennaModel').value==='true';
+ const model=document.getElementById('antennaModel').value;
+ const isTrue=model==='true',isX2=model==='x2air5';
  const input=document.getElementById('somaFreq');
- input.min=isTrue?'5600':'3000';input.max=isTrue?'6000':'3500';
- input.value=isTrue?'5800':'3300';
+ input.min=isX2?'4300':isTrue?'5600':'3000';input.max=isX2?'6300':isTrue?'6000':'3500';
+ input.value=(isTrue||isX2)?'5800':'3300';
+ document.getElementById('somaAngle').disabled=isX2;
  renderSomaViewer();
+ renderSoma3D();
 });
 document.getElementById('somaFreq').addEventListener('input',renderSomaViewer);
 document.getElementById('somaAngle').addEventListener('input',renderSomaViewer);
 
 function renderSoma3D(){
- const svg=document.getElementById('soma3d'),a=Number(document.getElementById('somaAngle').value)||60;
+ const svg=document.getElementById('soma3d'),isX2=document.getElementById('antennaModel').value==='x2air5',a=isX2?70:Number(document.getElementById('somaAngle').value)||60;
  const yaw=Number(document.getElementById('somaRotate').value)*Math.PI/180;
  const tilt=Number(document.getElementById('somaTilt').value)*Math.PI/180;
  const project=(x,y,z)=>{
@@ -4592,7 +4597,7 @@ function renderSoma3D(){
  };
  const point=(u,v)=>{
   const x=1.8*u,rad=0.58*Math.sin(Math.PI*u)*Math.tan(a*Math.PI/360)/Math.tan(Math.PI/6);
-  return project(x,rad*Math.cos(v),rad*Math.sin(v));
+  return project(x,rad*Math.cos(v),rad*Math.sin(v)*(isX2?Math.tan(15*Math.PI/180)/Math.tan(35*Math.PI/180):1));
  };
  const paths=[];
  for(let j=0;j<=12;j++){
