@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>ECOUAV v0.9.5</title>
+<title>ECOUAV v0.9.6</title>
 
 <link rel="stylesheet"
 href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
@@ -241,7 +241,7 @@ min-height:390px
 <div>
 <h1>
 ECOUAV
-<span style="color:var(--accent)">v0.9.5</span>
+<span style="color:var(--accent)">v0.9.6</span>
 </h1>
 
 <small>
@@ -498,7 +498,8 @@ preserveAspectRatio="none">
 </div>
 
 <div class="card full" id="somaViewer">
-<div class="label">📡 SOMA PATCH 3.3 · VISOR EDUCATIVO</div>
+<div class="label">📡 ANTENAS · VISOR EDUCATIVO</div>
+<div class="field" style="margin-top:8px"><label>Modelo de antena</label><select id="antennaModel"><option value="soma">SOMA Patch 3.3 · RHCP</option><option value="true">TrueRC Sniper 5.8 · RHCP</option></select></div>
 <div class="mini">Modelo ilustrativo, no diagrama medido. No permite inferir alcance ni cobertura real.</div>
 <div class="formgrid" style="margin-top:10px">
 <div class="field"><label>Frecuencia (MHz)</label><input id="somaFreq" type="number" min="3000" max="3500" value="3300"></div>
@@ -969,7 +970,7 @@ class="danger">
 <div id="missionInfo"
 class="mini">
 
-GeoJSON es el formato editable nativo de ECOUAV v0.9.5.
+GeoJSON es el formato editable nativo de ECOUAV v0.9.6.
 
 </div>
 
@@ -3320,7 +3321,7 @@ function setDeleteMode(on){
  document.body.classList.toggle('deleteMode',on);
  $('missionInfo').textContent=on
   ?'🗑️ Eliminar activo: toca un POI, antena o waypoint. También puedes tocar muy cerca del elemento.'
-  :'GeoJSON es el formato editable nativo de ECOUAV v0.9.5.';
+  :'GeoJSON es el formato editable nativo de ECOUAV v0.9.6.';
 }
 function finishDelete(){ setDeleteMode(false); }
 
@@ -3463,7 +3464,7 @@ type:
 
 properties:{
 
-ecouav:'0.9.5',
+ecouav:'0.9.6',
 
 name:
 $('missionName').value,
@@ -4452,7 +4453,7 @@ m>=45
 
 
 
-/* v0.9.5 · Análisis cartográfico de relieve de ruta */
+/* v0.9.6 · Análisis cartográfico de relieve de ruta */
 async function fetchElevPoints(points){
  const out=[];
  for(let i=0;i<points.length;i+=20){
@@ -4543,10 +4544,11 @@ $('contourInterval').onchange=()=>{if(demContoursOn)drawDemContours();};
 
 
 function renderSomaViewer(){
- const f=Number(document.getElementById('somaFreq').value)||3300;
+ const model=document.getElementById('antennaModel').value;
+ const f=Number(document.getElementById('somaFreq').value)||(model==='true'?5800:3300);
  const angle=Number(document.getElementById('somaAngle').value)||60;
  const lambda=299792458/(f*1e6);
- document.getElementById('somaStats').textContent='Frecuencia '+f.toFixed(0)+' MHz · longitud de onda '+(lambda*100).toFixed(2)+' cm · apertura ilustrativa '+angle+'° · RHCP (según especificación indicada)';
+ document.getElementById('somaStats').textContent=(model==='true'?'TrueRC Sniper 5.8 RHCP':'SOMA Patch 3.3 RHCP')+' · Frecuencia '+f.toFixed(0)+' MHz · longitud de onda '+(lambda*100).toFixed(2)+' cm · apertura ilustrativa '+angle+'° · RHCP (según especificación indicada)';
  const svg=document.getElementById('somaPolar');
  const parts=[];
  for(const [cx,title] of [[160,'Horizontal'],[480,'Vertical']]){
@@ -4566,6 +4568,13 @@ function renderSomaViewer(){
  }
  svg.innerHTML=parts.join('');
 }
+document.getElementById('antennaModel').addEventListener('change',()=>{
+ const isTrue=document.getElementById('antennaModel').value==='true';
+ const input=document.getElementById('somaFreq');
+ input.min=isTrue?'5600':'3000';input.max=isTrue?'6000':'3500';
+ input.value=isTrue?'5800':'3300';
+ renderSomaViewer();
+});
 document.getElementById('somaFreq').addEventListener('input',renderSomaViewer);
 document.getElementById('somaAngle').addEventListener('input',renderSomaViewer);
 renderSomaViewer();
