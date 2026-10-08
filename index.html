@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>ECOUAV v0.9.4</title>
+<title>ECOUAV v0.9.5</title>
 
 <link rel="stylesheet"
 href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
@@ -241,7 +241,7 @@ min-height:390px
 <div>
 <h1>
 ECOUAV
-<span style="color:var(--accent)">v0.9.4</span>
+<span style="color:var(--accent)">v0.9.5</span>
 </h1>
 
 <small>
@@ -969,7 +969,7 @@ class="danger">
 <div id="missionInfo"
 class="mini">
 
-GeoJSON es el formato editable nativo de ECOUAV v0.9.4.
+GeoJSON es el formato editable nativo de ECOUAV v0.9.5.
 
 </div>
 
@@ -2463,63 +2463,19 @@ Math.max(
 );
 
 
-let pts=[
-
-L.latLng(
-a.lat,
-a.lng
-)
-
-];
-
-
-const steps=
-
-Math.max(
-
-12,
-
-Math.ceil(
-beam/5
-)
-
-);
-
-
-for(
-let i=0;
-i<=steps;
-i++
-){
-
-pts.push(
-
-destination(
-
-a,
-
-az
--beam/2
-+beam*i/steps,
-
-range
-
-)
-
-);
-
+// Lóbulo visual orientativo: contorno curvo, no cobertura RF medida.
+const origin=L.latLng(a.lat,a.lng);
+const pts=[origin];
+const steps=48;
+for(let i=0;i<=steps;i++){
+ const t=i/steps;
+ const offset=(t*2-1)*beam/2;
+ // Se estrecha suavemente en los bordes y se alarga sobre el eje principal.
+ const normalized=Math.abs(t*2-1);
+ const distance=range*(0.24+0.76*Math.pow(Math.max(0,1-normalized*normalized),0.7));
+ pts.push(destination(a,az+offset,distance));
 }
-
-
-pts.push(
-
-L.latLng(
-a.lat,
-a.lng
-)
-
-);
-
+pts.push(origin);
 
 sectorLayers[id]=
 
@@ -3364,7 +3320,7 @@ function setDeleteMode(on){
  document.body.classList.toggle('deleteMode',on);
  $('missionInfo').textContent=on
   ?'🗑️ Eliminar activo: toca un POI, antena o waypoint. También puedes tocar muy cerca del elemento.'
-  :'GeoJSON es el formato editable nativo de ECOUAV v0.9.4.';
+  :'GeoJSON es el formato editable nativo de ECOUAV v0.9.5.';
 }
 function finishDelete(){ setDeleteMode(false); }
 
@@ -3507,7 +3463,7 @@ type:
 
 properties:{
 
-ecouav:'0.9.4',
+ecouav:'0.9.5',
 
 name:
 $('missionName').value,
@@ -4496,7 +4452,7 @@ m>=45
 
 
 
-/* v0.9.4 · Análisis cartográfico de relieve de ruta */
+/* v0.9.5 · Análisis cartográfico de relieve de ruta */
 async function fetchElevPoints(points){
  const out=[];
  for(let i=0;i<points.length;i+=20){
