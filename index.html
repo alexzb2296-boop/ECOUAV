@@ -4829,6 +4829,50 @@ function ecoRfRefresh(){
 }
 // IGN WCS: request numeric GeoTIFF; failures fall back to the existing elevation provider.
 // WCS coverage identifiers vary by zone, so we discover them from GetCapabilities.
+async function ecoLoadIgnRgbTiles(active,half,n){
+ // Official Spanish IGN RGB elevation tile service derived from MDT05.
+ // Mapbox Terrain RGB, 512px tiles and max native zoom 15 (official style).
+ const z=15,tileSize=512,world=Math.pow(2,z),merc=lat=>Math.log(Math.tan(Math.PI/4+lat*Math.PI/360));
+ const tileX=lng=>(lng+180)/360*world;
+ const tileY=lat=>(1-merc(lat)/Math.PI)/2*world;
+ const latD=half/111320,lonD=half/(111320*Math.max(.2,Math.cos(active.lat*Math.PI/180)));
+ const x0=tileX(active.lng-lonD),x1=tileX(active.lng+lonD);
+ const y0=tileY(active.lat+latD),y1=tileY(active.lat-latD);
+ const minX=Math.floor(x0),maxX=Math.floor(x1),minY=Math.floor(y0),maxY=Math.floor(y1);
+ if((maxX-minX+1)*(maxY-minY+1)>16)throw Error('Extensión excesiva para teselas MDT IGN');
+ const tiles=new Map();
+ const jobs=[];
+ for(let y=minY;y<=maxY;y++)for(let x=minX;x<=maxX;x++)jobs.push((async()=>{
+  const url='https://xyz-mdt.idee.es/1.0.0/raster-dem/'+z+'/'+x+'/'+y+'.png';
+  const res=await fetch(url,{mode:'cors',signal:AbortSignal.timeout(15000)});
+  if(!res.ok)throw Error('Tesela IGN HTTP '+res.status);
+  const blob=await res.blob();
+  const bmp=await createImageBitmap(blob);
+  const cv=document.createElement('canvas');cv.width=bmp.width;cv.height=bmp.height;
+  const cx=cv.getContext('2d',{willReadFrequently:true});
+  cx.drawImage(bmp,0,0);bmp.close?.();
+  const pixels=cx.getImageData(0,0,cv.width,cv.height).data;
+  tiles.set(x+','+y,{pixels,w:cv.width,h:cv.height});
+ })());
+ await Promise.all(jobs);
+ const heights=[];
+ for(let j=0;j<n;j++)for(let i=0;i<n;i++){
+  const lat=active.lat+((j/(n-1))*2-1)*latD;
+  const lng=active.lng+((i/(n-1))*2-1)*lonD;
+  const px=tileX(lng),py=tileY(lat),tx=Math.floor(px),ty=Math.floor(py);
+  const tile=tiles.get(tx+','+ty);
+  if(!tile)throw Error('Tesela IGN ausente');
+  const xx=Math.max(0,Math.min(tile.w-1,Math.floor((px-tx)*tile.w)));
+  const yy=Math.max(0,Math.min(tile.h-1,Math.floor((py-ty)*tile.h)));
+  const off=(yy*tile.w+xx)*4;
+  const R=tile.pixels[off],G=tile.pixels[off+1],B=tile.pixels[off+2],A=tile.pixels[off+3];
+  if(A===0)throw Error('Zona sin datos MDT en una tesela');
+  const elev=-10000+(R*65536+G*256+B)*.1;
+  if(!Number.isFinite(elev)||elev< -500||elev>9000)throw Error('Altura RGB IGN fuera de rango');
+  heights.push(elev);
+ }
+ return heights;
+}
 async function ecoLoadIgnMdt05(active,half,n,step=5){
  // Official IGN OGC API Coverages. Try a bounded slice rather than asking the
  // server to synthesize large response grids; keep authentic resolution labels.
@@ -4904,18 +4948,25 @@ async function ecoLoadSiteSurface(){
  let ignError='';
  try{
   const half=400;
-  let heights=null,n=161,source='IGN MDT05 · API Coberturas (5 m)';
+  let heights=null,n=81,source='IGN MDT05 · teselas RGB oficiales (muestreo ~10 m)';
   if($('ecoPreferIgn').checked){
-   $('ecoSurfaceStatus').textContent='Consultando IGN MDT…';
-   try{heights=await ecoLoadIgnMdt05(active,half,n,5);}
-   catch(e){
-    const first=e.message||String(e);
-    $('ecoSurfaceStatus').textContent='IGN MDT05 no disponible; probando modelo IGN de 25 m…';
+   $('ecoSurfaceStatus').textContent='Cargando teselas RGB oficiales IGN derivadas de MDT05…';
+   try{heights=await ecoLoadIgnRgbTiles(active,half,n);}
+   catch(tileError){
+    const tileMessage=tileError.message||String(tileError);
+    $('ecoSurfaceStatus').textContent='Teselas IGN no accesibles; probando API de coberturas…';
     try{
-     n=33;heights=await ecoLoadIgnMdt05(active,half,n,25);
-     source='IGN MDT25 · API Coberturas (25 m)';
-     ignError='MDT05: '+first+'; se utiliza MDT25 oficial.';
-    }catch(e2){ignError='MDT05: '+first+'; MDT25: '+(e2.message||String(e2));}
+     n=161;heights=await ecoLoadIgnMdt05(active,half,n,5);
+     source='IGN MDT05 · API Coberturas (5 m)';
+     ignError='Teselas RGB: '+tileMessage+'; alternativa IGN cargada.';
+    }catch(apiError){
+     const first=apiError.message||String(apiError);
+     try{
+      n=33;heights=await ecoLoadIgnMdt05(active,half,n,25);
+      source='IGN MDT25 · API Coberturas (25 m)';
+      ignError='Teselas: '+tileMessage+'; MDT05 API: '+first+'; se utiliza MDT25.';
+     }catch(e2){ignError='Teselas RGB: '+tileMessage+'; MDT05 API: '+first+'; MDT25 API: '+(e2.message||String(e2));}
+    }
    }
   }
   if(!heights){
@@ -4933,7 +4984,7 @@ async function ecoLoadSiteSurface(){
   if(request!==ecoSiteRequest)return;
   if(heights.length!==n*n||heights.some(v=>!Number.isFinite(v)))throw Error('Cotas incompletas');
   ecoSiteSurface={lat:active.lat,lng:active.lng,half,n,heights,source};
-  $('ecoSurfaceStatus').textContent='Terreno cargado · '+source+' · '+n+' × '+n+' puntos · 800 × 800 m.'+(ignError?' IGN MDT05 no accesible (no se usan datos IGN): '+ignError:'');
+  $('ecoSurfaceStatus').textContent='Terreno cargado · '+source+' · '+n+' × '+n+' puntos · 800 × 800 m.'+(ignError?' Servicios IGN no disponibles (se utiliza Open-Meteo): '+ignError:'');
   renderSoma3D();
  }catch(e){
   if(request!==ecoSiteRequest)return;
