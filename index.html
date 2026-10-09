@@ -363,7 +363,12 @@ body.ecoMockLayout .eco3dActions{gap:6px}
 #ecoBottomStatus{height:34px;background:#07121d;color:#9dbbce;border-top:1px solid #244861;padding:7px 15px;display:flex;justify-content:space-between;gap:12px;align-items:center;font-size:11px}
 #ecoBottomStatus span{white-space:nowrap}
 body.ecoMockLayout .panel{grid-template-columns:repeat(4,minmax(0,1fr))}
-body.ecoMockLayout #ecoSidebarToggle{display:none}
+body.ecoMockLayout #ecoSidebarToggle{display:block}
+@media(min-width:901px){
+ body.ecoMockLayout.ecoSideCollapsed #ecoShell{grid-template-columns:0 minmax(0,1fr) 305px}
+ body.ecoMockLayout.ecoSideCollapsed #ecoWorkspace{visibility:hidden;border:0;padding:0;overflow:hidden}
+}
+
 @media(max-width:1180px){#ecoShell{grid-template-columns:232px minmax(0,1fr) 255px}#eco3dInset{width:88%;height:220px}.ecoHeaderSearch{width:220px}}
 @media(max-width:900px){
  #ecoShell{grid-template-columns:minmax(0,1fr);height:calc(100dvh - 99px);min-height:440px}
@@ -5654,6 +5659,13 @@ refreshMissions();
  workspace.setAttribute('aria-hidden','false');
  if(innerWidth>900)workspace.classList.add('ecoSidebarOpen');
  else workspace.classList.remove('ecoSidebarOpen');
+ const sidebarBtn=document.getElementById('ecoSidebarToggle');
+ sidebarBtn.addEventListener('click',()=>{
+  if(innerWidth>900){
+   document.body.classList.toggle('ecoSideCollapsed',!workspace.classList.contains('ecoSidebarOpen'));
+   requestAnimationFrame(()=>map.invalidateSize({pan:false}));
+  }
+ });
  const status=(id,initial)=>{const node=document.createElement('strong');node.id=id;node.textContent=initial;return node;};
  function card(title){
   const section=document.createElement('section');section.className='ecoContextCard';
@@ -5735,7 +5747,7 @@ refreshMissions();
  go.onclick=locate;input.addEventListener('keydown',e=>{if(e.key==='Enter')locate()});
  input.addEventListener('input',()=>input.setCustomValidity(''));
  window.addEventListener('resize',()=>{
-  if(innerWidth>900){workspace.classList.add('ecoSidebarOpen');context.classList.remove('ecoContextOpen')}
+  if(innerWidth>900){workspace.classList.add('ecoSidebarOpen');context.classList.remove('ecoContextOpen');document.body.classList.remove('ecoSideCollapsed')}
   else workspace.classList.remove('ecoSidebarOpen');
   map.invalidateSize({pan:false});
  });
