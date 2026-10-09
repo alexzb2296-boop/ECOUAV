@@ -263,6 +263,7 @@ Planificador UAS · Terreno · RF · Rutas · Misiones
 <button id="sat" class="active">Satélite</button>
 <button id="topo">Relieve</button>
 <button id="contours">〰️ Curvas nivel</button>
+<button id="ignReliefBtn" title="Relieve oficial IGN, cobertura nacional">🏔️ Relieve IGN</button>
 <button id="terrainBtn">⛰️ Desnivel</button>
 <button id="locate">Mi posición</button>
 <button id="center">España</button>\n<button id="coordBtn">⌨️ Coordenadas</button>\n<button id="mapToolsBtn">🧭 Mapa+</button>
@@ -526,6 +527,7 @@ preserveAspectRatio="none">
 
 <div class="card full" id="geoLibraryCard">
 <div class="label">🗺️ MAPA+ · CARTOGRAFÍA LOCAL Y BIBLIOTECA · v1.0</div>
+<div class="mini">Relieve IGN nacional: activa «🏔️ Relieve IGN» en la barra del mapa. Funciona en Península, Baleares, Canarias, Ceuta y Melilla según la cobertura oficial disponible. Se carga por teselas, sin descargar España entera.</div>
 <div class="mini">Carga un modelo de elevación GeoTIFF geográfico (WGS84 / EPSG:4326). Se muestra sobre el mapa y se conserva en este navegador. Los archivos DTED o UTM necesitan conversión previa a GeoTIFF WGS84.</div>
 <div class="actions"><button id="geoImportBtn">📂 Importar DEM GeoTIFF</button><button id="geoRestoreBtn">↻ Recuperar DEM</button><button id="geoShowBtn">👁 Mostrar / ocultar DEM</button><button id="geoClearBtn">🗑 Eliminar DEM</button></div>
 <input type="file" id="geoImportFile" accept=".tif,.tiff,image/tiff" class="hidden">
@@ -3884,6 +3886,17 @@ JSON.stringify(m)
 
 
 
+/* ECOUAV v1.0 — relieve IGN nacional bajo demanda */
+const ignReliefLayer=L.tileLayer('https://tms-relieve.idee.es/1.0.0/relieve/{z}/{x}/{y}.jpeg',{
+ tms:true,minZoom:0,maxNativeZoom:15,maxZoom:19,opacity:.66,
+ attribution:'Relieve © Instituto Geográfico Nacional (IGN), CNIG'
+});
+let ignReliefEnabled=false;
+$('ignReliefBtn').onclick=()=>{
+ ignReliefEnabled=!ignReliefEnabled;
+ if(ignReliefEnabled){ignReliefLayer.addTo(map);$('ignReliefBtn').classList.add('active');}
+ else{map.removeLayer(ignReliefLayer);$('ignReliefBtn').classList.remove('active');}
+};
 /* ECOUAV v1.0 — cartografía local geográfica, almacenamiento y biblioteca */
 (function(){
  const status=$('geoStatus'),file=$('geoImportFile');
