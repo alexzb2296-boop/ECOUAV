@@ -247,6 +247,25 @@ min-height:390px
 #ecoWorkspace #ecoProfileSvg{width:100%;height:170px;display:block;background:#0d1b24;border-radius:8px}
 #ecoWorkspace .ecoHint{color:#a1b7c5;font-size:12px}
 
+
+/* ECOUAV visual phase 1: map-first layout, floating collapsible control center. */
+.top{position:sticky;top:0;z-index:1600;background:#0b141eeb;backdrop-filter:blur(14px);border-bottom-color:#324454}
+.top h1{letter-spacing:.025em;font-weight:800}
+.ecoHeaderActions{display:flex;gap:12px;align-items:center}
+#ecoSidebarToggle{background:#203849;border:1px solid #557184;min-height:40px}
+#ecoWorkspace{position:fixed;top:70px;left:0;bottom:0;width:min(365px,94vw);max-height:calc(100dvh - 70px);margin:0;border-radius:0 16px 16px 0;overflow:auto;z-index:1550;background:#101e2bee;backdrop-filter:blur(18px);box-shadow:12px 0 44px #0009;transform:translateX(-105%);transition:transform .22s ease;pointer-events:none}
+#ecoWorkspace.ecoSidebarOpen{transform:translateX(0);pointer-events:auto}
+#ecoWorkspace .ecoTabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+#ecoWorkspace .ecoTabs button{min-width:0;font-size:13px;padding:10px 5px}
+#ecoWorkspace .ecoCells{grid-template-columns:1fr}
+#ecoWorkspace .ecoBox{background:#172936}
+#ecoWorkspace a{color:#81d6ff}
+#map{height:76dvh;min-height:500px}
+.toolbar{backdrop-filter:blur(13px);box-shadow:0 4px 24px #0006;z-index:950}
+#ecoMapStatus{position:absolute;z-index:900;right:14px;bottom:13px;display:flex;gap:12px;flex-wrap:wrap;max-width:calc(100% - 28px);background:#0b1925df;border:1px solid #425b6d;border-radius:9px;padding:7px 11px;font-size:12px;color:#c6d9e6;pointer-events:none;backdrop-filter:blur(10px)}
+#ecoWorkspace button:focus-visible,#ecoSidebarToggle:focus-visible{outline:2px solid #8bdcff;outline-offset:2px}
+@media(max-width:720px){#ecoWorkspace{top:61px;max-height:calc(100dvh - 61px)}#map{height:73dvh;min-height:440px}#ecoMapStatus{left:8px;right:8px;bottom:8px;font-size:11px;gap:6px}#flightStatus{display:none}.toolbar{max-width:calc(100% - 18px);top:8px;left:9px}.top{padding:10px}}
+@media(prefers-reduced-motion:reduce){#ecoWorkspace{transition:none}}
 </style>
 </head>
 
@@ -257,7 +276,7 @@ min-height:390px
 <div>
 <h1>
 ECOUAV
-<span style="color:var(--accent)">v0.9.7</span>
+<span style="color:var(--accent)">VISOR</span>
 </h1>
 
 <small>
@@ -265,14 +284,12 @@ Planificador UAS · Terreno · RF · Rutas · Misiones
 </small>
 </div>
 
-<div id="flightStatus">
-<strong>LISTO</strong>
-</div>
+<div class="ecoHeaderActions"><button id="ecoSidebarToggle" type="button" aria-controls="ecoWorkspace" aria-expanded="false">☰ Herramientas</button><div id="flightStatus"><strong>LISTO</strong></div></div>
 
 </header>
 
 <!-- ECOUAV unified workspace; existing tools below remain intact -->
-<section id="ecoWorkspace" aria-label="Centro de herramientas ECOUAV">
+<section id="ecoWorkspace" aria-label="Centro de herramientas ECOUAV" aria-hidden="true">
  <div><strong>🧭 Centro ECOUAV</strong> <small style="color:#94b5c7">Terreno · Meteo · Antenas · Vuelos · Proyectos</small></div>
  <div class="ecoTabs" role="tablist" aria-label="Herramientas">
   <button type="button" data-ecotab="terrain" aria-selected="true">⛰️ Terreno</button>
@@ -330,7 +347,7 @@ Planificador UAS · Terreno · RF · Rutas · Misiones
 
 </div>
 
-<div id="map"></div>
+<div id="map"></div><div id="ecoMapStatus" aria-live="polite"><span id="ecoMapCoords">Centro del mapa: —</span><span id="ecoMapScale">Escala: —</span><span id="ecoMapSource">Mapa: Esri</span></div>
 <div id="contourControls" class="card hidden" style="position:absolute;z-index:1100;top:64px;left:12px;max-width:430px;background:#101922ee">
  <div class="field"><label>Intervalo curvas DEM</label><select id="contourInterval">
   <option value="10">10 m</option><option value="20" selected>20 m</option><option value="50">50 m</option>
@@ -5307,6 +5324,20 @@ refreshMissions();
 
 
 
+/* ECOUAV sidebar and coordinate context. */
+(function(){
+ const toggle=document.getElementById('ecoSidebarToggle'),panel=document.getElementById('ecoWorkspace');
+ const show=open=>{panel.classList.toggle('ecoSidebarOpen',open);panel.setAttribute('aria-hidden',String(!open));toggle.setAttribute('aria-expanded',String(open));toggle.textContent=open?'✕ Cerrar panel':'☰ Herramientas';};
+ toggle.addEventListener('click',()=>show(!panel.classList.contains('ecoSidebarOpen')));
+ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&panel.classList.contains('ecoSidebarOpen'))show(false)});
+ function refreshStatus(){
+  const c=map.getCenter(),z=map.getZoom(),meters=156543.03392*Math.cos(c.lat*Math.PI/180)/Math.pow(2,z);
+  document.getElementById('ecoMapCoords').textContent='WGS84 · '+c.lat.toFixed(5)+'°, '+c.lng.toFixed(5)+'°';
+  document.getElementById('ecoMapScale').textContent='Zoom '+z+' · '+Math.round(meters*100)/100+' m/px aprox.';
+ }
+ map.on('moveend zoomend',refreshStatus);refreshStatus();
+ window.ecoUpdateMapSource=label=>{document.getElementById('ecoMapSource').textContent='Mapa: '+label};
+})();
 /* ECOUAV integrated modes, 2026-10. Visual and historical analysis only. */
 (function(){
  const root=document.getElementById('ecoWorkspace');
@@ -5324,7 +5355,7 @@ refreshMissions();
   base(target);
   q('sat').classList.toggle('active',value==='esri'||value==='pnoa');
   q('topo').classList.remove('active');
-  ecoBaseNow=value;q('ecoBase').value=value;
+  ecoBaseNow=value;q('ecoBase').value=value;window.ecoUpdateMapSource?.(value==='pnoa'?'PNOA / IGN':value==='osm'?'OSM':'Esri');
  }
  q('ecoBase').addEventListener('change',e=>selectBase(e.target.value));
  // Legacy buttons remain usable and reflect their choice in the workspace.
