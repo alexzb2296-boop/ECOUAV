@@ -283,6 +283,38 @@ min-height:390px
 .ecoWeatherBars .ecoMeter span{display:block;background:#59c3ff;height:100%;border-radius:8px}
 #ecoWorkspace .ecoBox input[type=checkbox]{margin-right:7px;accent-color:#59c3ff}
 #ecoWorkspace input[type=range]{width:100%;accent-color:#59c3ff}
+
+/* Visual phase 3: coherent controls, phone/tablet usability and visual hierarchy. */
+html{scroll-behavior:smooth}
+button{transition:background-color .15s ease,border-color .15s ease,transform .15s ease}
+button:not(:disabled):hover{border-color:#70accb;background:#264255}
+button:disabled{opacity:.5;cursor:not-allowed}
+.card{box-shadow:0 2px 13px #0002}
+.card h2,.card h3{letter-spacing:.01em}
+#ecoWorkspace .ecoBox{box-shadow:0 2px 10px #0003}
+#ecoWorkspace .ecoBox strong{font-size:14px;color:#ecf9ff}
+#ecoWorkspace .ecoTabs button[aria-selected=true]{box-shadow:inset 0 -3px 0 #59c3ff}
+#ecoWorkspace .ecoBox button{font-size:12px}
+#ecoMapStatus span{white-space:nowrap}
+#ecoWorkspace::-webkit-scrollbar{width:7px}
+#ecoWorkspace::-webkit-scrollbar-thumb{background:#34566d;border-radius:8px}
+#ecoWorkspace .ecoHint{line-height:1.4}
+#ecoWorkspace .ecoMetric strong{font-variant-numeric:tabular-nums}
+@media(max-width:720px){
+ #ecoSidebarToggle{font-size:12px;padding:9px 10px}
+ #ecoWorkspace{width:min(380px,100vw);border-radius:0}
+ #ecoWorkspace .ecoTabs{grid-template-columns:repeat(2,1fr)}
+ #ecoMapStatus span:nth-child(2){display:none}
+ .top h1{font-size:17px}
+ .toolbar button{padding:9px 10px;font-size:12px}
+ .panel{gap:8px;padding:8px}
+ #soma3d{height:330px!important}
+ #soma3d:fullscreen{height:100dvh!important}
+ .eco3dActions{gap:4px}
+ .eco3dLegend{width:100%}
+}
+@media(min-width:721px) and (max-width:1100px){#ecoWorkspace{width:330px}#map{height:72dvh}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}button{transition:none}}
 </style>
 </head>
 
@@ -5354,6 +5386,7 @@ refreshMissions();
  }
  map.on('moveend zoomend',refreshStatus);refreshStatus();
  window.ecoUpdateMapSource=label=>{document.getElementById('ecoMapSource').textContent='Mapa: '+label};
+ window.ecoCloseSidebar=()=>show(false);
 })();
 /* ECOUAV 3D presentation controls. */
 (function(){
@@ -5401,7 +5434,7 @@ refreshMissions();
   root.querySelectorAll('[data-ecotab]').forEach(x=>x.setAttribute('aria-selected',String(x===b)));
   root.querySelectorAll('[data-ecoview]').forEach(x=>x.classList.toggle('ecoActive',x.dataset.ecoview===which));
  }));
- function jump(el){if(el){el.scrollIntoView({behavior:'smooth',block:'center'});}}
+ function jump(el){if(el){window.ecoCloseSidebar?.();el.scrollIntoView({behavior:'smooth',block:'center'});}}
  q('ecoReliefShortcut').addEventListener('click',ecoToggleRelief);
  ecoSyncReliefButtons();
  q('ecoContoursShortcut').onclick=()=>{
