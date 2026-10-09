@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ECOUAV · Versión escritorio</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#071420;color:#e9f7ff}
+header{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;background:#091c2b;border-bottom:1px solid #2a6582;min-height:55px}
+.brand{font-weight:800;font-size:17px;white-space:nowrap}
+.brand i{font-style:normal;color:#3bcbff;margin-right:6px}
+.controls{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+button,.back{background:#14344a;border:1px solid #3d7694;color:#e2f6ff;padding:8px 10px;border-radius:8px;font-size:12px;cursor:pointer;text-decoration:none;white-space:nowrap}
+button:hover,.back:hover{background:#205572}
+button:focus-visible,.back:focus-visible{outline:2px solid #64dfff}
+#zoomStatus{font-size:12px;color:#8dd7f6;min-width:43px;text-align:center}
+#stage{width:100%;height:calc(100dvh - 55px);overflow:auto;position:relative;overscroll-behavior:contain;background:#06121f}
+#surface{position:relative;min-width:1px;min-height:1px;transform-origin:top left}
+#desktopApp{position:absolute;left:0;top:0;width:1500px;height:900px;border:0;display:block;transform-origin:top left;background:#0a1b28}
+#note{position:absolute;left:12px;top:14px;padding:7px 10px;border:1px solid #315b72;background:#081b2be9;border-radius:8px;font-size:11px;z-index:1;pointer-events:none}
+@media(max-width:720px){
+ header{height:55px;padding:5px 7px}
+ .brand{font-size:12px}
+ button,.back{font-size:11px;padding:7px}
+ #stage{height:calc(100dvh - 55px)}
+}
+@media(max-width:410px){
+ .brand span{display:none}
+ .back{padding:6px}
+ .controls{gap:3px}
+ #note{font-size:10px}
+}
+</style>
+</head>
+<body>
+<header>
+ <div class="brand"><i>◈</i>ECOUAV <span>· Escritorio</span></div>
+ <div class="controls">
+  <button id="fit" type="button" title="Mostrar las tres columnas">Ajustar</button>
+  <button id="zoomOut" type="button" aria-label="Alejar">−</button>
+  <output id="zoomStatus">100 %</output>
+  <button id="zoomIn" type="button" aria-label="Ampliar">+</button>
+  <a class="back" href="./index.html" title="Volver a la versión adaptable">Móvil</a>
+ </div>
+</header>
+<div id="stage">
+ <div id="surface">
+  <iframe id="desktopApp" src="./index.html?view=desktop&v=desktop-direct-1" title="ECOUAV: interfaz de escritorio con menú, mapa y panel derecho" allowfullscreen></iframe>
+ </div>
+ <div id="note">Vista de escritorio real · usa + para ampliar y desplázate horizontalmente</div>
+</div>
+<script>
+(function(){
+ const designWidth=1500,designHeight=900;
+ const stage=document.getElementById('stage'),surface=document.getElementById('surface'),frame=document.getElementById('desktopApp'),out=document.getElementById('zoomStatus');
+ let scale=1,followFit=true;
+ function apply(){
+  surface.style.width=Math.round(designWidth*scale)+'px';
+  surface.style.height=Math.round(designHeight*scale)+'px';
+  frame.style.transform='scale('+scale+')';
+  out.textContent=Math.round(scale*100)+' %';
+ }
+ function fit(){
+  followFit=true;
+  scale=Math.min(1,Math.max(.18,(stage.clientWidth-2)/designWidth));
+  apply();
+  stage.scrollLeft=0;stage.scrollTop=0;
+ }
+ function manual(delta){
+  followFit=false;scale=Math.min(1.5,Math.max(.2,scale*delta));apply();
+ }
+ document.getElementById('fit').onclick=fit;
+ document.getElementById('zoomIn').onclick=()=>manual(1.4);
+ document.getElementById('zoomOut').onclick=()=>manual(1/1.4);
+ window.addEventListener('resize',()=>{if(followFit)fit()});
+ fit();
+})();
+</script>
+</body>
+</html>
