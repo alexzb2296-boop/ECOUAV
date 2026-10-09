@@ -517,7 +517,7 @@ preserveAspectRatio="none">
 <div class="field"><label>Señal medida opcional (dBm)</label><input id="ecoRfMeasured" type="number" min="-150" max="20" step="1" placeholder="Sin medición"></div>
 </div>
 <div class="actions"><button id="ecoLoadSurface" type="button">⛰️ Cargar terreno 3D en antena</button><label style="display:inline-flex;gap:6px;align-items:center;font-size:12px"><input id="ecoPreferIgn" type="checkbox" checked> Priorizar IGN MDT (experimental)</label><button id="ecoResetCamera" type="button">◎ Centrar cámara</button></div>
-<div id="ecoSurfaceStatus" class="mini">Selecciona una antena en el mapa para cargar una cuadrícula DEM local.</div>
+<div class="field"><label>Exageración visual del relieve</label><input id="ecoTerrainExaggeration" type="range" min="1" max="8" value="3" step=".5"></div><div id="ecoSurfaceStatus" class="mini">Selecciona una antena en el mapa para cargar una cuadrícula DEM local.</div>
 <div id="ecoRfStatus" class="mini">RF: parámetros declarados y mediciones introducidas por el usuario. Sin predicción de cobertura.</div>
 <div id="soma3d" style="width:100%;height:350px;min-height:280px;background:#0d161e;border-radius:10px;overflow:hidden;position:relative;touch-action:none" aria-label="Visor tridimensional interactivo del lóbulo de antena"><div class="mini" style="padding:18px">Preparando visor 3D…</div></div>
 <div class="actions"><button id="terrain3dToggle">⛰️ Mostrar relieve de ruta en 3D</button></div><div id="terrain3dInfo" class="mini">Analiza primero el relieve de una ruta para mostrar su perfil y sombreado topográfico en el visor 3D.</div><div class="mini">El sombreado indica únicamente iluminación esquemática del relieve; no representa sombras de radio ni predice cobertura de señal.</div><div class="mini">Vista 3D interactiva: arrastra para girar y usa la rueda para acercar. El volumen representa una apertura ilustrativa, no ganancia, alcance ni patrón medido.</div>
@@ -4898,7 +4898,7 @@ async function ecoLoadSiteSurface(){
 }
 $('ecoLoadSurface').addEventListener('click',ecoLoadSiteSurface);
 $('ecoResetCamera').addEventListener('click',()=>{eco3dAzimuth=null;eco3dElevation=null;eco3dZoom=1;eco3dCamera()});
-['ecoSiteHeight','ecoBeamHeading','ecoRfPower','ecoRfMeasured'].forEach(id=>$(id).addEventListener('input',()=>{ecoRfRefresh();if(id==='ecoSiteHeight'||id==='ecoBeamHeading')renderSoma3D()}));
+['ecoSiteHeight','ecoBeamHeading','ecoRfPower','ecoRfMeasured','ecoTerrainExaggeration'].forEach(id=>$(id).addEventListener('input',()=>{ecoRfRefresh();if(id==='ecoSiteHeight'||id==='ecoBeamHeading'||id==='ecoTerrainExaggeration')renderSoma3D()}));
 $('antId').addEventListener('change',()=>{ecoSiteSurface=null;ecoSiteRequest++;$('ecoSurfaceStatus').textContent='Antena cambiada. Carga de nuevo el DEM local.';ecoRfRefresh()});
 $('antennaModel').addEventListener('change',ecoRfRefresh);
 $('somaFreq').addEventListener('input',ecoRfRefresh);
@@ -4975,7 +4975,7 @@ function eco3dDraw(){
   const t=i/rings,rad=Math.sin(Math.PI*t)*.72,x=t*2.5-.2;
   for(let j=0;j<=sides;j++){
    const a=2*Math.PI*j/sides;
-   vertices.push(x,rad*Math.sin(a)*Math.tan(v*Math.PI/360)/Math.tan(Math.PI/6),rad*Math.cos(a)*Math.tan(h*Math.PI/360)/Math.tan(Math.PI/6));
+   vertices.push(x,rad*Math.sin(a)*Math.min(1.55,Math.tan(v*Math.PI/360)/Math.tan(Math.PI/6)),rad*Math.cos(a)*Math.min(1.55,Math.tan(h*Math.PI/360)/Math.tan(Math.PI/6)));
   }
  }
  for(let i=0;i<rings;i++)for(let j=0;j<sides;j++){const a=i*(sides+1)+j,b=a+sides+1;indices.push(a,b,a+1,b,b+1,a+1);}
@@ -4989,15 +4989,11 @@ function eco3dDraw(){
  // Heading rotates the illustrative beam; camera controls remain independent.
  mesh.rotation.y=-heading;
 
- geometry.computeBoundingSphere();
- eco3d.focus=geometry.boundingSphere.center.clone();
- eco3d.radius=geometry.boundingSphere.radius;
- // Include a small margin for the grid and axis marker.
- eco3d.radius=Math.max(eco3d.radius,1.7);
+ // Framing is calculated below from the transformed, world-space scene.
  const active=antennas[$('antId').value];
  if(ecoSiteSurface&&active&&Math.abs(active.lat-ecoSiteSurface.lat)<.00001&&Math.abs(active.lng-ecoSiteSurface.lng)<.00001){
   const d=ecoSiteSurface,n=d.n,verts=[],idx=[],base=d.heights[Math.floor(n*n/2)];
-  const horizontalScale=2.8/(d.half*2),verticalScale=horizontalScale;
+  const horizontalScale=2.8/(d.half*2),verticalScale=horizontalScale*Number($('ecoTerrainExaggeration').value||1);
   for(let j=0;j<n;j++)for(let i=0;i<n;i++){
    const east=(i/(n-1)*2-1)*d.half,north=(j/(n-1)*2-1)*d.half;
    verts.push(east*horizontalScale,(d.heights[j*n+i]-base)*verticalScale-.35,north*horizontalScale);
@@ -5013,7 +5009,7 @@ function eco3dDraw(){
   // Move illustrative beam origin to the antenna installation height; size is intentionally not a metric RF footprint.
   mesh.position.set(.2,-.35+poleHeight,0);
   scene.add(group);eco3d.terrain=group;
-  $('terrain3dInfo').textContent='Superficie DEM local y antena en una escena. Escala del terreno métrica; tamaño del haz ilustrativo y no proporcional al alcance.';
+  $('terrain3dInfo').textContent='DEM local de 800 × 800 m · relieve exagerado visualmente ×'+$('ecoTerrainExaggeration').value+' · haz ilustrativo sin escala de alcance.';
  }else if(showRouteTerrain3d&&active&&routeTerrain3d?.length>1){
   const pts=routeTerrain3d.map(p=>({x:(p.lng-active.lng)*111320*Math.cos(active.lat*Math.PI/180),y:(p.lat-active.lat)*111320,z:p.z}));
   const maxD=Math.max(50,...pts.map(p=>Math.hypot(p.x,p.y))),z0=pts[0].z;
@@ -5022,6 +5018,15 @@ function eco3dDraw(){
   scene.add(g);eco3d.terrain=g;
   $('terrain3dInfo').textContent='Traza de terreno junto al lóbulo · escala de la traza relativa a su extensión. No representa cobertura ni obstáculos completos.';
  }else if(showRouteTerrain3d)$('terrain3dInfo').textContent='Para ver la traza, coloca una antena y analiza una ruta.';
+ // Calculate bounds AFTER heading rotation, antenna placement and terrain mesh.
+ // The previous camera used untransformed mesh bounds, placing the beam off-screen.
+ scene.updateMatrixWorld(true);
+ const bounds=new THREE.Box3().setFromObject(mesh);
+ if(eco3d.terrain)bounds.union(new THREE.Box3().setFromObject(eco3d.terrain));
+ if(!bounds.isEmpty()){
+  eco3d.focus=bounds.getCenter(new THREE.Vector3());
+  eco3d.radius=Math.max(1.7,bounds.getSize(new THREE.Vector3()).length()*.55);
+ }
  eco3dCamera();
 }
 renderSoma3D=function(){
