@@ -231,6 +231,22 @@ min-height:390px
 .card{padding:11px}
 .actions button{min-height:42px}
 }
+
+/* ECOUAV workspace: additions remain separate from legacy map controls */
+#ecoWorkspace{margin:12px 14px 18px;padding:15px;border:1px solid #30485a;border-radius:14px;background:#101b25}
+#ecoWorkspace .ecoTabs{display:flex;gap:7px;flex-wrap:wrap;margin:12px 0}
+#ecoWorkspace .ecoTabs button[aria-selected="true"]{background:#d6efff;color:#10202b}
+#ecoWorkspace .ecoView{display:none}
+#ecoWorkspace .ecoView.ecoActive{display:block}
+#ecoWorkspace .ecoCells{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
+#ecoWorkspace .ecoBox{padding:12px;border:1px solid #283d4b;border-radius:10px;background:#14232e;min-width:0}
+#ecoWorkspace .ecoBox label{display:block;margin:6px 0;color:#b7d0df;font-size:13px}
+#ecoWorkspace .ecoBox select,#ecoWorkspace .ecoBox input{max-width:100%;padding:8px;background:#0e1922;color:#f1f7fa;border:1px solid #425465;border-radius:7px}
+#ecoWorkspace button{margin:4px 3px 4px 0}
+#ecoWorkspace .ecoMessage{font-size:13px;line-height:1.45;color:#b4c8d7;overflow-wrap:anywhere}
+#ecoWorkspace #ecoProfileSvg{width:100%;height:170px;display:block;background:#0d1b24;border-radius:8px}
+#ecoWorkspace .ecoHint{color:#a1b7c5;font-size:12px}
+
 </style>
 </head>
 
@@ -254,6 +270,50 @@ Planificador UAS · Terreno · RF · Rutas · Misiones
 </div>
 
 </header>
+
+<!-- ECOUAV unified workspace; existing tools below remain intact -->
+<section id="ecoWorkspace" aria-label="Centro de herramientas ECOUAV">
+ <div><strong>🧭 Centro ECOUAV</strong> <small style="color:#94b5c7">Terreno · Meteo · Antenas · Vuelos · Proyectos</small></div>
+ <div class="ecoTabs" role="tablist" aria-label="Herramientas">
+  <button type="button" data-ecotab="terrain" aria-selected="true">⛰️ Terreno</button>
+  <button type="button" data-ecotab="weather" aria-selected="false">🌬️ Meteo</button>
+  <button type="button" data-ecotab="antenna" aria-selected="false">📡 Antenas</button>
+  <button type="button" data-ecotab="flights" aria-selected="false">🛩️ Vuelos</button>
+  <button type="button" data-ecotab="projects" aria-selected="false">💾 Proyectos</button>
+ </div>
+ <div class="ecoView ecoActive" data-ecoview="terrain">
+  <div class="ecoCells">
+   <div class="ecoBox"><strong>Cartografía</strong><label for="ecoBase">Mapa base</label><select id="ecoBase"><option value="esri">Satélite Esri</option><option value="pnoa">Ortofoto PNOA · IGN</option><option value="osm">OpenStreetMap</option></select><div class="ecoHint">PNOA procede del servicio público WMTS del IGN; necesita conexión.</div></div>
+   <div class="ecoBox"><strong>Relieve</strong><p class="ecoMessage">MDT05 del IGN cuando sus teselas estén disponibles. Curvas de nivel y visor 3D siguen en las herramientas existentes.</p><button id="ecoContoursShortcut" type="button">Mostrar/ocultar curvas DEM</button><button id="eco3dShortcut" type="button">Ir al visor 3D</button></div>
+   <div class="ecoBox"><strong>Información UAS oficial</strong><p class="ecoMessage">Comprueba zonas geográficas UAS y sus condiciones en la fuente oficial; ECOUAV no autoriza vuelos.</p><a href="https://drones.enaire.es/" target="_blank" rel="noopener noreferrer">Abrir ENAIRE Drones ↗</a></div>
+  </div>
+ </div>
+ <div class="ecoView" data-ecoview="weather">
+  <div class="ecoCells">
+   <div class="ecoBox"><strong>Previsión local</strong><p class="ecoHint">Consulta el centro actual del mapa (no la ubicación personal).</p><button id="ecoWeatherLoad" type="button">Consultar meteorología</button><p id="ecoWeatherStatus" class="ecoMessage">Sin datos cargados.</p></div>
+   <div class="ecoBox"><strong>Condiciones</strong><div id="ecoWeatherReading" class="ecoMessage">Temperatura, viento, rachas, precipitación y nubosidad, con fecha y hora del pronóstico.</div></div>
+  </div>
+ </div>
+ <div class="ecoView" data-ecoview="antenna">
+  <div class="ecoCells">
+   <div class="ecoBox"><strong>Visor de antenas</strong><p class="ecoMessage">Antenas A/B/C, altura del mástil, orientación y lóbulo 3D ilustrativo; sin predicción de cobertura RF.</p><button type="button" id="ecoAntennaShortcut">Abrir controles 3D</button></div>
+   <div class="ecoBox"><strong>Modelos de superficie</strong><p class="ecoMessage">MDT = elevación del suelo. MDS = elevación de la superficie visible, incluidos objetos cuando existan. La comparación MDT/MDS requiere datos MDS compatibles: aún no está conectada.</p></div>
+  </div>
+ </div>
+ <div class="ecoView" data-ecoview="flights">
+  <div class="ecoCells">
+   <div class="ecoBox"><strong>Importar registros</strong><label for="ecoFlightFile">GPX o CSV con latitud y longitud</label><input id="ecoFlightFile" type="file" accept=".gpx,.csv,text/csv,application/gpx+xml"><p class="ecoHint">Para CSV: columnas lat, lon (o latitude, longitude); tiempo y altitud opcionales.</p><button id="ecoClearFlight" type="button">Quitar trayecto importado</button><p id="ecoFlightInfo" class="ecoMessage">Sin registro.</p></div>
+   <div class="ecoBox"><strong>Perfil del recorrido</strong><button id="ecoProfileLoad" type="button">Consultar elevación del suelo</button><svg id="ecoProfileSvg" viewBox="0 0 520 170" aria-label="Gráfico de perfil de elevación"><text x="20" y="80" fill="#a9c3d4" font-size="14">Importa un GPX o CSV para comenzar</text></svg><p id="ecoProfileInfo" class="ecoMessage">Las cotas del perfil provienen de una consulta independiente al servicio de elevación; no son alturas de vuelo.</p></div>
+  </div>
+ </div>
+ <div class="ecoView" data-ecoview="projects">
+  <div class="ecoCells">
+   <div class="ecoBox"><strong>Guardar sesión</strong><label for="ecoProjectName">Nombre del proyecto</label><input id="ecoProjectName" maxlength="70" value="Proyecto ECOUAV"><button id="ecoProjectSave" type="button">Guardar en este navegador</button><button id="ecoProjectExport" type="button">Exportar JSON</button></div>
+   <div class="ecoBox"><strong>Recuperar sesión</strong><label for="ecoProjectSelect">Proyectos locales</label><select id="ecoProjectSelect"></select><button id="ecoProjectRestore" type="button">Restaurar</button><button id="ecoProjectDelete" type="button">Eliminar</button><label for="ecoProjectImport">Importar JSON</label><input id="ecoProjectImport" type="file" accept=".json,application/json"></div>
+  </div><p id="ecoProjectStatus" class="ecoMessage">Se guardan el encuadre, el mapa base, las posiciones A/B/C y los ajustes seleccionados. No se copian datos de elevación a la nube.</p>
+ </div>
+</section>
+
 
 
 <div style="position:relative">
@@ -5212,6 +5272,135 @@ $('removeZoneGrid').onclick=()=>{zoneGrid=null;zoneGridLayer.clearLayers();$('zo
 $('zoneCellSize').onchange=()=>{if(zoneGrid){zoneGrid.cell=+$('zoneCellSize').value;renderZoneGrid();}};
 
 refreshMissions();
+
+
+
+/* ECOUAV integrated modes, 2026-10. Visual and historical analysis only. */
+(function(){
+ const root=document.getElementById('ecoWorkspace');
+ if(!root)return;
+ const q=id=>document.getElementById(id);
+ const msg=(id,t)=>{q(id).textContent=t};
+ let ecoImported=[],ecoImportedLayer=L.layerGroup().addTo(map),ecoBaseNow='esri';
+ const pnoa=L.tileLayer('https://www.ign.es/wmts/pnoa-ma?service=WMTS&request=GetTile&version=1.0.0&layer=OI.OrthoimageCoverage&style=default&format=image/jpeg&tilematrixset=GoogleMapsCompatible&TileMatrix={z}&TileRow={y}&TileCol={x}',{maxZoom:20,maxNativeZoom:18,attribution:'Ortofotos © IGN/CNIG · PNOA'});
+ pnoa.on('tileerror',()=>{msg('ecoProjectStatus','Una tesela PNOA no ha podido cargarse. Prueba otro mapa base o verifica la conexión.');});
+ function selectBase(value){
+  if(!['esri','pnoa','osm'].includes(value))return;
+  for(const l of [satellite,pnoa,fallbackBase])if(map.hasLayer(l))map.removeLayer(l);
+  (value==='pnoa'?pnoa:value==='osm'?fallbackBase:satellite).addTo(map);
+  ecoBaseNow=value;q('ecoBase').value=value;
+ }
+ q('ecoBase').addEventListener('change',e=>selectBase(e.target.value));
+ root.querySelectorAll('[data-ecotab]').forEach(b=>b.addEventListener('click',()=>{
+  const which=b.dataset.ecotab;
+  root.querySelectorAll('[data-ecotab]').forEach(x=>x.setAttribute('aria-selected',String(x===b)));
+  root.querySelectorAll('[data-ecoview]').forEach(x=>x.classList.toggle('ecoActive',x.dataset.ecoview===which));
+ }));
+ function jump(el){if(el){el.scrollIntoView({behavior:'smooth',block:'center'});}}
+ q('ecoContoursShortcut').onclick=()=>{if(typeof demContoursOn!=='undefined'){const b=q('contourControls');if(b){b.classList.remove('hidden');jump(b)}}};
+ q('eco3dShortcut').onclick=()=>jump(q('soma3d'));
+ q('ecoAntennaShortcut').onclick=()=>jump(q('soma3d'));
+ q('ecoWeatherLoad').onclick=async()=>{
+  const btn=q('ecoWeatherLoad'),center=map.getCenter();btn.disabled=true;
+  msg('ecoWeatherStatus','Consultando Open-Meteo en '+center.lat.toFixed(4)+', '+center.lng.toFixed(4)+'…');
+  try{
+   const params=new URLSearchParams({latitude:center.lat.toFixed(5),longitude:center.lng.toFixed(5),timezone:'auto',forecast_days:'2',current:'temperature_2m,wind_speed_10m,wind_gusts_10m,wind_direction_10m,precipitation,cloud_cover',wind_speed_unit:'kmh'});
+   const res=await fetch('https://api.open-meteo.com/v1/forecast?'+params,{signal:AbortSignal.timeout(12000)});
+   if(!res.ok)throw Error('HTTP '+res.status);
+   const data=await res.json(),v=data.current;
+   if(!v)throw Error('No hay valores actuales');
+   msg('ecoWeatherReading','Temperatura: '+v.temperature_2m+' °C · Viento a 10 m: '+v.wind_speed_10m+' km/h · Dirección: '+v.wind_direction_10m+'° · Rachas: '+v.wind_gusts_10m+' km/h · Precipitación: '+v.precipitation+' mm · Nubosidad: '+v.cloud_cover+' %.');
+   msg('ecoWeatherStatus','Open-Meteo · '+v.time+' ('+(data.timezone_abbreviation||data.timezone||'hora local')+') · lat '+center.lat.toFixed(4)+' lon '+center.lng.toFixed(4)+'. Datos de modelo; no sustituyen una estación local.');
+  }catch(e){msg('ecoWeatherStatus','No se pudieron consultar las condiciones: '+(e.message||e));}
+  finally{btn.disabled=false;}
+ };
+ function extractCSV(text){
+  const lines=text.replace(/^\uFEFF/,'').trim().split(/\r?\n/);
+  const sep=(lines[0].match(/;/g)||[]).length>(lines[0].match(/,/g)||[]).length?';':',';
+  const names=lines.shift().split(sep).map(x=>x.trim().replace(/['"]/g,'').toLowerCase());
+  const pick=opts=>names.findIndex(x=>opts.includes(x));
+  const a=pick(['lat','latitude','latitud']),b=pick(['lon','lng','longitude','longitud']);
+  const z=pick(['alt','altitude','elevation','elev','altura']);
+  if(a<0||b<0)throw Error('El CSV necesita columnas lat y lon');
+  return lines.map(line=>{const f=line.split(sep);return {lat:Number(f[a]),lng:Number(f[b]),z:z<0?null:Number(f[z])}}).filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lng)&&Math.abs(p.lat)<=90&&Math.abs(p.lng)<=180);
+ }
+ function extractGPX(text){
+  const doc=new DOMParser().parseFromString(text,'text/xml');
+  if(doc.querySelector('parsererror'))throw Error('Archivo GPX no válido');
+  return [...doc.getElementsByTagName('*')].filter(e=>['trkpt','rtept'].includes(e.localName)).map(e=>({
+   lat:Number(e.getAttribute('lat')),lng:Number(e.getAttribute('lon')),
+   z:Number([...e.children].find(k=>k.localName==='ele')?.textContent)
+  })).filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lng)&&Math.abs(p.lat)<=90&&Math.abs(p.lng)<=180);
+ }
+ function showTrack(points){
+  ecoImported=points;ecoImportedLayer.clearLayers();
+  if(!points.length){msg('ecoFlightInfo','Sin registro.');return;}
+  const ll=points.map(p=>[p.lat,p.lng]);
+  const line=L.polyline(ll,{color:'#ffd166',weight:3,opacity:.95}).addTo(ecoImportedLayer);
+  if(points.length>1)map.fitBounds(line.getBounds().pad(.15),{maxZoom:15});
+  let length=0;for(let i=1;i<points.length;i++)length+=L.latLng(ll[i-1]).distanceTo(L.latLng(ll[i]));
+  msg('ecoFlightInfo',points.length+' puntos · '+(length/1000).toFixed(2)+' km · trayecto histórico importado (no posición en tiempo real).');
+  msg('ecoProfileInfo','Perfil no cargado. Pulsa Consultar elevación del suelo.');
+ }
+ q('ecoFlightFile').addEventListener('change',async e=>{
+  const f=e.target.files?.[0];if(!f)return;
+  try{if(f.size>5*1024*1024)throw Error('Máximo 5 MB');const t=await f.text(),points=/\.gpx$/i.test(f.name)?extractGPX(t):extractCSV(t);if(points.length<2)throw Error('Se necesitan al menos dos puntos válidos');showTrack(points);}
+  catch(err){msg('ecoFlightInfo','Error de importación: '+(err.message||err));}
+ });
+ q('ecoClearFlight').onclick=()=>{showTrack([]);q('ecoFlightFile').value='';};
+ q('ecoProfileLoad').onclick=async()=>{
+  if(ecoImported.length<2){msg('ecoProfileInfo','Importa primero un trayecto GPX o CSV.');return;}
+  const btn=q('ecoProfileLoad');btn.disabled=true;msg('ecoProfileInfo','Consultando cotas del terreno…');
+  try{
+   const count=Math.min(60,ecoImported.length);
+   const sample=Array.from({length:count},(_,i)=>ecoImported[Math.round(i*(ecoImported.length-1)/(count-1))]);
+   const hs=await fetchElevPoints(sample);
+   if(hs.length!==count||hs.some(v=>!Number.isFinite(v)))throw Error('Respuesta incompleta');
+   let distances=[0];for(let i=1;i<count;i++)distances.push(distances[i-1]+L.latLng(sample[i-1]).distanceTo(L.latLng(sample[i])));
+   const min=Math.min(...hs),max=Math.max(...hs),range=Math.max(1,max-min),total=Math.max(1,distances[count-1]);
+   const coords=hs.map((h,i)=>(38+distances[i]/total*464).toFixed(1)+','+(142-(h-min)/range*109).toFixed(1)).join(' ');
+   q('ecoProfileSvg').innerHTML='<line x1="38" y1="142" x2="502" y2="142" stroke="#7890a0"/><polyline points="'+coords+'" fill="none" stroke="#67d3a1" stroke-width="2.5"/><text x="8" y="22" fill="#bbd9df" font-size="12">'+Math.round(max)+' m</text><text x="8" y="157" fill="#bbd9df" font-size="12">'+Math.round(min)+' m</text><text x="435" y="163" fill="#bbd9df" font-size="11">'+(total/1000).toFixed(2)+' km</text>';
+   msg('ecoProfileInfo','Elevación del terreno de Open-Meteo · '+count+' muestras · mínima '+min.toFixed(0)+' m · máxima '+max.toFixed(0)+' m. No indica altura del vehículo ni cobertura RF.');
+  }catch(err){msg('ecoProfileInfo','Error de perfil: '+(err.message||err));}
+  finally{btn.disabled=false;}
+ };
+ const key='ecouav-workspace-projects-v1';
+ function read(){try{const v=JSON.parse(localStorage.getItem(key)||'{}');return v&&typeof v==='object'&&!Array.isArray(v)?v:{}}catch{return {}}}
+ function write(x){localStorage.setItem(key,JSON.stringify(x));}
+ function capture(){
+  const c=map.getCenter();
+  return {version:1,created:new Date().toISOString(),map:{lat:c.lat,lng:c.lng,zoom:map.getZoom(),base:ecoBaseNow},antennas:JSON.parse(JSON.stringify(antennas)),selectedAntenna:q('antId')?.value||'A',siteHeight:q('ecoSiteHeight')?.value||'3',beamHeading:q('ecoBeamHeading')?.value||'90',terrainExaggeration:q('ecoTerrainExaggeration')?.value||'3',flightPoints:ecoImported.slice(0,5000)};
+ }
+ function validate(p){
+  if(!p||p.version!==1||!p.map||!Number.isFinite(Number(p.map.lat))||!Number.isFinite(Number(p.map.lng))||Math.abs(Number(p.map.lat))>90||Math.abs(Number(p.map.lng))>180||!['esri','osm','pnoa'].includes(p.map.base))throw Error('Formato de proyecto incompatible');
+ }
+ function restore(p){
+  validate(p);map.setView([p.map.lat,p.map.lng],Math.min(19,Math.max(2,Number(p.map.zoom)||6)));selectBase(p.map.base);
+  if(p.antennas&&typeof p.antennas==='object'){
+   for(const k of ['A','B','C']){
+    const v=p.antennas[k];
+    if(v===null||v===undefined){antennas[k]=null;continue;}
+    if(Number.isFinite(Number(v.lat))&&Number.isFinite(Number(v.lng))&&Math.abs(v.lat)<=90&&Math.abs(v.lng)<=180)antennas[k]={lat:Number(v.lat),lng:Number(v.lng)};
+   }
+   if(typeof renderAntennas==='function')renderAntennas();
+  }
+  if(q('antId')&&['A','B','C'].includes(p.selectedAntenna))q('antId').value=p.selectedAntenna;
+  for(const [id,val] of [['ecoSiteHeight',p.siteHeight],['ecoBeamHeading',p.beamHeading],['ecoTerrainExaggeration',p.terrainExaggeration]])if(q(id)&&val!==undefined){q(id).value=val;q(id).dispatchEvent(new Event('input'));}
+  if(Array.isArray(p.flightPoints))showTrack(p.flightPoints.filter(x=>Number.isFinite(x.lat)&&Number.isFinite(x.lng)).slice(0,5000));
+  msg('ecoProjectStatus','Proyecto restaurado. Comprueba las antenas y los ajustes antes de continuar.');
+ }
+ function refresh(){
+  const list=q('ecoProjectSelect'),d=read();list.innerHTML='';
+  Object.keys(d).sort().forEach(k=>{const o=document.createElement('option');o.value=k;o.textContent=k;list.appendChild(o)});
+ }
+ q('ecoProjectSave').onclick=()=>{try{const name=q('ecoProjectName').value.trim().slice(0,70);if(!name)throw Error('Escribe un nombre');const data=read();data[name]=capture();write(data);refresh();q('ecoProjectSelect').value=name;msg('ecoProjectStatus','Guardado localmente: '+name);}catch(e){msg('ecoProjectStatus','No se pudo guardar: '+e.message)}};
+ q('ecoProjectRestore').onclick=()=>{try{const p=read()[q('ecoProjectSelect').value];restore(p)}catch(e){msg('ecoProjectStatus','No se pudo restaurar: '+e.message)}};
+ q('ecoProjectDelete').onclick=()=>{const d=read(),name=q('ecoProjectSelect').value;if(!name)return;delete d[name];write(d);refresh();msg('ecoProjectStatus','Proyecto local eliminado: '+name)};
+ function download(obj,name){const url=URL.createObjectURL(new Blob([JSON.stringify(obj,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+ q('ecoProjectExport').onclick=()=>download(capture(),'ecouav-proyecto.json');
+ q('ecoProjectImport').onchange=async e=>{const f=e.target.files?.[0];if(!f)return;try{if(f.size>3*1024*1024)throw Error('Máximo 3 MB');const v=JSON.parse(await f.text());validate(v);restore(v);msg('ecoProjectStatus','Proyecto JSON importado y abierto. Usa Guardar para conservarlo localmente.')}catch(err){msg('ecoProjectStatus','Importación fallida: '+err.message)}};
+ refresh();
+})();
 
 
 setTimeout(
