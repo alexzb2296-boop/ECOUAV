@@ -510,7 +510,7 @@ preserveAspectRatio="none">
 <div class="label" style="margin-top:12px">🧊 HAZ 3D · MODELO ILUSTRATIVO</div>
 <div class="formgrid"><div class="field"><label>Girar vista (°)</label><input id="somaRotate" type="range" min="0" max="360" value="35"></div><div class="field"><label>Inclinación (°)</label><input id="somaTilt" type="range" min="10" max="80" value="30"></div></div>
 <svg id="soma3d" viewBox="0 0 640 350" style="width:100%;max-height:350px;background:#0d161e;border-radius:10px" aria-label="Representación tridimensional ilustrativa del lóbulo de antena"></svg>
-<div class="mini">Vista 3D esquemática y giratoria; no representa ganancia, alcance ni patrón de radiación medido.</div>
+<div class="actions"><button id="terrain3dToggle">⛰️ Mostrar relieve de ruta en 3D</button></div><div id="terrain3dInfo" class="mini">Analiza primero el relieve de una ruta para mostrar su perfil y sombreado topográfico en el visor 3D.</div><div class="mini">El sombreado indica únicamente iluminación esquemática del relieve; no representa sombras de radio ni predice cobertura de señal.</div><div class="mini">Vista 3D esquemática y giratoria; no representa ganancia, alcance ni patrón de radiación medido.</div>
 <div class="mini">Polarización circular RHCP: el campo eléctrico rota durante la propagación. La apertura real horizontal/vertical requiere datos medidos del fabricante. Este dibujo no representa una medición.</div>
 </div>
 <div id="routeProfileCard" class="card full">
@@ -4482,6 +4482,8 @@ async function analyzeRouteTerrainMap(){
    for(let i=0;i<n-(k<legs.length-1?1:0);i++){const t=i/(n-1);samples.push(L.latLng(g.a.lat+(g.b.lat-g.a.lat)*t,g.a.lng+(g.b.lng-g.a.lng)*t));}
   }
   const e=await fetchElevPoints(samples);routeTerrainLayer.clearLayers();
+  routeTerrain3d=e.map((z,i)=>({z,lat:samples[i].lat,lng:samples[i].lng}));
+  if(showRouteTerrain3d)renderSoma3D();
   let up=0,down=0;
   for(let i=1;i<samples.length;i++){
    const dz=e[i]-e[i-1];if(dz>0)up+=dz;else down-=dz;
@@ -4587,6 +4589,13 @@ document.getElementById('antennaModel').addEventListener('change',()=>{
 document.getElementById('somaFreq').addEventListener('input',renderSomaViewer);
 document.getElementById('somaAngle').addEventListener('input',renderSomaViewer);
 
+let routeTerrain3d=null,showRouteTerrain3d=false;
+document.getElementById('terrain3dToggle').addEventListener('click',()=>{
+ showRouteTerrain3d=!showRouteTerrain3d;
+ document.getElementById('terrain3dToggle').textContent=showRouteTerrain3d?'⛰️ Ocultar relieve 3D':'⛰️ Mostrar relieve de ruta en 3D';
+ document.getElementById('terrain3dInfo').textContent=routeTerrain3d?'Perfil de la última ruta analizada; sombreado visual del terreno, no de señal.':'Analiza primero el relieve de una ruta con el botón «Analizar relieve de ruta».';
+ renderSoma3D();
+});
 function renderSoma3D(){
  const svg=document.getElementById('soma3d'),isX2=document.getElementById('antennaModel').value==='x2air5',a=isX2?150:Number(document.getElementById('somaAngle').value)||60;
  const yaw=Number(document.getElementById('somaRotate').value)*Math.PI/180;
@@ -4608,6 +4617,22 @@ function renderSoma3D(){
  for(let k=1;k<10;k++){
   const p=[];for(let j=0;j<=48;j++)p.push(point(k/10,j*2*Math.PI/48).join(','));
   paths.push('<polygon points="'+p.join(' ')+'" fill="#59c3ff" fill-opacity=".025" stroke="#59c3ff" stroke-opacity=".5"/>');
+ }
+ if(showRouteTerrain3d&&routeTerrain3d&&routeTerrain3d.length>1){
+  const n=routeTerrain3d.length,zmin=Math.min(...routeTerrain3d.map(p=>p.z)),zmax=Math.max(...routeTerrain3d.map(p=>p.z)),span=Math.max(20,zmax-zmin);
+  const top=[],bottom=[];
+  for(let i=0;i<n;i++){
+   const u=i/(n-1),z=.12+.85*(routeTerrain3d[i].z-zmin)/span;
+   top.push(project(-.85+2.5*u,0,z));bottom.push(project(-.85+2.5*u,0,-.3));
+  }
+  const silhouette=top.concat(bottom.reverse()).map(p=>p.join(',')).join(' ');
+  paths.push('<polygon points="'+silhouette+'" fill="#344e43" fill-opacity=".78" stroke="#93b7a0" stroke-width="1.5"/>');
+  for(let i=1;i<n;i+=Math.max(1,Math.floor(n/22))){
+   const p=top[i],prev=top[Math.max(0,i-1)],up=Number(p[1])<Number(prev[1]);
+   paths.push('<path d="M'+p.join(' ')+' L'+project(-.85+2.5*i/(n-1),0,-.3).join(' ')+'" stroke="'+(up?'#648a78':'#1b302c')+'" stroke-opacity=".38" stroke-width="4"/>');
+  }
+  paths.push('<polyline points="'+top.map(p=>p.join(',')).join(' ')+'" fill="none" stroke="#ffce7a" stroke-width="2.5"/>');
+  paths.push('<text x="18" y="326" fill="#c8d8ce" font-size="13">Relieve de ruta · sombreado topográfico ilustrativo</text>');
  }
  const o=project(0,0,0),tip=project(1.8,0,0);
  paths.push('<path d="M'+o.join(' ')+' L'+tip.join(' ')+'" stroke="#fbbf24" stroke-dasharray="5 5" stroke-width="2"/>');
