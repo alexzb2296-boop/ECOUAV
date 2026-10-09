@@ -3961,15 +3961,43 @@ const ignReliefLayer=L.tileLayer('https://tms-relieve.idee.es/1.0.0/relieve/{z}/
  attribution:'Relieve © Instituto Geográfico Nacional (IGN), CNIG'
 });
 let ignReliefEnabled=false;
-$('ignReliefBtn').onclick=()=>{
- ignReliefEnabled=!map.hasLayer(ignReliefLayer);
- if(ignReliefEnabled){ignReliefLayer.addTo(map);$('ignReliefBtn').classList.add('active');}
- else{map.removeLayer(ignReliefLayer);$('ignReliefBtn').classList.remove('active');}
- const shortcut=$('ecoReliefShortcut');
- if(shortcut){shortcut.classList.toggle('active',ignReliefEnabled);shortcut.textContent=ignReliefEnabled?'✓ Desactivar relieve IGN':'🏔️ Activar relieve IGN';}
- const state=$('ecoReliefStatus');
- if(state)state.textContent=ignReliefEnabled?'Relieve visual IGN activo · MDT25 sombreado.':'Relieve visual IGN desactivado.';
-};
+let ignReliefTilesOk=0,ignReliefTilesFailed=0;
+function ecoSyncReliefButtons(){
+ const enabled=map.hasLayer(ignReliefLayer);
+ ignReliefEnabled=enabled;
+ for(const id of ['ignReliefBtn','ecoReliefShortcut']){
+  const btn=$(id);if(!btn)continue;
+  btn.classList.toggle('active',enabled);
+  btn.setAttribute('aria-pressed',String(enabled));
+ }
+ $('ecoReliefShortcut').textContent=enabled?'✓ Desactivar relieve IGN':'🏔️ Activar relieve IGN';
+ const status=$('ecoReliefStatus');
+ if(status)status.textContent=enabled
+  ?'Relieve IGN activado · preparando teselas…'
+  :'Capa visual IGN desactivada.';
+}
+function ecoToggleRelief(){
+ const enabled=map.hasLayer(ignReliefLayer);
+ if(enabled)map.removeLayer(ignReliefLayer);
+ else{
+  ignReliefTilesOk=0;ignReliefTilesFailed=0;
+  ignReliefLayer.addTo(map);
+  // An overlay above the satellite base is intentional; keep it visible.
+  ignReliefLayer.bringToFront();
+ }
+ ecoSyncReliefButtons();
+}
+ignReliefLayer.on('tileload',()=>{
+ ignReliefTilesOk++;
+ const status=$('ecoReliefStatus');
+ if(status&&map.hasLayer(ignReliefLayer))status.textContent='Relieve IGN activo · '+ignReliefTilesOk+' teselas cargadas'+(ignReliefTilesFailed?' · '+ignReliefTilesFailed+' errores':'')+'.';
+});
+ignReliefLayer.on('tileerror',()=>{
+ ignReliefTilesFailed++;
+ const status=$('ecoReliefStatus');
+ if(status&&map.hasLayer(ignReliefLayer))status.textContent='Relieve IGN activado, pero hay errores de descarga ('+ignReliefTilesFailed+'). Comprueba red y zoom.';
+});
+$('ignReliefBtn').addEventListener('click',ecoToggleRelief);
 /* ECOUAV v1.0 — cartografía local geográfica, almacenamiento y biblioteca */
 (function(){
  const status=$('geoStatus'),file=$('geoImportFile');
@@ -5309,16 +5337,8 @@ refreshMissions();
   root.querySelectorAll('[data-ecoview]').forEach(x=>x.classList.toggle('ecoActive',x.dataset.ecoview===which));
  }));
  function jump(el){if(el){el.scrollIntoView({behavior:'smooth',block:'center'});}}
- q('ecoReliefShortcut').onclick=()=>{
-  // Invoke the layer toggle itself rather than a synthetic click on a toolbar
-  // button that may be scrolled out of sight or covered on small displays.
-  const button=q('ignReliefBtn');
-  if(button&&typeof button.onclick==='function')button.onclick();
-  const enabled=typeof ignReliefLayer!=='undefined'&&map.hasLayer(ignReliefLayer);
-  q('ecoReliefShortcut').classList.toggle('active',enabled);
-  q('ecoReliefShortcut').textContent=enabled?'✓ Desactivar relieve IGN':'🏔️ Activar relieve IGN';
-  msg('ecoReliefStatus',enabled?'Capa visual IGN activada. Si no aparece, amplía a una zona de España y comprueba la conexión.':'Capa visual IGN desactivada.');
- };
+ q('ecoReliefShortcut').addEventListener('click',ecoToggleRelief);
+ ecoSyncReliefButtons();
  q('ecoContoursShortcut').onclick=()=>{
   const b=q('contourControls');if(b){b.classList.remove('hidden');jump(b);}
   if(typeof drawDemContours==='function')drawDemContours();
