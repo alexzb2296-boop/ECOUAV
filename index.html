@@ -4829,37 +4829,38 @@ function ecoRfRefresh(){
 }
 // IGN WCS: request numeric GeoTIFF; failures fall back to the existing elevation provider.
 // WCS coverage identifiers vary by zone, so we discover them from GetCapabilities.
-async function ecoLoadIgnMdt05(active,half,n){
- // Official OGC API Coverages: discover the current 5 m collection ID rather than guessing it.
+async function ecoLoadIgnMdt05(active,half,n,step=5){
+ // Official IGN OGC API Coverages. Try a bounded slice rather than asking the
+ // server to synthesize large response grids; keep authentic resolution labels.
  const root='https://api-coverages.idee.es';
- const response=await fetch(root+'/collections?f=json',{signal:AbortSignal.timeout(12000)});
- if(!response.ok)throw Error('API IGN catálogo HTTP '+response.status);
- const data=await response.json();
- // The official catalog uses titles like "DTM ... EPSG:4258 5" (not "MDT 5 m").
- // Use the verified 5 m EPSG:4258 collection for each geographical region.
  const isCanary=active.lat>27&&active.lat<30&&active.lng< -12;
- const id='EL.ElevationGridCoverage_4258_5_'+(isCanary?'C':'PB');
- const preferred=(data.collections||[]).find(c=>c.id===id);
- if(!preferred)throw Error('Colección IGN '+id+' no publicada en el catálogo');
- const latDelta=half/111320,lonDelta=half/(111320*Math.max(.2,Math.cos(active.lat*Math.PI/180)));
- const bbox=[active.lng-lonDelta,active.lat-latDelta,active.lng+lonDelta,active.lat+latDelta].join(',');
- const url=root+'/collections/'+encodeURIComponent(preferred.id)+'/coverage?'+new URLSearchParams({bbox,'f':'COG'});
- const res=await fetch(url,{signal:AbortSignal.timeout(25000)});
- if(!res.ok)throw Error('API IGN MDT05 HTTP '+res.status);
+ const id='EL.ElevationGridCoverage_4258_'+step+'_'+(isCanary?'C':'PB');
+ const dLat=half/111320,dLon=half/(111320*Math.max(.2,Math.cos(active.lat*Math.PI/180)));
+ const minLat=(active.lat-dLat).toFixed(7),maxLat=(active.lat+dLat).toFixed(7);
+ const minLon=(active.lng-dLon).toFixed(7),maxLon=(active.lng+dLon).toFixed(7);
+ const qs=new URLSearchParams({f:'COG'});
+ qs.append('subset','Lat('+minLat+':'+maxLat+')');
+ qs.append('subset','Long('+minLon+':'+maxLon+')');
+ const url=root+'/collections/'+encodeURIComponent(id)+'/coverage?'+qs.toString();
+ const res=await fetch(url,{signal:AbortSignal.timeout(22000)});
+ if(!res.ok){
+  let detail='';
+  if(res.status!==500)detail=(await res.text().catch(()=>'')).slice(0,150).replace(/<[^>]*>/g,' ').trim();
+  throw Error('MDT'+String(step).padStart(2,'0')+' HTTP '+res.status+(detail?' '+detail:''));
+ }
  const buffer=await res.arrayBuffer();
- if(buffer.byteLength>24*1024*1024)throw Error('MDT05 excede tamaño máximo');
+ if(buffer.byteLength>24*1024*1024)throw Error('Descarga IGN demasiado grande');
  const header=new Uint8Array(buffer,0,Math.min(4,buffer.byteLength));
- if(!((header[0]===73&&header[1]===73)||(header[0]===77&&header[1]===77)))throw Error('API IGN no devolvió TIFF (formato incompatible)');
+ if(!((header[0]===73&&header[1]===73)||(header[0]===77&&header[1]===77)))throw Error('IGN no devolvió GeoTIFF');
  if(!window.GeoTIFF){
   await new Promise((resolve,reject)=>{const sc=document.createElement('script');sc.src='https://cdn.jsdelivr.net/npm/geotiff@2.1.3/dist-browser/geotiff.js';sc.onload=resolve;sc.onerror=reject;document.head.appendChild(sc)});
  }
- if(!window.GeoTIFF?.fromArrayBuffer)throw Error('GeoTIFF no disponible');
+ if(!window.GeoTIFF?.fromArrayBuffer)throw Error('Decodificador GeoTIFF no disponible');
  const tif=await window.GeoTIFF.fromArrayBuffer(buffer),img=await tif.getImage();
  const raster=await img.readRasters({samples:[0],width:n,height:n,interleave:true,resampleMethod:'bilinear'});
  const nodata=img.getGDALNoData?.();
  const heights=Array.from(raster,Number);
- if(heights.length!==n*n||heights.some(v=>!Number.isFinite(v)||v< -500||v>9000||(nodata!==null&&nodata!==undefined&&v===nodata)))throw Error('MDT05 incompleto o con zonas sin datos');
- // GeoTIFF rows run north to south, while the 3D terrain grid runs south to north.
+ if(heights.length!==n*n||heights.some(v=>!Number.isFinite(v)||v< -500||v>9000||(nodata!==null&&nodata!==undefined&&v===nodata)))throw Error('IGN devuelve cotas incompletas');
  const corrected=[];
  for(let j=n-1;j>=0;j--)for(let i=0;i<n;i++)corrected.push(heights[j*n+i]);
  return corrected;
@@ -4906,8 +4907,16 @@ async function ecoLoadSiteSurface(){
   let heights=null,n=161,source='IGN MDT05 · API Coberturas (5 m)';
   if($('ecoPreferIgn').checked){
    $('ecoSurfaceStatus').textContent='Consultando IGN MDT…';
-   try{heights=await ecoLoadIgnMdt05(active,half,n);}
-   catch(e){ignError=e.message||String(e);}
+   try{heights=await ecoLoadIgnMdt05(active,half,n,5);}
+   catch(e){
+    const first=e.message||String(e);
+    $('ecoSurfaceStatus').textContent='IGN MDT05 no disponible; probando modelo IGN de 25 m…';
+    try{
+     n=33;heights=await ecoLoadIgnMdt05(active,half,n,25);
+     source='IGN MDT25 · API Coberturas (25 m)';
+     ignError='MDT05: '+first+'; se utiliza MDT25 oficial.';
+    }catch(e2){ignError='MDT05: '+first+'; MDT25: '+(e2.message||String(e2));}
+   }
   }
   if(!heights){
    // 41×41 = 1681 locations: the public elevation API rejects or throttles
