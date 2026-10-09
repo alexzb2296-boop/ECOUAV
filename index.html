@@ -4864,22 +4864,37 @@ async function ecoLoadIgnCoverage(active,half,n){
 async function ecoLoadSiteSurface(){
  const active=antennas[$('antId').value],request=++ecoSiteRequest;
  if(!active){$('ecoSurfaceStatus').textContent='Coloca primero la antena seleccionada en el mapa.';return;}
- $('ecoSurfaceStatus').textContent='Preparando cuadrícula de elevaciones 41 × 41…';
+ $('ecoLoadSurface').disabled=true;
+ let ignError='';
  try{
-  const half=400,n=41,points=[];
-  for(let j=0;j<n;j++)for(let i=0;i<n;i++){
-   const north=(j/(n-1)*2-1)*half,east=(i/(n-1)*2-1)*half;
-   points.push({lat:active.lat+north/111320,lng:active.lng+east/(111320*Math.max(.2,Math.cos(active.lat*Math.PI/180)))});
+  const half=400;
+  let heights=null,n=41,source='IGN WCS MDT';
+  if($('ecoPreferIgn').checked){
+   $('ecoSurfaceStatus').textContent='Consultando IGN MDT…';
+   try{heights=await ecoLoadIgnCoverage(active,half,n);}
+   catch(e){ignError=e.message||String(e);}
   }
-  let heights,source='Open-Meteo';
-  if($('ecoPreferIgn').checked){try{heights=await ecoLoadIgnCoverage(active,half,n);source='IGN WCS MDT';}catch(err){$('ecoSurfaceStatus').textContent='IGN no disponible ('+err.message+'). Usando alternativa…';}}
-  if(!heights)heights=await fetchElevPoints(points);
+  if(!heights){
+   // 41×41 = 1681 locations: the public elevation API rejects or throttles
+   // excessive batches. Use a modest 9×9 fallback and report the true density.
+   n=9;source='Open-Meteo (alternativa)';
+   $('ecoSurfaceStatus').textContent='Consultando fuente alternativa (9 × 9)…'+(ignError?' IGN: '+ignError:'');
+   const points=[];
+   for(let j=0;j<n;j++)for(let i=0;i<n;i++){
+    const north=(j/(n-1)*2-1)*half,east=(i/(n-1)*2-1)*half;
+    points.push({lat:active.lat+north/111320,lng:active.lng+east/(111320*Math.max(.2,Math.cos(active.lat*Math.PI/180)))});
+   }
+   heights=await fetchElevPoints(points);
+  }
   if(request!==ecoSiteRequest)return;
-  if(heights.length!==points.length||heights.some(v=>!Number.isFinite(v)))throw Error('cotas incompletas');
+  if(heights.length!==n*n||heights.some(v=>!Number.isFinite(v)))throw Error('Cotas incompletas');
   ecoSiteSurface={lat:active.lat,lng:active.lng,half,n,heights,source};
-  $('ecoSurfaceStatus').textContent='Terreno cargado desde '+source+' · '+heights.length+' cotas · extensión 800 × 800 m. Sin edificios ni vegetación.';
+  $('ecoSurfaceStatus').textContent='Terreno cargado · '+source+' · '+n+' × '+n+' puntos · 800 × 800 m.'+(ignError?' IGN no disponible: '+ignError:'');
   renderSoma3D();
- }catch(e){if(request!==ecoSiteRequest)return;$('ecoSurfaceStatus').textContent='No se pudo cargar el DEM: '+e.message;}
+ }catch(e){
+  if(request!==ecoSiteRequest)return;
+  $('ecoSurfaceStatus').textContent='No se pudo cargar el terreno. '+(ignError?'IGN: '+ignError+'; ':'')+'Alternativa: '+(e.message||e)+'. Prueba desmarcando IGN o vuelve a intentarlo.';
+ }finally{if(request===ecoSiteRequest)$('ecoLoadSurface').disabled=false;}
 }
 $('ecoLoadSurface').addEventListener('click',ecoLoadSiteSurface);
 $('ecoResetCamera').addEventListener('click',()=>{eco3dAzimuth=null;eco3dElevation=null;eco3dZoom=1;eco3dCamera()});
