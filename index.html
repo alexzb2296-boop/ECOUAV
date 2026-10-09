@@ -5283,11 +5283,15 @@ refreshMissions();
  const msg=(id,t)=>{q(id).textContent=t};
  let ecoImported=[],ecoImportedLayer=L.layerGroup().addTo(map),ecoBaseNow='esri';
  const pnoa=L.tileLayer('https://www.ign.es/wmts/pnoa-ma?service=WMTS&request=GetTile&version=1.0.0&layer=OI.OrthoimageCoverage&style=default&format=image/jpeg&tilematrixset=GoogleMapsCompatible&TileMatrix={z}&TileRow={y}&TileCol={x}',{maxZoom:20,maxNativeZoom:18,attribution:'Ortofotos © IGN/CNIG · PNOA'});
- pnoa.on('tileerror',()=>{msg('ecoProjectStatus','Una tesela PNOA no ha podido cargarse. Prueba otro mapa base o verifica la conexión.');});
+ pnoa.on('tileerror',()=>{msg('ecoProjectStatus','Aviso: algunas teselas PNOA no cargaron. Revisa la conexión o selecciona Esri/OSM.');});
  function selectBase(value){
   if(!['esri','pnoa','osm'].includes(value))return;
-  for(const l of [satellite,pnoa,fallbackBase])if(map.hasLayer(l))map.removeLayer(l);
-  (value==='pnoa'?pnoa:value==='osm'?fallbackBase:satellite).addTo(map);
+  // Keep the legacy toolbar's `current` base layer synchronized.
+  const target=value==='pnoa'?pnoa:value==='osm'?fallbackBase:satellite;
+  for(const l of [satellite,pnoa,fallbackBase,topoBase])if(map.hasLayer(l))map.removeLayer(l);
+  base(target);
+  q('sat').classList.toggle('active',value==='esri'||value==='pnoa');
+  q('topo').classList.remove('active');
   ecoBaseNow=value;q('ecoBase').value=value;
  }
  q('ecoBase').addEventListener('change',e=>selectBase(e.target.value));
@@ -5376,6 +5380,9 @@ refreshMissions();
  }
  function restore(p){
   validate(p);map.setView([p.map.lat,p.map.lng],Math.min(19,Math.max(2,Number(p.map.zoom)||6)));selectBase(p.map.base);
+  // A saved antenna location invalidates the previous DEM and its 3D scene.
+  if(typeof ecoSiteSurface!=='undefined'){ecoSiteSurface=null;ecoSiteRequest++;}
+  if(q('ecoSurfaceStatus'))msg('ecoSurfaceStatus','Proyecto restaurado. Vuelve a cargar el DEM para la antena seleccionada.');
   if(p.antennas&&typeof p.antennas==='object'){
    for(const k of ['A','B','C']){
     const v=p.antennas[k];
@@ -5383,10 +5390,11 @@ refreshMissions();
     if(Number.isFinite(Number(v.lat))&&Number.isFinite(Number(v.lng))&&Math.abs(v.lat)<=90&&Math.abs(v.lng)<=180)antennas[k]={lat:Number(v.lat),lng:Number(v.lng)};
    }
    if(typeof renderAll==='function')renderAll();
+   if(typeof renderSoma3D==='function')renderSoma3D();
   }
   if(q('antId')&&['A','B','C'].includes(p.selectedAntenna))q('antId').value=p.selectedAntenna;
   for(const [id,val] of [['ecoSiteHeight',p.siteHeight],['ecoBeamHeading',p.beamHeading],['ecoTerrainExaggeration',p.terrainExaggeration]])if(q(id)&&val!==undefined){q(id).value=val;q(id).dispatchEvent(new Event('input'));}
-  if(Array.isArray(p.flightPoints))showTrack(p.flightPoints.filter(x=>Number.isFinite(x.lat)&&Number.isFinite(x.lng)).slice(0,5000));
+  if(Array.isArray(p.flightPoints))showTrack(p.flightPoints.filter(x=>x&&Number.isFinite(Number(x.lat))&&Number.isFinite(Number(x.lng))&&Math.abs(Number(x.lat))<=90&&Math.abs(Number(x.lng))<=180).slice(0,5000).map(x=>({lat:Number(x.lat),lng:Number(x.lng)})));
   msg('ecoProjectStatus','Proyecto restaurado. Comprueba las antenas y los ajustes antes de continuar.');
  }
  function refresh(){
