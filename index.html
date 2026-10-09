@@ -510,8 +510,8 @@ preserveAspectRatio="none">
 <svg id="somaPolar" viewBox="0 0 640 310" style="width:100%;max-height:310px;background:#0d161e;border-radius:10px;margin-top:10px" aria-label="Diagramas polares ilustrativos horizontal y vertical"></svg>
 <div id="viewer3dPanel" style="margin-top:12px;border:1px solid #33485a;border-radius:12px;padding:10px;background:#101922"><div class="actions" style="justify-content:space-between;align-items:center"><div class="label">🧊 VISOR 3D · ANTENA Y RELIEVE</div><div class="actions"><button id="viewer3dMin" type="button">▁ Minimizar</button><button id="viewer3dMax" type="button">⛶ Maximizar</button></div></div><div id="viewer3dBody">
 <div class="formgrid"><div class="field"><label>Girar vista (°)</label><input id="somaRotate" type="range" min="0" max="360" value="35"></div><div class="field"><label>Inclinación (°)</label><input id="somaTilt" type="range" min="10" max="80" value="30"></div></div>
-<svg id="soma3d" viewBox="0 0 640 350" style="width:100%;max-height:350px;background:#0d161e;border-radius:10px" aria-label="Representación tridimensional ilustrativa del lóbulo de antena"></svg>
-<div class="actions"><button id="terrain3dToggle">⛰️ Mostrar relieve de ruta en 3D</button></div><div id="terrain3dInfo" class="mini">Analiza primero el relieve de una ruta para mostrar su perfil y sombreado topográfico en el visor 3D.</div><div class="mini">El sombreado indica únicamente iluminación esquemática del relieve; no representa sombras de radio ni predice cobertura de señal.</div><div class="mini">Vista 3D esquemática y giratoria; no representa ganancia, alcance ni patrón de radiación medido.</div>
+<div id="soma3d" style="width:100%;height:350px;min-height:280px;background:#0d161e;border-radius:10px;overflow:hidden;position:relative;touch-action:none" aria-label="Visor tridimensional interactivo del lóbulo de antena"><div class="mini" style="padding:18px">Preparando visor 3D…</div></div>
+<div class="actions"><button id="terrain3dToggle">⛰️ Mostrar relieve de ruta en 3D</button></div><div id="terrain3dInfo" class="mini">Analiza primero el relieve de una ruta para mostrar su perfil y sombreado topográfico en el visor 3D.</div><div class="mini">El sombreado indica únicamente iluminación esquemática del relieve; no representa sombras de radio ni predice cobertura de señal.</div><div class="mini">Vista 3D interactiva: arrastra para girar y usa la rueda para acercar. El volumen representa una apertura ilustrativa, no ganancia, alcance ni patrón medido.</div>
 <div class="mini">Leyenda: 🟡 antena / eje · 🔵 lóbulo esquemático · 🟠 traza de relieve DEM. La representación no permite determinar cobertura de señal.</div><div class="mini">Polarización circular RHCP: el campo eléctrico rota durante la propagación. La apertura real horizontal/vertical requiere datos medidos del fabricante. Este dibujo no representa una medición.</div></div></div>
 </div>
 <div id="routeProfileCard" class="card full">
@@ -4810,6 +4810,102 @@ function renderSoma3D(){
  }
  svg.innerHTML=paths.join('');
 }
+
+// ECOUAV 1.1: visor WebGL 3D de geometría educativa, independiente del mapa.
+const oldRenderSoma3D=renderSoma3D;
+let eco3d=null,eco3dLoading=false,eco3dZoom=5.3,eco3dAzimuth=null,eco3dElevation=null;
+function loadEcoThree(){
+ if(window.THREE)return Promise.resolve(window.THREE);
+ if(window.ecoThreePromise)return window.ecoThreePromise;
+ window.ecoThreePromise=new Promise((resolve,reject)=>{
+  const el=document.createElement('script');el.src='https://cdnjs.cloudflare.com/ajax/libs/three.js/0.152.2/three.min.js';
+  el.onload=()=>window.THREE?resolve(window.THREE):reject(Error('Three.js no disponible'));
+  el.onerror=()=>reject(Error('No se pudo cargar Three.js'));document.head.appendChild(el);
+ });
+ return window.ecoThreePromise;
+}
+function eco3dCamera(){
+ if(!eco3d)return;
+ const az=(eco3dAzimuth===null?Number($('somaRotate').value):eco3dAzimuth)*Math.PI/180;
+ const el=(eco3dElevation===null?Number($('somaTilt').value):eco3dElevation)*Math.PI/180;
+ eco3d.camera.position.set(eco3dZoom*Math.cos(el)*Math.cos(az),eco3dZoom*Math.sin(el),eco3dZoom*Math.cos(el)*Math.sin(az));
+ eco3d.camera.lookAt(0.65,0,0);
+ eco3d.renderer.render(eco3d.scene,eco3d.camera);
+}
+function eco3dSetup(){
+ const THREE=window.THREE,host=$('soma3d');
+ host.innerHTML='';
+ const scene=new THREE.Scene();scene.background=new THREE.Color(0x0d161e);
+ const camera=new THREE.PerspectiveCamera(42,1,.02,1000);
+ const renderer=new THREE.WebGLRenderer({antialias:true,alpha:false});
+ renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+ host.appendChild(renderer.domElement);
+ scene.add(new THREE.HemisphereLight(0xcfeeff,0x243847,2.1));
+ const light=new THREE.DirectionalLight(0xffffff,2.2);light.position.set(3,6,5);scene.add(light);
+ const grid=new THREE.GridHelper(5,10,0x446278,0x294052);grid.position.y=-.18;scene.add(grid);
+ const axes=new THREE.AxesHelper(.65);scene.add(axes);
+ eco3d={scene,camera,renderer,host,mesh:null,terrain:null,grid};
+ let last=null;
+ host.addEventListener('pointerdown',e=>{last={x:e.clientX,y:e.clientY};host.setPointerCapture(e.pointerId)});
+ host.addEventListener('pointermove',e=>{if(!last)return;eco3dAzimuth=(eco3dAzimuth??Number($('somaRotate').value))+(e.clientX-last.x)*.6;eco3dElevation=Math.max(5,Math.min(85,(eco3dElevation??Number($('somaTilt').value))+(e.clientY-last.y)*.4));last={x:e.clientX,y:e.clientY};eco3dCamera()});
+ host.addEventListener('pointerup',()=>{last=null});host.addEventListener('pointercancel',()=>{last=null});
+ host.addEventListener('wheel',e=>{e.preventDefault();eco3dZoom=Math.max(2.2,Math.min(16,eco3dZoom*Math.exp(e.deltaY*.001)));eco3dCamera()},{passive:false});
+ if(window.ResizeObserver)new ResizeObserver(()=>eco3dResize()).observe(host);
+ eco3dResize();
+}
+function eco3dResize(){
+ if(!eco3d)return;const w=Math.max(1,eco3d.host.clientWidth),h=Math.max(1,eco3d.host.clientHeight);
+ eco3d.camera.aspect=w/h;eco3d.camera.updateProjectionMatrix();eco3d.renderer.setSize(w,h,false);eco3dCamera();
+}
+function eco3dDraw(){
+ if(!eco3d)return;
+ const THREE=window.THREE,{scene}=eco3d;
+ if(eco3d.mesh){scene.remove(eco3d.mesh);eco3d.mesh.geometry.dispose();eco3d.mesh.material.dispose();}
+ if(eco3d.terrain){scene.remove(eco3d.terrain);eco3d.terrain.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material)o.material.dispose()});eco3d.terrain=null;}
+ const x2=$('antennaModel').value==='x2air5';
+ let h=x2?150:(Number($('somaAngle').value)||60),v=x2?62:h;
+ const choice=$('geoAntennaList')?.selectedOptions?.[0];
+ if(choice&&choice.value.startsWith('custom:')){
+  const hv=($('geoBeams')?.value||'').match(/([\d.]+)\s*\/\s*([\d.]+)/);
+  if(hv){h=Number(hv[1]);v=Number(hv[2]);}
+ }
+ h=Math.max(5,Math.min(175,h));v=Math.max(5,Math.min(175,v));
+ const rings=38,sides=72,vertices=[],indices=[];
+ // Smooth ellipsoidal envelope. H/V control illustrative cross-sections, not measured field strength.
+ for(let i=0;i<=rings;i++){
+  const t=i/rings,rad=Math.sin(Math.PI*t)*.72,x=t*2.5-.2;
+  for(let j=0;j<=sides;j++){
+   const a=2*Math.PI*j/sides;
+   vertices.push(x,rad*Math.sin(a)*Math.tan(v*Math.PI/360)/Math.tan(Math.PI/6),rad*Math.cos(a)*Math.tan(h*Math.PI/360)/Math.tan(Math.PI/6));
+  }
+ }
+ for(let i=0;i<rings;i++)for(let j=0;j<sides;j++){const a=i*(sides+1)+j,b=a+sides+1;indices.push(a,b,a+1,b,b+1,a+1);}
+ const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));geometry.setIndex(indices);geometry.computeVertexNormals();
+ const material=new THREE.MeshPhongMaterial({color:0x36b9f6,transparent:true,opacity:.32,side:THREE.DoubleSide,depthWrite:false,shininess:75});
+ const mesh=new THREE.Mesh(geometry,material);
+ const wire=new THREE.LineSegments(new THREE.EdgesGeometry(geometry,25),new THREE.LineBasicMaterial({color:0x75ddff,transparent:true,opacity:.38}));
+ // Wireframe is a child; its geometry/material will be disposed on redraw below.
+ mesh.add(wire);scene.add(mesh);eco3d.mesh=mesh;
+ const active=antennas[$('antId').value];
+ if(showRouteTerrain3d&&active&&routeTerrain3d?.length>1){
+  const pts=routeTerrain3d.map(p=>({x:(p.lng-active.lng)*111320*Math.cos(active.lat*Math.PI/180),y:(p.lat-active.lat)*111320,z:p.z}));
+  const maxD=Math.max(50,...pts.map(p=>Math.hypot(p.x,p.y))),z0=pts[0].z;
+  const g=new THREE.Group(),linePts=pts.map(p=>new THREE.Vector3(p.x/maxD*2.2,(p.z-z0)/maxD*2.2-.2,p.y/maxD*2.2));
+  g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(linePts),new THREE.LineBasicMaterial({color:0xffbb63,linewidth:2})));
+  scene.add(g);eco3d.terrain=g;
+  $('terrain3dInfo').textContent='Traza de terreno junto al lóbulo · escala de la traza relativa a su extensión. No representa cobertura ni obstáculos completos.';
+ }else if(showRouteTerrain3d)$('terrain3dInfo').textContent='Para ver la traza, coloca una antena y analiza una ruta.';
+ eco3dCamera();
+}
+renderSoma3D=function(){
+ if(eco3d){eco3dDraw();return;}
+ if(eco3dLoading)return;
+ eco3dLoading=true;
+ loadEcoThree().then(()=>{eco3dSetup();eco3dDraw()}).catch(err=>{
+  $('soma3d').innerHTML='<div class="mini" style="padding:18px">No se pudo iniciar el visor WebGL: '+String(err.message).replace(/[<>]/g,'')+'. Comprueba la conexión y WebGL.</div>';
+ }).finally(()=>{eco3dLoading=false});
+};
+
 document.getElementById('somaRotate').addEventListener('input',renderSoma3D);
 document.getElementById('somaTilt').addEventListener('input',renderSoma3D);
 document.getElementById('antId').addEventListener('change',renderSoma3D);
