@@ -3,6 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<script>
+(function(){
+ // Explicit desktop override. The normal adaptive UI remains the default.
+ if(new URLSearchParams(location.search).get('view')==='desktop'){
+   document.querySelector('meta[name="viewport"]').setAttribute('content','width=1440,minimum-scale=0.2,maximum-scale=5,user-scalable=yes');
+   document.documentElement.classList.add('ecoDesktopRequested');
+ }
+})();
+</script>
 <title>ECOUAV v1.0</title>
 
 <link rel="stylesheet"
@@ -512,6 +521,11 @@ body.ecoMockLayout #ecoShell button:focus-visible{outline:2px solid #40dfff;outl
  body.ecoMockLayout #ecoMapTools{top:68px}
  body.ecoMockLayout #eco3dInset{bottom:108px!important;height:min(27dvh,200px)!important}
 }
+
+/* Always expose a separate, real desktop entry: never rely on Safari's Request Desktop Site. */
+.ecoViewSwitch a{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:7px 11px;background:#133749;border:1px solid #387b9c;border-radius:8px;color:#b5e9ff;font-size:12px;text-decoration:none;font-weight:700;white-space:nowrap}
+.ecoViewSwitch a:hover{background:#19506c}
+@media(max-width:620px){.ecoViewSwitch{display:none}}
 </style>
 </head>
 
@@ -532,6 +546,7 @@ Planificador UAS · Terreno · RF · Rutas · Misiones
 
 
 <div id="ecoHeaderSearch" class="ecoHeaderSearch"><span aria-hidden="true">⌕</span><input id="ecoGoCoordinates" type="text" placeholder="Buscar coordenadas: lat, lon" aria-label="Ir a coordenadas"><button type="button" id="ecoGoButton">Ir</button></div>
+<div class="ecoViewSwitch"><a href="./escritorio.html" title="Abrir la disposición completa en tres columnas">▣ Versión escritorio</a></div>
 <div class="ecoHeaderActions"><button id="ecoSidebarToggle" type="button" aria-controls="ecoWorkspace" aria-expanded="false">☰ Herramientas</button><div id="flightStatus"><strong>LISTO</strong></div></div>
 
 </header>
