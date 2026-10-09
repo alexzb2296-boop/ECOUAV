@@ -284,7 +284,7 @@ Planificador UAS · Terreno · RF · Rutas · Misiones
  <div class="ecoView ecoActive" data-ecoview="terrain">
   <div class="ecoCells">
    <div class="ecoBox"><strong>Cartografía</strong><label for="ecoBase">Mapa base</label><select id="ecoBase"><option value="esri">Satélite Esri</option><option value="pnoa">Ortofoto PNOA · IGN</option><option value="osm">OpenStreetMap</option></select><div class="ecoHint">PNOA procede del servicio público WMTS del IGN; necesita conexión.</div></div>
-   <div class="ecoBox"><strong>Relieve</strong><p class="ecoMessage">MDT05 del IGN cuando sus teselas estén disponibles. El visor indica qué fuente se ha cargado. Las curvas actuales usan muestras de Open-Meteo, no curvas oficiales IGN.</p><button id="ecoReliefShortcut" type="button">Activar/desactivar relieve IGN</button><button id="ecoContoursShortcut" type="button">Calcular curvas DEM</button><button id="eco3dShortcut" type="button">Ir al visor 3D</button></div>
+   <div class="ecoBox"><strong>Relieve</strong><p class="ecoMessage">MDT05 del IGN cuando sus teselas estén disponibles. El visor indica qué fuente se ha cargado. Las curvas actuales usan muestras de Open-Meteo, no curvas oficiales IGN.</p><button id="ecoReliefShortcut" type="button">🏔️ Activar relieve IGN</button><p id="ecoReliefStatus" class="ecoHint" role="status">Capa de sombreado IGN (visual, no datos de cotas).</p><button id="ecoContoursShortcut" type="button">Calcular curvas DEM</button><button id="eco3dShortcut" type="button">Ir al visor 3D</button></div>
    <div class="ecoBox"><strong>Información UAS oficial</strong><p class="ecoMessage">Comprueba zonas geográficas UAS y sus condiciones en la fuente oficial; ECOUAV no autoriza vuelos.</p><a href="https://drones.enaire.es/" target="_blank" rel="noopener noreferrer">Abrir ENAIRE Drones ↗</a></div>
   </div>
  </div>
@@ -3962,9 +3962,13 @@ const ignReliefLayer=L.tileLayer('https://tms-relieve.idee.es/1.0.0/relieve/{z}/
 });
 let ignReliefEnabled=false;
 $('ignReliefBtn').onclick=()=>{
- ignReliefEnabled=!ignReliefEnabled;
+ ignReliefEnabled=!map.hasLayer(ignReliefLayer);
  if(ignReliefEnabled){ignReliefLayer.addTo(map);$('ignReliefBtn').classList.add('active');}
  else{map.removeLayer(ignReliefLayer);$('ignReliefBtn').classList.remove('active');}
+ const shortcut=$('ecoReliefShortcut');
+ if(shortcut){shortcut.classList.toggle('active',ignReliefEnabled);shortcut.textContent=ignReliefEnabled?'✓ Desactivar relieve IGN':'🏔️ Activar relieve IGN';}
+ const state=$('ecoReliefStatus');
+ if(state)state.textContent=ignReliefEnabled?'Relieve visual IGN activo · MDT25 sombreado.':'Relieve visual IGN desactivado.';
 };
 /* ECOUAV v1.0 — cartografía local geográfica, almacenamiento y biblioteca */
 (function(){
@@ -5305,7 +5309,16 @@ refreshMissions();
   root.querySelectorAll('[data-ecoview]').forEach(x=>x.classList.toggle('ecoActive',x.dataset.ecoview===which));
  }));
  function jump(el){if(el){el.scrollIntoView({behavior:'smooth',block:'center'});}}
- q('ecoReliefShortcut').onclick=()=>{q('ignReliefBtn')?.click();};
+ q('ecoReliefShortcut').onclick=()=>{
+  // Invoke the layer toggle itself rather than a synthetic click on a toolbar
+  // button that may be scrolled out of sight or covered on small displays.
+  const button=q('ignReliefBtn');
+  if(button&&typeof button.onclick==='function')button.onclick();
+  const enabled=typeof ignReliefLayer!=='undefined'&&map.hasLayer(ignReliefLayer);
+  q('ecoReliefShortcut').classList.toggle('active',enabled);
+  q('ecoReliefShortcut').textContent=enabled?'✓ Desactivar relieve IGN':'🏔️ Activar relieve IGN';
+  msg('ecoReliefStatus',enabled?'Capa visual IGN activada. Si no aparece, amplía a una zona de España y comprueba la conexión.':'Capa visual IGN desactivada.');
+ };
  q('ecoContoursShortcut').onclick=()=>{
   const b=q('contourControls');if(b){b.classList.remove('hidden');jump(b);}
   if(typeof drawDemContours==='function')drawDemContours();
