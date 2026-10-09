@@ -470,6 +470,48 @@ body.ecoMockLayout #ecoShell button:focus-visible{outline:2px solid #40dfff;outl
  body.ecoMockLayout #ecoContextPanel{background:#0a2030f5}
 }
 @media(max-width:620px){#ecoMapTools{top:54px}#ecoMapTools button{width:32px;height:32px;font-size:14px}}
+
+/* ECOUAV mobile dashboard v4 — a genuinely new small-screen composition */
+#ecoMobileNav,#ecoMobileHeadline,#ecoMobileDrawer{display:none}
+@media(max-width:900px){
+ body.ecoMockLayout .top{height:56px!important}
+ body.ecoMockLayout #ecoShell{height:calc(100dvh - 116px)!important;padding:0!important}
+ body.ecoMockLayout #ecoMapColumn{border:0;border-radius:0}
+ body.ecoMockLayout #ecoMapColumn>.toolbar,body.ecoMockLayout #ecoMapColumn .toolbar{display:none!important}
+ body.ecoMockLayout #ecoMobileMapActions{display:none!important}
+ body.ecoMockLayout #ecoMapTools{top:76px;right:10px;gap:6px}
+ body.ecoMockLayout #ecoMapTools button{min-width:42px;width:42px;height:42px;background:#071b2beb;border:1px solid #44809f;border-radius:9px}
+ body.ecoMockLayout #ecoMobileHeadline{position:absolute;display:flex;align-items:center;gap:9px;top:10px;left:10px;right:10px;z-index:1010;background:#071a29ec;border:1px solid #3b748c;border-radius:11px;padding:10px 12px;color:#f0f9ff;font-size:12px;box-shadow:0 8px 20px #0008}
+ #ecoMobileHeadline span{color:#58d4ff;font-weight:750}
+ #ecoMobileHeadline small{color:#a9c4d4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+ body.ecoMockLayout #eco3dInset{bottom:113px!important;width:calc(100% - 20px)!important;height:min(31dvh,230px)!important;min-height:150px;border-radius:12px}
+ body.ecoMockLayout #eco3dInset.ecoInsetHidden{height:37px!important;min-height:0;width:64%!important}
+ body.ecoMockLayout #ecoMapStatus{bottom:77px!important;left:9px;right:9px;max-width:none}
+ body.ecoMockLayout .toolrow{display:none!important}
+ body.ecoMockLayout #ecoBottomStatus{height:27px;font-size:10px}
+ #ecoMobileNav{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));position:fixed;bottom:0;left:0;right:0;height:calc(70px + env(safe-area-inset-bottom,0px));z-index:1700;padding:5px 5px calc(5px + env(safe-area-inset-bottom,0px));background:#081a29f5;border-top:1px solid #35708d;box-shadow:0 -10px 22px #0008}
+ #ecoMobileNav button{background:transparent;border:0;border-radius:9px;color:#bbd7e5;font-size:10px;font-weight:600;padding:4px 0;display:flex;align-items:center;flex-direction:column;justify-content:center;gap:4px;min-width:0}
+ #ecoMobileNav button b{font-size:23px;font-weight:400;line-height:1}
+ #ecoMobileNav button.ecoSelected{color:#5bdcff;background:#153a51}
+ #ecoMobileDrawer{display:block;position:fixed;z-index:1650;bottom:calc(72px + env(safe-area-inset-bottom,0px));left:8px;right:8px;max-height:68dvh;overflow:auto;background:#0a2030f7;border:1px solid #3b7895;border-radius:14px;padding:12px;box-shadow:0 0 35px #000c;transform:translateY(calc(100% + 120px));transition:transform .2s ease;pointer-events:none}
+ #ecoMobileDrawer.ecoDrawerOpen{transform:translateY(0);pointer-events:auto}
+ #ecoMobileDrawerHead{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;color:#8bddff}
+ #ecoMobileDrawerHead button{font-size:13px;padding:5px 9px}
+ #ecoMobileDrawerActions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+ #ecoMobileDrawerActions button{min-height:49px;font-size:12px;background:#163447;border-color:#3b6880;padding:7px 3px}
+ body.ecoMockLayout #ecoAdvancedToggle{display:none}
+ body.ecoMockLayout #ecoWorkspace{top:56px!important;bottom:calc(70px + env(safe-area-inset-bottom,0px))!important;max-height:none!important;width:min(340px,94vw)!important;z-index:1640!important}
+ body.ecoMockLayout #ecoContextPanel{top:56px!important;bottom:calc(70px + env(safe-area-inset-bottom,0px))!important;z-index:1640!important}
+ body.ecoMockLayout #ecoContextMobile{display:none!important}
+ body.ecoMockLayout #ecoHeaderSearch{display:none!important}
+ body.ecoMockLayout #ecoSidebarToggle{display:none!important}
+ body.ecoMockLayout>.panel,body.ecoMockLayout>section.panel{display:none!important}
+}
+@media(max-width:620px){
+ body.ecoMockLayout #ecoShell{height:calc(100dvh - 116px)!important;min-height:360px}
+ body.ecoMockLayout #ecoMapTools{top:68px}
+ body.ecoMockLayout #eco3dInset{bottom:108px!important;height:min(27dvh,200px)!important}
+}
 </style>
 </head>
 
@@ -5854,6 +5896,63 @@ refreshMissions();
  requestAnimationFrame(()=>{map.invalidateSize({pan:false});if(typeof eco3dResize==='function')eco3dResize()});
 })();
 
+
+
+/* Purpose-built phone dashboard: bottom navigation, full map and real tools. */
+(function(){
+ const shell=document.getElementById('ecoShell'),workspace=document.getElementById('ecoWorkspace'),context=document.getElementById('ecoContextPanel'),mapColumn=document.getElementById('ecoMapColumn');
+ if(!shell||!mapColumn)return;
+ const headline=document.createElement('div');headline.id='ecoMobileHeadline';
+ headline.innerHTML='<span>◈ ECOUAV</span><small>Cartografía · Terreno · Meteorología</small><span>MAPA</span>';
+ mapColumn.append(headline);
+ const nav=document.createElement('nav');nav.id='ecoMobileNav';nav.setAttribute('aria-label','Navegación móvil');
+ const choices=[['⌖','Mapa','map'],['▤','Capas','layers'],['⛰','Terreno','terrain'],['☁','Meteo','weather'],['⋯','Más','more']];
+ const drawer=document.createElement('section');drawer.id='ecoMobileDrawer';drawer.setAttribute('aria-label','Herramientas rápidas');
+ drawer.innerHTML='<div id="ecoMobileDrawerHead"><strong>Herramientas ECOUAV</strong><button id="ecoMobileDrawerClose" type="button">✕ Cerrar</button></div><div id="ecoMobileDrawerActions"></div>';
+ document.body.append(nav,drawer);
+ const dismiss=()=>{drawer.classList.remove('ecoDrawerOpen');nav.querySelectorAll('button').forEach(b=>b.classList.toggle('ecoSelected',b.dataset.mobileTab==='map'))};
+ for(const [icon,label,key] of choices){
+  const btn=document.createElement('button');btn.type='button';btn.dataset.mobileTab=key;btn.innerHTML='<b>'+icon+'</b><span>'+label+'</span>';btn.setAttribute('aria-label',label);
+  btn.classList.toggle('ecoSelected',key==='map');
+  btn.addEventListener('click',()=>{
+   nav.querySelectorAll('button').forEach(b=>b.classList.toggle('ecoSelected',b===btn));
+   drawer.classList.remove('ecoDrawerOpen');
+   workspace.classList.remove('ecoSidebarOpen');context.classList.remove('ecoContextOpen');
+   if(key==='layers'||key==='terrain'||key==='weather'){
+    workspace.classList.add('ecoSidebarOpen');
+    document.getElementById('ecoSidebarToggle')?.setAttribute('aria-expanded','true');
+    const target=key==='layers'?'terrain':key;
+    document.querySelector('[data-ecotab="'+target+'"]')?.click();
+   } else if(key==='more'){drawer.classList.add('ecoDrawerOpen')}
+   setTimeout(()=>map.invalidateSize({pan:false}),140);
+  });
+  nav.append(btn);
+ }
+ document.getElementById('ecoMobileDrawerClose').onclick=dismiss;
+ const actions=[
+  ['📍 Punto','point',()=>document.getElementById('ecoContextPanel')?.classList.add('ecoContextOpen')],
+  ['📏 Medir','measureBtn'],['✈ Ruta','routeBtn'],['📡 Antenas','antennaBtn'],
+  ['📍 POI','poiBtn'],['↩ Deshacer','undoBtn'],['↪ Rehacer','redoBtn'],
+  ['💾 Misión','missionBtn'],['🗑 Eliminar','deleteBtn'],
+  ['◎ España','center'],['⚙ Avanzado','advanced',()=>{document.body.classList.toggle('ecoAdvancedOpen');document.querySelectorAll('body.ecoMockLayout>section.panel').forEach(el=>el.style.display=document.body.classList.contains('ecoAdvancedOpen')?'grid':'');}]
+ ];
+ const actionsEl=document.getElementById('ecoMobileDrawerActions');
+ for(const [text,id,action] of actions){
+  const btn=document.createElement('button');btn.type='button';btn.textContent=text;
+  btn.onclick=()=>{dismiss();if(action)action();else document.getElementById(id)?.click()};
+  actionsEl.append(btn);
+ }
+ document.querySelectorAll('#ecoMobileNav button').forEach(btn=>btn.addEventListener('click',()=>{if(btn.dataset.mobileTab==='map')dismiss()}));
+ const inset=document.getElementById('eco3dInset'),hide=document.getElementById('ecoTogglePreview');
+ if(innerWidth<=900&&inset&&hide){inset.classList.remove('ecoInsetHidden');hide.textContent='−';}
+ const closeOld=document.getElementById('ecoSidebarToggle');
+ closeOld?.addEventListener('click',()=>{if(innerWidth<=900&&!workspace.classList.contains('ecoSidebarOpen'))dismiss()});
+ const peekInfo=document.createElement('button');peekInfo.textContent='ⓘ';peekInfo.title='Ficha del punto';peekInfo.setAttribute('aria-label','Abrir información del punto');
+ peekInfo.style.cssText='position:absolute;right:12px;top:10px;z-index:1020;width:34px;height:34px;padding:0;background:#194059;border:1px solid #4c91b0;border-radius:8px;color:white';
+ peekInfo.onclick=()=>context.classList.add('ecoContextOpen');
+ headline.append(peekInfo);headline.style.paddingRight='48px';
+ if(innerWidth<=900)requestAnimationFrame(()=>{map.invalidateSize({pan:false});if(typeof eco3dResize==='function')eco3dResize()});
+})();
 
 setTimeout(
 
