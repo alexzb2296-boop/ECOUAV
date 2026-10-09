@@ -4889,7 +4889,7 @@ async function ecoLoadSiteSurface(){
   if(request!==ecoSiteRequest)return;
   if(heights.length!==n*n||heights.some(v=>!Number.isFinite(v)))throw Error('Cotas incompletas');
   ecoSiteSurface={lat:active.lat,lng:active.lng,half,n,heights,source};
-  $('ecoSurfaceStatus').textContent='Terreno cargado · '+source+' · '+n+' × '+n+' puntos · 800 × 800 m.'+(ignError?' IGN no disponible: '+ignError:'');
+  $('ecoSurfaceStatus').textContent='Terreno cargado · '+source+' · '+n+' × '+n+' puntos · 800 × 800 m.'+(ignError?' IGN WCS no accesible (no se usan datos IGN): '+ignError:'');
   renderSoma3D();
  }catch(e){
   if(request!==ecoSiteRequest)return;
@@ -4943,8 +4943,8 @@ function eco3dSetup(){
  host.appendChild(renderer.domElement);
  scene.add(new THREE.HemisphereLight(0xcfeeff,0x243847,2.1));
  const light=new THREE.DirectionalLight(0xffffff,2.2);light.position.set(3,6,5);scene.add(light);
- const grid=new THREE.GridHelper(5,10,0x446278,0x294052);grid.position.y=-.18;scene.add(grid);
- const axes=new THREE.AxesHelper(.65);scene.add(axes);
+ const grid=new THREE.GridHelper(5,10,0x446278,0x294052);grid.position.y=-.18;grid.visible=false;scene.add(grid);
+ const axes=new THREE.AxesHelper(.65);axes.visible=false;scene.add(axes);
  eco3d={scene,camera,renderer,host,mesh:null,terrain:null,grid};
  let last=null;
  host.addEventListener('pointerdown',e=>{last={x:e.clientX,y:e.clientY};host.setPointerCapture(e.pointerId)});
@@ -5002,15 +5002,29 @@ function eco3dDraw(){
   }
   for(let j=0;j<n-1;j++)for(let i=0;i<n-1;i++){const a=j*n+i,b=a+n;idx.push(a,b,a+1,b,b+1,a+1);}
   const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));geo.setIndex(idx);geo.computeVertexNormals();
-  const ground=new THREE.Mesh(geo,new THREE.MeshLambertMaterial({color:0x517d61,side:THREE.DoubleSide,transparent:true,opacity:.86}));
+  // Elevation-dependent vertex colors plus real normals make hills readable.
+  // This only shades the available DEM; it does not add measurement detail.
+  const ys=[];for(let k=1;k<verts.length;k+=3)ys.push(verts[k]);
+  const minY=Math.min(...ys),maxY=Math.max(...ys),spanY=Math.max(.001,maxY-minY);
+  const colors=[];
+  const low=new THREE.Color(0x265e54),mid=new THREE.Color(0x71a47c),high=new THREE.Color(0xb3b59a);
+  for(const y of ys){
+   const t=Math.max(0,Math.min(1,(y-minY)/spanY));
+   const c=t<.6?low.clone().lerp(mid,t/.6):mid.clone().lerp(high,(t-.6)/.4);
+   colors.push(c.r,c.g,c.b);
+  }
+  geo.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));
+  const ground=new THREE.Mesh(geo,new THREE.MeshLambertMaterial({vertexColors:true,side:THREE.DoubleSide,flatShading:false,transparent:false}));
   const group=new THREE.Group();group.add(ground);
-  const lines=new THREE.LineSegments(new THREE.EdgesGeometry(geo,12),new THREE.LineBasicMaterial({color:0x9ac6a2,transparent:true,opacity:.18}));group.add(lines);
+  // Subtle sample grid conveys DEM resolution without cluttering the scene.
+  const lines=new THREE.LineSegments(new THREE.EdgesGeometry(geo,32),new THREE.LineBasicMaterial({color:0xc3e2c4,transparent:true,opacity:.13}));group.add(lines);
   // The DEM center sample is the antenna ground datum; never bury the mast.
   const groundY=-.35;
   const installMeters=Math.max(0,Number($('ecoSiteHeight').value)||0);
   // Give short real-world masts a visible minimum on the schematic scene.
   // Actual configured height is still retained in meters in the UI.
-  const poleHeight=Math.max(.12,installMeters*verticalScale);
+  // Independent schematic mast scale: terrain exaggeration must not alter it.
+  const poleHeight=Math.max(.24,installMeters*.09);
   const pole=new THREE.Mesh(new THREE.CylinderGeometry(.016,.02,poleHeight,10),new THREE.MeshPhongMaterial({color:0xffcf6b}));
   pole.position.set(0,groundY+poleHeight/2,0);group.add(pole);
   const foot=new THREE.Mesh(new THREE.SphereGeometry(.045,12,8),new THREE.MeshBasicMaterial({color:0xffd77e}));
@@ -5022,8 +5036,10 @@ function eco3dDraw(){
   const rootOffset=-.2;
   const headingRad=Number($('ecoBeamHeading').value)*Math.PI/180;
   mesh.position.set(-rootOffset*Math.cos(headingRad),groundY+poleHeight,-rootOffset*Math.sin(headingRad));
+  // Render the translucent envelope less aggressively, to keep ground visible.
+  mesh.material.opacity=.15;
   scene.add(group);eco3d.terrain=group;
-  $('terrain3dInfo').textContent='Base de antena sobre el DEM central · mástil '+installMeters+' m (mínimo visual aplicado) · relieve ×'+$('ecoTerrainExaggeration').value+' · haz ilustrativo.';
+  $('terrain3dInfo').textContent='Base de antena en cota DEM central · mástil '+installMeters+' m (escala visual independiente) · relieve ×'+$('ecoTerrainExaggeration').value+' · haz ilustrativo. La resolución depende de la fuente.';
  }else if(showRouteTerrain3d&&active&&routeTerrain3d?.length>1){
   const pts=routeTerrain3d.map(p=>({x:(p.lng-active.lng)*111320*Math.cos(active.lat*Math.PI/180),y:(p.lat-active.lat)*111320,z:p.z}));
   const maxD=Math.max(50,...pts.map(p=>Math.hypot(p.x,p.y))),z0=pts[0].z;
