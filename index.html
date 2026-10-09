@@ -394,6 +394,40 @@ body.ecoMockLayout #ecoSidebarToggle{display:block}
  #ecoBottomStatus span:nth-child(2){display:none}
 }
 
+
+/* Mobile composition matching the approved mockup, without duplicating map controls. */
+#ecoAdvancedToggle{display:block;margin:12px auto;padding:11px 20px;background:#17364a;border:1px solid #3b728e}
+#ecoMobileMapActions{display:none}
+@media(max-width:900px){
+ body.ecoMockLayout #ecoShell{padding:4px;gap:0}
+ body.ecoMockLayout #ecoMapColumn{border-radius:10px;box-shadow:0 5px 20px #0007}
+ body.ecoMockLayout .toolbar{left:8px;top:8px;right:auto;max-width:calc(100% - 16px);width:calc(100% - 16px);padding:5px;gap:5px;background:#0c1f30e8}
+ body.ecoMockLayout .toolbar button{flex:0 0 auto;min-height:34px;height:36px;max-width:95px;padding:5px 8px;font-size:11px;line-height:1.15;border-radius:7px;white-space:nowrap}
+ body.ecoMockLayout .leaflet-control-zoom{display:none}
+ body.ecoMockLayout .toolrow{position:fixed;left:5px;right:5px;bottom:calc(34px + env(safe-area-inset-bottom,0px));z-index:1250;background:#0c1e2bf2;border:1px solid #31566b;border-radius:12px;padding:5px;gap:4px;flex-wrap:nowrap;overflow-x:auto;box-shadow:0 0 23px #0009}
+ body.ecoMockLayout .toolrow button{font-size:11px;font-weight:650;padding:7px 9px;min-height:38px;white-space:nowrap}
+ body.ecoMockLayout #ecoMapStatus{bottom:88px;left:8px;right:8px;display:flex;justify-content:space-between;gap:4px;padding:6px 8px;font-size:10px}
+ body.ecoMockLayout #ecoMapStatus span:nth-child(2){display:none}
+ body.ecoMockLayout #eco3dInset{bottom:124px;width:94%;height:195px}
+ body.ecoMockLayout #eco3dInset.ecoInsetHidden{height:35px;width:min(75%,340px)}
+ body.ecoMockLayout #ecoMobileMapActions{position:absolute;display:flex;gap:5px;right:9px;top:53px;z-index:1000}
+ body.ecoMockLayout #ecoMobileMapActions button{min-width:40px;height:38px;padding:5px 8px;background:#11283adc;border:1px solid #40677c;font-size:14px}
+ body.ecoMockLayout:not(.ecoAdvancedOpen)>section.panel,body.ecoMockLayout:not(.ecoAdvancedOpen)>section.panel~section.panel{display:none}
+ body.ecoMockLayout:not(.ecoAdvancedOpen)>.toolrow~section.panel{display:none}
+ body.ecoMockLayout .top{z-index:1600}
+ #ecoAdvancedToggle{margin-bottom:100px}
+}
+@media(max-width:620px){
+ body.ecoMockLayout .top{padding:8px 10px}
+ body.ecoMockLayout .top h1{font-size:16px}
+ body.ecoMockLayout #ecoSidebarToggle{min-height:36px;padding:6px 9px;font-size:12px}
+ body.ecoMockLayout #ecoContextMobile{top:54px!important}
+ body.ecoMockLayout #ecoShell{height:calc(100dvh - 93px);min-height:430px}
+ body.ecoMockLayout .toolbar{top:7px}
+ body.ecoMockLayout #ecoMobileMapActions{top:53px}
+ body.ecoMockLayout #ecoMapStatus{bottom:86px}
+ body.ecoMockLayout #eco3dInset{bottom:122px;height:175px}
+}
 </style>
 </head>
 
@@ -5652,9 +5686,19 @@ refreshMissions();
  shell.append(workspace,mapColumn,context);
  mapWrap.parentElement.insertBefore(shell,mapWrap);
  mapColumn.append(mapWrap);
+ const mobileActions=document.createElement('div');mobileActions.id='ecoMobileMapActions';
+ const plus=document.createElement('button');plus.textContent='+';plus.setAttribute('aria-label','Acercar mapa');plus.onclick=()=>map.zoomIn();
+ const minus=document.createElement('button');minus.textContent='−';minus.setAttribute('aria-label','Alejar mapa');minus.onclick=()=>map.zoomOut();
+ const quick3d=document.createElement('button');quick3d.textContent='3D';quick3d.setAttribute('aria-label','Mostrar visor 3D');
+ mobileActions.append(plus,minus,quick3d);mapColumn.append(mobileActions);
+
  const bottom=document.createElement('div');bottom.id='ecoBottomStatus';
  bottom.innerHTML='<span>ECOUAV · WGS84</span><span>Cartografía y previsiones sujetas a sus fuentes oficiales</span><span>GNSS y cobertura RF no medidos</span>';
  shell.after(bottom);
+ const advanced=document.createElement('button');advanced.id='ecoAdvancedToggle';advanced.type='button';advanced.textContent='⚙ Mostrar herramientas avanzadas';
+ bottom.after(advanced);
+ advanced.onclick=()=>{const open=document.body.classList.toggle('ecoAdvancedOpen');advanced.textContent=open?'⚙ Ocultar herramientas avanzadas':'⚙ Mostrar herramientas avanzadas';};
+
  document.body.classList.add('ecoMockLayout');
  workspace.setAttribute('aria-hidden','false');
  if(innerWidth>900)workspace.classList.add('ecoSidebarOpen');
@@ -5736,6 +5780,11 @@ refreshMissions();
  controls.append(full,hide);head.append(title,controls);
  const content=document.createElement('div');content.id='eco3dInsetContent';content.append(viewer);
  inset.append(head,content);mapColumn.append(inset);
+ // The mobile map stays usable until the user chooses to expand the 3D viewer.
+ const setMobileInset=()=>{if(innerWidth<=900){inset.classList.add('ecoInsetHidden');hide.textContent='+';}};
+ setMobileInset();
+ quick3d.onclick=()=>{inset.classList.toggle('ecoInsetHidden');hide.textContent=inset.classList.contains('ecoInsetHidden')?'+':'−';setTimeout(()=>{if(typeof eco3dResize==='function')eco3dResize()},150)};
+
  const go=document.getElementById('ecoGoButton'),input=document.getElementById('ecoGoCoordinates');
  const locate=()=>{
   const m=input.value.trim().replace(/[°]/g,'').match(/^(-?\d+(?:\.\d+)?)\s*[,; ]\s*(-?\d+(?:\.\d+)?)$/);
