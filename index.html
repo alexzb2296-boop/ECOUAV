@@ -4835,13 +4835,15 @@ async function ecoLoadIgnMdt05(active,half,n){
  const response=await fetch(root+'/collections?f=json',{signal:AbortSignal.timeout(12000)});
  if(!response.ok)throw Error('API IGN catálogo HTTP '+response.status);
  const data=await response.json();
- const candidates=(data.collections||[]).filter(c=>/MDT/i.test((c.title||'')+' '+(c.description||''))&&/(?:\\b5\\s*m\\b|\\b5\\s*metros\\b|\\b5\\b$)/i.test(c.title||''));
- const isCanary=active.lat>27&&active.lat<30&&active.lng< -13;
- const preferred=candidates.find(c=>isCanary?/canarias/i.test(c.title||''):/península|baleares|iberica|ibérica/i.test(c.title||''))||candidates[0];
- if(!preferred?.id)throw Error('Colección MDT 5 m no encontrada en catálogo');
+ // The official catalog uses titles like "DTM ... EPSG:4258 5" (not "MDT 5 m").
+ // Use the verified 5 m EPSG:4258 collection for each geographical region.
+ const isCanary=active.lat>27&&active.lat<30&&active.lng< -12;
+ const id='EL.ElevationGridCoverage_4258_5_'+(isCanary?'C':'PB');
+ const preferred=(data.collections||[]).find(c=>c.id===id);
+ if(!preferred)throw Error('Colección IGN '+id+' no publicada en el catálogo');
  const latDelta=half/111320,lonDelta=half/(111320*Math.max(.2,Math.cos(active.lat*Math.PI/180)));
  const bbox=[active.lng-lonDelta,active.lat-latDelta,active.lng+lonDelta,active.lat+latDelta].join(',');
- const url=root+'/collections/'+encodeURIComponent(preferred.id)+'/coverage?'+new URLSearchParams({bbox,'f':'tiff'});
+ const url=root+'/collections/'+encodeURIComponent(preferred.id)+'/coverage?'+new URLSearchParams({bbox,'f':'COG'});
  const res=await fetch(url,{signal:AbortSignal.timeout(25000)});
  if(!res.ok)throw Error('API IGN MDT05 HTTP '+res.status);
  const buffer=await res.arrayBuffer();
