@@ -1,0 +1,496 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1440,initial-scale=1">
+<meta name="theme-color" content="#071522">
+<title>ECOUAV · Desktop v2</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{color-scheme:dark;--bg:#06131f;--nav:#091b2a;--panel:#0c1d2b;--card:#102332;--line:#2a5065;--muted:#9eb8c8;--cyan:#3ad0ff;--white:#eef8fe;--green:#51d3a4;--amber:#ffc46c}
+*{box-sizing:border-box}
+html,body{width:100%;height:100%;margin:0;background:var(--bg);color:var(--white);font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+button,select,input{font:inherit}
+button{cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+button:disabled{opacity:.55;cursor:wait}
+#app{height:100dvh;min-height:670px;min-width:1180px;display:grid;grid-template-rows:54px minmax(0,1fr) 31px}
+header{display:flex;align-items:center;gap:18px;padding:0 13px;background:linear-gradient(90deg,#061724,#091c2a);border-bottom:1px solid #246a88;white-space:nowrap}
+.brand{display:flex;align-items:center;gap:9px;font-weight:800;font-size:22px;letter-spacing:.03em}
+.brand svg{width:42px;height:32px;color:var(--cyan)}
+.headerNav{display:flex;align-items:center;gap:6px}
+.headerNav button{font-size:10px;letter-spacing:.035em;padding:8px 4px;background:none;color:#aac0d0;border:0}
+.headerNav button.active,.headerNav button:hover{color:var(--cyan)}
+.headerSearch{width:min(360px,27vw);height:33px;display:flex;align-items:center;gap:6px;margin-left:auto;background:#112638;border:1px solid #294a62;border-radius:8px;padding:0 9px}
+.headerSearch input{border:0;outline:0;background:transparent;color:#edf7fc;width:100%;min-width:0;font-size:11px}
+.headerSearch button{border:0;background:transparent;color:#94d5ef;padding:3px}
+.liveStatus{display:flex;align-items:center;gap:13px;color:#a9c2d2;font-size:11px}
+.liveStatus strong{color:#effbff;font-weight:600}
+.statusDot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#728390;margin-right:4px}
+#planButton{padding:10px 13px;border:1px solid #2aa8d3;border-radius:7px;color:white;background:linear-gradient(#1288b7,#0d638c);font-size:12px;font-weight:700}
+#planButton[aria-pressed="true"]{background:#124e61;box-shadow:0 0 0 2px #4cdfff44}
+#desktopLink{color:#84cfed;font-size:11px;text-decoration:none}
+main{display:grid;grid-template-columns:252px minmax(0,1fr) 314px;min-height:0;min-width:0;background:#091725}
+.sidebar{background:linear-gradient(150deg,#0c2130,#081a27 65%);border-right:1px solid #284658;min-height:0;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#34566c transparent}
+.sidebarNav{display:flex;flex-direction:column;gap:3px;padding:10px}
+.sidebarNav button{min-height:37px;display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:8px 11px;font-size:12px;font-weight:600;border:1px solid transparent;border-radius:7px;background:transparent;color:#d0e4f0}
+.sidebarNav button.selected{border-color:#2487b3;border-left:3px solid var(--cyan);background:linear-gradient(90deg,#19485e,#123245);color:#fff;box-shadow:inset 0 0 20px #23bfff12}
+.sidebarNav button:hover{background:#19374a}
+.navIcon{width:20px;text-align:center;font-size:18px;font-weight:400;color:#b4dff0}
+.sideSection{margin:2px 9px 9px;background:#0b1e2a;border:1px solid #26485b;border-radius:7px;overflow:hidden}
+.sectionTitle{display:flex;align-items:center;justify-content:space-between;padding:10px 10px 8px;border-bottom:1px solid #243f51;font-size:12px;font-weight:700;color:#92e2ff}
+.sectionTitle b{font-size:14px;font-weight:500}
+.sideContent{padding:7px 11px 11px}
+.setting{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;color:#d6e6ee;min-height:30px}
+.setting span{overflow:hidden;text-overflow:ellipsis}
+.toggle{position:relative;flex:0 0 31px;width:31px;height:17px;appearance:none;background:#384c60;border:1px solid #547084;border-radius:20px;cursor:pointer;margin:0}
+.toggle:after{content:'';position:absolute;top:2px;left:2px;width:11px;height:11px;border-radius:50%;background:#cad9e5;transition:transform .15s ease}
+.toggle:checked{background:#168ec1;border-color:#3dc9f7}
+.toggle:checked:after{transform:translateX(14px);background:white}
+.selectRow{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:8px;font-size:11px;color:#c2d3df}
+.selectRow select{max-width:128px;color:#e6f5fd;background:#182f40;border:1px solid #345870;border-radius:5px;font-size:11px;padding:5px}
+.smallAction{display:block;width:100%;background:#16384d;border:1px solid #32637c;border-radius:6px;color:#d9f3ff;margin-top:9px;padding:8px;font-size:11px}
+.smallAction:hover{background:#205570}
+.sideMessage{font-size:10px;line-height:1.45;color:#8caebf;margin:7px 0 0}
+.sideWeather{display:grid;grid-template-columns:1fr 1fr;gap:8px 5px;margin-top:11px}
+.sideWeather div{font-size:10px;color:#9fc0cf}
+.sideWeather strong{display:block;color:#f5faff;font-size:14px;margin-top:4px}
+.mapShell{position:relative;overflow:hidden;min-width:0;background:#0d1f2d}
+#map{height:100%;width:100%;z-index:1;background:#132c35}
+.leaflet-container{font-family:inherit;background:#132c35}
+.leaflet-control-attribution{font-size:9px!important;background:#071622b5!important;color:#a3c5d7!important}
+.leaflet-control-attribution a{color:#80cef0!important}
+.mapTopLabel{position:absolute;z-index:650;top:12px;left:12px;display:flex;align-items:center;gap:10px;pointer-events:none}
+.compass{width:51px;height:51px;border:1px solid #eff8ffcc;background:#071a27b8;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-direction:column;color:#fff;box-shadow:0 2px 12px #0006}
+.compass b{font-size:11px;line-height:1}
+.compass span{font-size:29px;line-height:27px}
+.mapHint{font-size:10px;color:#c7dfec;background:#071927c7;border:1px solid #305166;padding:7px 9px;border-radius:7px}
+.mapActions{position:absolute;z-index:700;right:10px;top:12px;display:flex;flex-direction:column;gap:5px}
+.mapActions button{display:flex;justify-content:center;align-items:center;width:36px;height:36px;padding:0;border-radius:7px;background:#071b2be8;border:1px solid #42617a;color:#f6fbff;font-size:19px}
+.mapActions button:hover,.mapActions button.pressed{border-color:#5bd4ff;background:#14455e}
+.mapStatus{position:absolute;z-index:700;left:11px;bottom:9px;background:#071827db;border:1px solid #31566b;border-radius:6px;color:#c9e4f1;padding:7px 8px;display:flex;gap:16px;font-size:10px;pointer-events:none}
+.leaflet-marker-icon.demoPoint{background:none;border:0}
+.pinBody{display:flex;flex-direction:column;align-items:center;position:relative;white-space:nowrap}
+.pinCircle{width:21px;height:21px;border:3px solid #062539;border-radius:50%;background:#30cdfc;box-shadow:0 1px 10px #000b;display:flex;align-items:center;justify-content:center;color:#062d42;font-size:10px;font-weight:900}
+.pinLabel{position:absolute;top:0;left:25px;font-size:12px;color:#fff;font-weight:700;text-shadow:0 1px 4px #000,0 1px 2px #000;display:block;background:#08131a77;padding:2px 3px;border-radius:3px}
+.pinLabel small{display:block;color:#b6d5e4;font-size:9px;font-weight:400}
+.pinLaunch{font-size:26px;color:#50fa8b;text-shadow:0 1px 4px #000}
+.pinAntenna{font-size:26px;color:#41d2f4;text-shadow:0 1px 4px #000}
+.pinPOI{font-size:21px;text-shadow:0 1px 4px #000}
+.mapLegend{position:absolute;z-index:710;left:12px;bottom:50px;background:#081c2bde;border:1px solid #325269;border-radius:7px;padding:7px 9px;color:#aed8e9;font-size:10px}
+.legendLine{display:inline-block;width:17px;height:0;border-top:2px dashed #3ad7ff;vertical-align:middle}
+.legendSector{display:inline-block;width:13px;height:9px;background:#2eaee85e;border:1px solid #4ec7fd;vertical-align:middle}
+#preview3d{position:absolute;z-index:800;bottom:43px;left:50%;transform:translateX(-50%);width:83%;height:245px;max-width:830px;display:flex;flex-direction:column;background:#081b2bf3;border:1px solid #37738c;border-radius:9px;box-shadow:0 10px 34px #000b;overflow:hidden}
+#preview3d.collapsed{height:34px;width:58%}
+.previewHead{display:flex;align-items:center;justify-content:space-between;gap:8px;flex:0 0 34px;padding:4px 9px;background:#071726e9;color:#e7f7ff;font-size:11px;border-bottom:1px solid #25475d}
+.previewHead .control{display:flex;gap:4px}
+.previewHead button{border:1px solid #315366;background:#102a3e;color:#cdefff;border-radius:4px;padding:3px 8px;font-size:11px}
+.previewBody{position:relative;flex:1;min-height:0;background:radial-gradient(ellipse at 50% 10%,#21475b,#0a1a2c 80%)}
+#preview3d.collapsed .previewBody{display:none}
+#threeStage{width:100%;height:100%;min-height:0;position:relative;touch-action:none}
+#threeStatus{position:absolute;left:9px;bottom:7px;background:#071827a9;color:#b9d4e5;border-radius:4px;padding:4px 7px;font-size:10px;pointer-events:none}
+#threeLegend{position:absolute;right:9px;top:8px;color:#d8ecfa;background:#071b2bd9;border:1px solid #315970;border-radius:6px;font-size:10px;padding:7px 8px}
+#preview3d:fullscreen{width:100%;height:100%;max-width:none;left:0;bottom:0;transform:none;border-radius:0}
+.rightPanel{background:linear-gradient(140deg,#0a1c29,#071622);border-left:1px solid #29495b;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#34576c transparent;padding:8px 9px;display:flex;flex-direction:column;gap:7px;min-width:0}
+.infoCard{background:#0b1e2c;border:1px solid #284456;border-radius:7px;overflow:hidden}
+.infoTitle{padding:9px 11px;border-bottom:1px solid #28485b;color:#96e1ff;font-size:12px;font-weight:700}
+.infoBody{padding:10px 11px}
+.selectedName{display:flex;justify-content:space-between;align-items:center;gap:5px;font-size:12px;color:#f4fbff;font-weight:700;margin-bottom:8px}
+.smallTag{display:inline-block;background:#123d55;border:1px solid #2d7195;padding:2px 5px;border-radius:4px;font-size:10px;color:#81d6fc;font-weight:500}
+#selectedThumb{height:88px;width:100%;background:linear-gradient(135deg,#213b4b,#102432);border:1px solid #31576c;border-radius:5px;object-fit:cover;display:block;margin:5px 0 11px}
+.detailRow{display:flex;justify-content:space-between;gap:9px;margin:7px 0;font-size:11px}
+.detailRow span{color:#a8beca}.detailRow strong{color:#ebf8ff;text-align:right;overflow-wrap:anywhere;max-width:60%}
+.weatherGrid{display:grid;grid-template-columns:1fr 1fr;gap:13px 8px}
+.weatherGrid label{display:block;color:#aac0d0;font-size:10px;margin-bottom:4px}
+.weatherGrid strong{font-size:13px;color:#f3faff}
+.weatherGrid i{font-style:normal;font-size:18px;color:#56d3ff;float:left;margin-right:7px}
+.metricGrid{display:grid;grid-template-columns:1fr 1fr;gap:12px 10px}
+.metricBox label{font-size:10px;color:#a1bacb;display:block;margin-bottom:5px}
+.metricBox strong{font-size:13px;color:#eef7ff}
+.weatherTiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
+.weatherTiles div{background:#142a3c;border:1px solid #2c4d61;border-radius:5px;padding:7px 2px;text-align:center}
+.weatherTiles i{font-size:18px;font-style:normal;display:block;margin-bottom:4px}
+.weatherTiles strong{font-size:11px;display:block}
+.weatherTiles small{font-size:9px;color:#91adbd}
+.miniNote{color:#8eacbd;font-size:10px;line-height:1.4;margin:8px 0 0}
+#toast{position:absolute;top:65px;left:50%;transform:translateX(-50%);background:#0a293af5;border:1px solid #3991b0;border-radius:8px;padding:8px 13px;color:#dff6ff;font-size:11px;z-index:1500;display:none;box-shadow:0 3px 15px #0009}
+footer{background:#061622;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:0 12px;border-top:1px solid #28617d;color:#9fbdca;font-size:10px}
+footer strong{font-weight:500;color:#cae7f5}
+@media(max-width:1400px){main{grid-template-columns:235px minmax(0,1fr) 295px}.headerNav button{font-size:9px}.liveStatus{gap:8px}}
+</style>
+</head>
+<body>
+<div id="app">
+<header>
+ <div class="brand" aria-label="ECOUAV"><svg viewBox="0 0 55 38" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M2 33 18 10 26 20 34 3 53 33H2"/><path d="m14 33 11-14 12 14M33 18l6 6"/></svg>ECOUAV</div>
+ <nav class="headerNav" aria-label="Secciones principales"><button data-section="planning" class="active">PLANIFICACIÓN</button><button data-section="terrain">TERRENO</button><button data-section="antenna">ANTENAS</button><button data-section="flights">VUELOS</button><button data-section="projects">PROYECTOS</button></nav>
+ <form id="searchForm" class="headerSearch" autocomplete="off"><span aria-hidden="true">⌕</span><input id="searchCoords" aria-label="Coordenadas de destino" placeholder="Coordenadas: latitud, longitud"><button aria-label="Ir" title="Ir a coordenadas" type="submit">↵</button></form>
+ <div class="liveStatus"><span><i class="statusDot" id="gpsDot"></i><span id="gpsInfo">GPS no conectado</span></span><span id="topWx">Meteo —</span><span id="clock">—</span></div>
+ <button id="planButton" type="button" aria-pressed="false">▶ Planificar vuelo</button>
+ <a id="desktopLink" href="./index.html" title="Abrir herramientas clásicas">Clásico ↗</a>
+</header>
+<main>
+ <aside class="sidebar" aria-label="Herramientas y capas">
+  <nav class="sidebarNav">
+   <button type="button" class="selected" data-section="terrain"><span class="navIcon">⛰</span>Terreno</button>
+   <button type="button" data-section="weather"><span class="navIcon">☁</span>Meteo</button>
+   <button type="button" data-section="antenna"><span class="navIcon">♧</span>Antenas</button>
+   <button type="button" data-section="flights"><span class="navIcon">✈</span>Vuelos</button>
+   <button type="button" data-section="projects"><span class="navIcon">▣</span>Proyectos</button>
+  </nav>
+  <section class="sideSection"><div class="sectionTitle">♧ &nbsp;Capas del mapa <b>⌃</b></div><div class="sideContent">
+   <label class="setting"><span>▧ &nbsp;Satélite Esri</span><input class="toggle" type="radio" name="basemap" value="esri" checked></label>
+   <label class="setting"><span>▧ &nbsp;PNOA (orto) · IGN</span><input class="toggle" type="radio" name="basemap" value="pnoa"></label>
+   <label class="setting"><span>≋ &nbsp;Topografía (OpenTopoMap)</span><input class="toggle" id="topoToggle" type="checkbox" checked></label>
+   <label class="setting"><span>⌁ &nbsp;Rutas</span><input class="toggle" id="routesToggle" type="checkbox" checked></label>
+   <label class="setting"><span>♧ &nbsp;Antenas / lóbulo</span><input class="toggle" id="antennaToggle" type="checkbox" checked></label>
+   <label class="setting"><span>⌖ &nbsp;Puntos de interés</span><input class="toggle" id="poiToggle" type="checkbox" checked></label>
+   <p class="sideMessage">Las posiciones iniciales son una demostración, no datos de una misión real.</p>
+  </div></section>
+  <section class="sideSection"><div class="sectionTitle">⛰ &nbsp;Terreno <b>⌃</b></div><div class="sideContent">
+   <label class="setting"><span>Vista 3D</span><input class="toggle" id="view3dToggle" type="checkbox" checked></label>
+   <label class="setting"><span>Curvas topográficas</span><input class="toggle" id="topo2Toggle" type="checkbox" checked></label>
+   <div class="selectRow"><label for="basemapOpacity">Transparencia topo</label><select id="basemapOpacity"><option value=".3">30 %</option><option value=".5" selected>50 %</option><option value=".75">75 %</option></select></div>
+   <div class="selectRow"><label for="terrainCenter">Terreno 3D</label><select id="terrainCenter"><option value="center">Centro del mapa</option><option value="antenna">Antena demo</option></select></div>
+   <button type="button" id="reload3d" class="smallAction">⛰ Cargar elevaciones 3D</button>
+   <p id="terrainSideStatus" class="sideMessage">Open-Meteo · se indicará la fuente realmente cargada.</p>
+  </div></section>
+  <section class="sideSection"><div class="sectionTitle">◉ &nbsp;Meteorología <b>⌃</b></div><div class="sideContent">
+   <div class="selectRow"><label for="weatherTarget">Ubicación</label><select id="weatherTarget"><option value="selected">Punto seleccionado</option><option value="center">Centro del mapa</option></select></div>
+   <button type="button" class="smallAction" id="loadWeather">↻ Consultar previsión</button>
+   <div class="sideWeather"><div>♧ Temperatura<strong id="sideTemp">—</strong></div><div>≋ Viento<strong id="sideWind">—</strong></div><div>≋ Rachas<strong id="sideGust">—</strong></div><div>☁ Nubosidad<strong id="sideCloud">—</strong></div></div>
+   <p id="weatherNote" class="sideMessage">Sin previsión cargada. Fuente: Open-Meteo.</p>
+  </div></section>
+  <section class="sideSection"><div class="sectionTitle">☷ &nbsp;Proyecto <b>⌃</b></div><div class="sideContent">
+   <button type="button" class="smallAction" id="resetDemo">↻ Restablecer demostración</button>
+   <button type="button" class="smallAction" id="saveProject">↓ Exportar proyecto GeoJSON</button>
+   <p class="sideMessage">Puedes dibujar puntos de ruta y colocar la antena en el mapa. Guarda tu trabajo en GeoJSON.</p>
+  </div></section>
+ </aside>
+ <section class="mapShell" aria-label="Mapa principal">
+  <div id="map"></div>
+  <div class="mapTopLabel"><div class="compass" title="Norte"><b>N</b><span>▲</span></div><div class="mapHint" id="modeLabel">● Demostración · haz clic para inspeccionar</div></div>
+  <div class="mapActions" aria-label="Herramientas del mapa">
+   <button id="layersAction" title="Capas" aria-label="Capas">▧</button>
+   <button id="locateAction" title="Mi posición (con permiso)" aria-label="Mi posición">⊙</button>
+   <button id="zoomIn" title="Acercar" aria-label="Acercar">+</button>
+   <button id="zoomOut" title="Alejar" aria-label="Alejar">−</button>
+   <button id="threeAction" title="Alternar visor 3D" aria-label="Vista 3D" style="font-size:13px;font-weight:700">3D</button>
+  </div>
+  <div id="toast" role="status"></div>
+  <div class="mapLegend"><span class="legendLine"></span> Ruta ilustrativa&nbsp; <span class="legendSector"></span> Lóbulo visual (sin predicción RF)</div>
+  <section id="preview3d" aria-label="Visor 3D del terreno">
+   <div class="previewHead"><span>⛰ &nbsp;Vista 3D del terreno y antena <span class="smallTag">DEM</span></span><div class="control"><button id="resetCamera" title="Centrar cámara 3D">◎</button><button id="fullscreen3d" title="Pantalla completa 3D">⛶</button><button id="collapse3d" title="Contraer 3D">−</button></div></div>
+   <div class="previewBody"><div id="threeStage"></div><div id="threeLegend">▰ Terreno&nbsp;&nbsp; <span class="legendSector"></span> Haz ilustrativo</div><div id="threeStatus">Preparando visor 3D…</div></div>
+  </section>
+  <div class="mapStatus"><span id="mapCoords">WGS84 —</span><span id="mapZoom">Zoom —</span><span id="mapSource">Satélite Esri</span></div>
+ </section>
+ <aside class="rightPanel" aria-label="Datos del punto y la ruta">
+  <section class="infoCard"><div class="infoTitle">⌖ &nbsp;Punto seleccionado</div><div class="infoBody">
+   <div class="selectedName"><span id="selectedTitle">Selecciona un punto</span><span class="smallTag" id="selectedType">SIN DATOS</span></div>
+   <img id="selectedThumb" alt="Vista satelital aproximada del entorno seleccionado">
+   <div class="detailRow"><span>Coordenadas WGS84</span><strong id="selectedCoords">—</strong></div>
+   <div class="detailRow"><span>Altitud del terreno</span><strong id="selectedHeight">—</strong></div>
+   <div class="detailRow"><span>Fuente elevación</span><strong id="selectedElevSource">Sin consulta</strong></div>
+  </div></section>
+  <section class="infoCard"><div class="infoTitle">☁ &nbsp;Condiciones en el punto (modelo)</div><div class="infoBody">
+   <div class="weatherGrid"><div><i>≋</i><label>Viento 10 m</label><strong id="wxWind">—</strong></div><div><i>≋</i><label>Rachas</label><strong id="wxGust">—</strong></div><div><i>♧</i><label>Temperatura</label><strong id="wxTemp">—</strong></div><div><i>☁</i><label>Nubosidad</label><strong id="wxCloud">—</strong></div></div>
+   <p id="wxTime" class="miniNote">Consulta Open-Meteo para obtener datos reales del modelo.</p>
+  </div></section>
+  <section class="infoCard"><div class="infoTitle">⌁ &nbsp;Información de la ruta</div><div class="infoBody">
+   <div class="metricGrid"><div class="metricBox"><label>Distancia total</label><strong id="distanceInfo">—</strong></div><div class="metricBox"><label>Puntos</label><strong id="pointsInfo">—</strong></div><div class="metricBox"><label>Desnivel +</label><strong>Sin cálculo</strong></div><div class="metricBox"><label>Tiempo estimado</label><strong>Sin velocidad</strong></div></div>
+   <p id="routeNote" class="miniNote">Ruta de demostración. No es un recorrido validado.</p>
+  </div></section>
+  <section class="infoCard"><div class="infoTitle">♧ &nbsp;Antena y representación 3D</div><div class="infoBody">
+   <div class="detailRow"><span>Antena</span><strong id="antennaInfo">Demostración</strong></div>
+   <div class="detailRow"><span>Altura de mástil</span><strong>3 m (visual)</strong></div>
+   <div class="detailRow"><span>Cobertura de señal</span><strong>No calculada</strong></div>
+   <button type="button" id="placeAntenna" class="smallAction">⌖ Colocar antena en mapa</button>
+   <p class="miniNote">El sector representado es ilustrativo. No predice alcance, calidad del enlace ni zonas seguras.</p>
+  </div></section>
+  <section class="infoCard"><div class="infoTitle">◉ &nbsp;Meteorología · Open-Meteo</div><div class="infoBody"><div class="weatherTiles"><div><i>☀</i><strong id="tileTemp">—</strong><small>Temp.</small></div><div><i>≋</i><strong id="tileWind">—</strong><small>Viento</small></div><div><i>⇝</i><strong id="tileGust">—</strong><small>Rachas</small></div><div><i>☁</i><strong id="tileCloud">—</strong><small>Nubes</small></div></div></div></section>
+ </aside>
+</main>
+<footer><span id="footerCoords">⌖ WGS84 · Centro del mapa</span><span>ESCALA APROX. · <strong id="footerScale">—</strong> &nbsp;|&nbsp; PROYECCIÓN WGS84</span><span id="footerSource">Ortofoto/MDT según fuente seleccionada · GNSS no conectado</span></footer>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function(){
+ 'use strict';
+ const $=id=>document.getElementById(id);
+ const safe=(x)=>String(x??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+ let map,baseLayer,source='Satélite Esri',mode='inspect',selected=null,selectedName='Punto seleccionado',demo=true,route=[],antenna=null,weather=null,weatherDate=null,terrainRequest=0,selectionRequest=0;
+ const startCenter={lat:40.935,lng:-3.585};
+ const demoRoute=[{lat:40.915,lng:-3.665},{lat:40.949,lng:-3.620},{lat:40.974,lng:-3.553},{lat:40.949,lng:-3.495}];
+ const demoAntenna={lat:40.914,lng:-3.552};
+ let routeLayer=L.layerGroup(),antennaLayer=L.layerGroup(),poiLayer=L.layerGroup();
+ const esri=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Tiles © Esri'});
+ const pnoa=L.tileLayer('https://www.ign.es/wmts/pnoa-ma?service=WMTS&request=GetTile&version=1.0.0&layer=OI.OrthoimageCoverage&style=default&format=image/jpeg&tilematrixset=GoogleMapsCompatible&TileMatrix={z}&TileRow={y}&TileCol={x}',{maxZoom:19,maxNativeZoom:18,attribution:'Ortofoto © IGN/CNIG (PNOA)'});
+ const topo=L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',{maxNativeZoom:17,maxZoom:19,opacity:.5,attribution:'© OpenTopoMap / OpenStreetMap'});
+ function toast(t){const el=$('toast');el.textContent=t;el.style.display='block';clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.style.display='none',4000)}
+ function updateMapStatus(){
+  const c=map.getCenter(),z=map.getZoom();
+  $('mapCoords').textContent=c.lat.toFixed(5)+'° N / '+Math.abs(c.lng).toFixed(5)+'° '+(c.lng<0?'O':'E');
+  $('mapZoom').textContent='Zoom '+z;
+  $('mapSource').textContent=source;
+  $('footerCoords').textContent='⌖ '+c.lat.toFixed(5)+'°, '+c.lng.toFixed(5)+'°';
+  const mpp=156543.03392*Math.cos(c.lat*Math.PI/180)/Math.pow(2,z);
+  $('footerScale').textContent='~'+Math.round(mpp)+' m/píxel';
+ }
+ function setBase(value){
+  if(baseLayer)map.removeLayer(baseLayer);
+  baseLayer=value==='pnoa'?pnoa:esri;
+  baseLayer.addTo(map);baseLayer.bringToBack();
+  source=value==='pnoa'?'PNOA · IGN':'Satélite Esri';
+  updateMapStatus();
+ }
+ function setTopo(enabled){
+  if(enabled){if(!map.hasLayer(topo))topo.addTo(map);topo.setOpacity(Number($('basemapOpacity').value));}
+  else if(map.hasLayer(topo))map.removeLayer(topo);
+ }
+ const idIcon=(letter,color='#38cfff',type='pin')=>{
+  const symbol=type==='antenna'?'♧':type==='launch'?'▲':letter;
+  const content='<div class="pinBody"><div class="'+(type==='antenna'?'pinAntenna':type==='launch'?'pinLaunch':'pinCircle')+'" style="'+(type==='pin'?'background:'+color+';':'')+'">'+safe(symbol)+'</div></div>';
+  return L.divIcon({html:content,className:'demoPoint',iconSize:[26,27],iconAnchor:[13,14]});
+ };
+ function mark(ll,name,kind='pin',color){
+  const marker=L.marker([ll.lat,ll.lng],{icon:idIcon(name.length===1?name:'●',color,kind),title:name});
+  marker.bindTooltip(safe(name)+(demo?' · demo':''),{direction:'top',offset:[0,-14]});
+  marker.on('click',()=>selectAt(ll,name));return marker;
+ }
+ function distance(){
+  let meters=0;
+  for(let i=1;i<route.length;i++)meters+=map.distance(route[i-1],route[i]);
+  return meters;
+ }
+ function destination(lat,lng,angle,meters){
+  const R=6371000,delta=meters/R,br=angle*Math.PI/180,phi1=lat*Math.PI/180,lambda1=lng*Math.PI/180;
+  const phi2=Math.asin(Math.sin(phi1)*Math.cos(delta)+Math.cos(phi1)*Math.sin(delta)*Math.cos(br));
+  const lambda2=lambda1+Math.atan2(Math.sin(br)*Math.sin(delta)*Math.cos(phi1),Math.cos(delta)-Math.sin(phi1)*Math.sin(phi2));
+  return [phi2*180/Math.PI,lambda2*180/Math.PI];
+ }
+ function redraw(){
+  routeLayer.clearLayers();antennaLayer.clearLayers();poiLayer.clearLayers();
+  if(route.length){
+   L.polyline(route.map(p=>[p.lat,p.lng]),{color:'#36d5ff',weight:3,dashArray:'8 7',opacity:.95}).addTo(routeLayer);
+   route.forEach((p,i)=>mark(p,i===0?'Lanzamiento':String.fromCharCode(64+i),i===0?'launch':'pin').addTo(routeLayer));
+  }
+  if(antenna){
+   mark(antenna,'Antena','antenna').addTo(antennaLayer);
+   // An intentionally arbitrary sketch of antenna direction; it is NOT RF coverage.
+   const azimuth=340,angle=75,visualMeters=2400,pts=[[antenna.lat,antenna.lng]];
+   for(let j=0;j<=24;j++)pts.push(destination(antenna.lat,antenna.lng,azimuth-angle/2+angle*j/24,visualMeters));
+   L.polygon(pts,{color:'#43c9f5',weight:1.3,opacity:.55,fillColor:'#169cd4',fillOpacity:.15}).addTo(antennaLayer);
+  }
+  if(demo){
+   const pois=[{lat:40.932,lng:-3.678,name:'POI demo · cruce'},{lat:40.918,lng:-3.493,name:'POI demo · charca'}];
+   pois.forEach(p=>mark(p,p.name,'pin','#ffb84a').addTo(poiLayer));
+  }
+  updateRouteInfo();
+ }
+ function updateRouteInfo(){
+  $('distanceInfo').textContent=route.length>1?(distance()/1000).toFixed(2)+' km':'—';
+  $('pointsInfo').textContent=route.length+' puntos';
+  $('routeNote').textContent=demo?'Ruta de demostración ilustrativa, no verificada. Inicia tu propia ruta con «Planificar vuelo».':'Ruta creada manualmente. No se calculan tiempo seguro, cobertura ni desnivel.';
+ }
+ function setMode(next){
+  mode=next;$('planButton').setAttribute('aria-pressed',String(next==='route'));
+  $('planButton').textContent=next==='route'?'✓ Añade puntos en el mapa':'▶ Planificar vuelo';
+  $('modeLabel').textContent=next==='route'?'⌁ Pulsa en el mapa para añadir puntos':'● '+(demo?'Demostración':'Mapa')+' · haz clic para inspeccionar';
+  if(next==='antenna')$('modeLabel').textContent='♧ Pulsa en el mapa para colocar la antena';
+ }
+ function selectAt(ll,name){
+  selected={lat:ll.lat,lng:ll.lng};selectedName=name||'Punto seleccionado';
+  $('selectedTitle').textContent=selectedName;
+  $('selectedType').textContent=demo?'EJEMPLO':'SELECCIÓN';
+  $('selectedCoords').textContent=ll.lat.toFixed(5)+', '+ll.lng.toFixed(5);
+  $('selectedHeight').textContent='Consultando…';$('selectedElevSource').textContent='Open-Meteo Elevation';
+  const z=12,x=Math.floor((ll.lng+180)/360*Math.pow(2,z));
+  const rad=Math.max(-85.0511,Math.min(85.0511,ll.lat))*Math.PI/180;
+  const y=Math.floor((1-Math.log(Math.tan(rad)+1/Math.cos(rad))/Math.PI)/2*Math.pow(2,z));
+  $('selectedThumb').src='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/'+z+'/'+y+'/'+x;
+  const request=++selectionRequest;
+  const url='https://api.open-meteo.com/v1/elevation?latitude='+encodeURIComponent(ll.lat.toFixed(6))+'&longitude='+encodeURIComponent(ll.lng.toFixed(6));
+  fetch(url,{signal:AbortSignal.timeout(12000)}).then(res=>{if(!res.ok)throw Error('HTTP '+res.status);return res.json()}).then(data=>{
+   if(request!==selectionRequest)return;
+   const h=Number(data.elevation?.[0]);if(!Number.isFinite(h))throw Error('Sin cota válida');
+   $('selectedHeight').textContent=Math.round(h)+' m';$('selectedElevSource').textContent='Open-Meteo (aprox.)';
+  }).catch(e=>{if(request!==selectionRequest)return;$('selectedHeight').textContent='No disponible';$('selectedElevSource').textContent='Error: '+String(e.message).slice(0,45)});
+ }
+ function loadWeather(){
+  const ll=$('weatherTarget').value==='center'?map.getCenter():(selected||map.getCenter());
+  const button=$('loadWeather');button.disabled=true;$('weatherNote').textContent='Consultando modelo…';
+  const params=new URLSearchParams({latitude:ll.lat.toFixed(5),longitude:ll.lng.toFixed(5),timezone:'auto',current:'temperature_2m,wind_speed_10m,wind_gusts_10m,wind_direction_10m,cloud_cover',wind_speed_unit:'kmh'});
+  fetch('https://api.open-meteo.com/v1/forecast?'+params,{signal:AbortSignal.timeout(12000)})
+   .then(r=>{if(!r.ok)throw Error('HTTP '+r.status);return r.json()}).then(d=>{
+    const w=d.current;if(!w)throw Error('Sin datos');weather=w;weatherDate=w.time;
+    const values={Temp:w.temperature_2m+' °C',Wind:w.wind_speed_10m+' km/h',Gust:w.wind_gusts_10m+' km/h',Cloud:w.cloud_cover+' %'};
+    for(const [key,value] of Object.entries(values)){
+     $('side'+key).textContent=value;$('wx'+key).textContent=value;$('tile'+key).textContent=value;
+    }
+    $('weatherNote').textContent='Open-Meteo · '+w.time+' · coordenadas '+ll.lat.toFixed(3)+', '+ll.lng.toFixed(3);
+    $('wxTime').textContent='Open-Meteo · '+w.time+' · viento '+w.wind_direction_10m+'° · previsión, no medición local';
+    $('topWx').textContent=values.Temp;
+    toast('Previsión meteorológica actualizada');
+   }).catch(e=>{$('weatherNote').textContent='Error Open-Meteo: '+e.message;toast('No se pudo consultar meteorología')}).finally(()=>button.disabled=false);
+ }
+ function resetDemo(){
+  demo=true;route=demoRoute.map(p=>({...p}));antenna={...demoAntenna};redraw();setMode('inspect');map.setView([startCenter.lat,startCenter.lng],12);selectAt(route[2],'B · waypoint demo');toast('Demostración restaurada');
+ }
+ map=L.map('map',{center:[startCenter.lat,startCenter.lng],zoom:12,zoomControl:false,preferCanvas:true});
+ routeLayer.addTo(map);antennaLayer.addTo(map);poiLayer.addTo(map);setBase('esri');setTopo(true);
+ map.on('moveend zoomend',updateMapStatus);
+ map.on('click',ev=>{
+  const ll={lat:ev.latlng.lat,lng:ev.latlng.lng};
+  if(mode==='route'){route.push(ll);redraw();selectAt(ll,'Punto '+route.length);return;}
+  if(mode==='antenna'){antenna=ll;redraw();setMode('inspect');selectAt(ll,'Antena');$('antennaInfo').textContent='Antena colocada manualmente';return;}
+  selectAt(ll,'Punto seleccionado');
+ });
+ document.querySelectorAll('[name=basemap]').forEach(el=>el.addEventListener('change',()=>{if(el.checked)setBase(el.value)}));
+ const visibility=[['routesToggle',routeLayer],['antennaToggle',antennaLayer],['poiToggle',poiLayer]];
+ visibility.forEach(([id,group])=>$(id).addEventListener('change',()=>{$(id).checked?group.addTo(map):map.removeLayer(group)}));
+ $('topoToggle').onchange=()=>{$('topo2Toggle').checked=$('topoToggle').checked;setTopo($('topoToggle').checked)};
+ $('topo2Toggle').onchange=()=>{$('topoToggle').checked=$('topo2Toggle').checked;setTopo($('topo2Toggle').checked)};
+ $('basemapOpacity').onchange=()=>topo.setOpacity(Number($('basemapOpacity').value));
+ $('zoomIn').onclick=()=>map.zoomIn();$('zoomOut').onclick=()=>map.zoomOut();
+ $('locateAction').onclick=()=>{
+  if(!navigator.geolocation){toast('GPS del navegador no disponible');return}
+  navigator.geolocation.getCurrentPosition(p=>{
+   map.setView([p.coords.latitude,p.coords.longitude],15);
+   $('gpsInfo').textContent='Posición GPS del dispositivo';$('gpsDot').style.background='#44d77c';
+   selectAt({lat:p.coords.latitude,lng:p.coords.longitude},'Posición del dispositivo');
+  },()=>toast('No se obtuvo permiso de ubicación'),{enableHighAccuracy:true,timeout:10000});
+ };
+ $('layersAction').onclick=()=>document.querySelector('.sidebar')?.scrollIntoView({behavior:'smooth'});
+ $('loadWeather').onclick=loadWeather;
+ $('planButton').onclick=()=>{
+  if(mode==='route'){setMode('inspect');return}
+  if(demo){demo=false;route=[];redraw();}
+  setMode('route');toast('Añade puntos haciendo clic en el mapa. Vuelve a pulsar Planificar para terminar.');
+ };
+ $('placeAntenna').onclick=()=>{setMode('antenna');toast('Haz clic en el mapa para colocar la antena')};
+ $('resetDemo').onclick=resetDemo;
+ $('searchForm').onsubmit=e=>{
+  e.preventDefault();const match=$('searchCoords').value.trim().match(/^(-?\d+(?:\.\d+)?)\s*[,; ]\s*(-?\d+(?:\.\d+)?)$/);
+  if(!match)return toast('Introduce coordenadas: 40.93, -3.58');
+  const lat=Number(match[1]),lng=Number(match[2]);if(Math.abs(lat)>90||Math.abs(lng)>180)return toast('Coordenadas fuera de rango');
+  map.setView([lat,lng],Math.max(13,map.getZoom()));selectAt({lat,lng},'Coordenadas buscadas');
+ };
+ $('saveProject').onclick=()=>{
+  const features=[];
+  if(route.length)features.push({type:'Feature',properties:{name:'Ruta ECOUAV',demo},geometry:{type:'LineString',coordinates:route.map(p=>[p.lng,p.lat])}});
+  if(antenna)features.push({type:'Feature',properties:{name:'Antena',note:'Sin predicción de cobertura'},geometry:{type:'Point',coordinates:[antenna.lng,antenna.lat]}});
+  const geo={type:'FeatureCollection',properties:{name:'ECOUAV Desktop v2',exportedAt:new Date().toISOString()},features};
+  const url=URL.createObjectURL(new Blob([JSON.stringify(geo,null,2)],{type:'application/geo+json'}));
+  const a=document.createElement('a');a.href=url;a.download='ecouav-desktop-v2.geojson';a.click();setTimeout(()=>URL.revokeObjectURL(url),1200);
+ };
+ function switchSection(section){
+  document.querySelectorAll('[data-section]').forEach(b=>b.classList.toggle('selected',b.dataset.section===section));
+  document.querySelectorAll('.headerNav button').forEach(b=>b.classList.toggle('active',b.dataset.section===section));
+  const sectionTarget=section==='weather'?$('loadWeather'):section==='antenna'?$('placeAntenna'):section==='projects'?$('saveProject'):null;
+  if(sectionTarget)sectionTarget.scrollIntoView({block:'nearest',behavior:'smooth'});
+  else document.querySelector('.sidebar').scrollTop=0;
+  if(section==='planning'||section==='flights')toast('Pulsa «Planificar vuelo» para empezar una ruta manual.');
+ }
+ document.querySelectorAll('[data-section]').forEach(b=>b.onclick=()=>switchSection(b.dataset.section));
+ function showClock(){$('clock').textContent=new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}
+ showClock();setInterval(showClock,30000);
+ resetDemo();
+ const preview=$('preview3d');
+ $('threeAction').onclick=()=>{$('view3dToggle').checked=!$('view3dToggle').checked;preview.style.display=$('view3dToggle').checked?'flex':'none'};
+ $('view3dToggle').onchange=()=>preview.style.display=$('view3dToggle').checked?'flex':'none';
+ $('collapse3d').onclick=()=>{preview.classList.toggle('collapsed');$('collapse3d').textContent=preview.classList.contains('collapsed')?'+':'−';requestAnimationFrame(resizeThree)};
+ $('fullscreen3d').onclick=()=>{if(document.fullscreenElement)document.exitFullscreen();else preview.requestFullscreen?.()};
+ document.addEventListener('fullscreenchange',()=>setTimeout(resizeThree,80));
+ // The 3D surface is built from public numeric elevations, never from an RF model.
+ let renderer=null,scene=null,camera=null,terrainMesh=null,gridLines=null,threeHost=$('threeStage'),THREE=null,orbitAz=1.15,orbitEl=.45,zoom=1,focus=null,radius=3,drag=null;
+ function renderThree(){
+  if(!renderer||!camera)return;
+  const w=Math.max(2,threeHost.clientWidth),h=Math.max(2,threeHost.clientHeight);
+  renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();
+  const fov=camera.fov*Math.PI/180;
+  const dist=Math.max(6,radius/Math.sin(Math.max(.18,fov/2))*1.25*zoom);
+  camera.position.set(focus.x+dist*Math.cos(orbitEl)*Math.cos(orbitAz),focus.y+dist*Math.sin(orbitEl),focus.z+dist*Math.cos(orbitEl)*Math.sin(orbitAz));
+  camera.lookAt(focus);renderer.render(scene,camera);
+ }
+ function resizeThree(){if(renderer&&threeHost.clientWidth>0&&threeHost.clientHeight>0)renderThree()}
+ function initThree(){
+  THREE=window.THREE;if(!THREE)return false;
+  scene=new THREE.Scene();scene.background=new THREE.Color('#112638');
+  camera=new THREE.PerspectiveCamera(42,1,.05,300);
+  renderer=new THREE.WebGLRenderer({antialias:true});
+  renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));
+  renderer.domElement.style.cssText='width:100%;height:100%;display:block;touch-action:none';
+  threeHost.append(renderer.domElement);
+  scene.add(new THREE.HemisphereLight(0xcff4ff,0x28495c,2.2));
+  const light=new THREE.DirectionalLight(0xffffff,2);light.position.set(-4,8,5);scene.add(light);
+  focus=new THREE.Vector3(0,0,0);
+  threeHost.addEventListener('pointerdown',e=>{drag=[e.clientX,e.clientY];threeHost.setPointerCapture(e.pointerId)});
+  threeHost.addEventListener('pointermove',e=>{if(!drag)return;orbitAz+=(e.clientX-drag[0])*.009;orbitEl=Math.max(.12,Math.min(1.45,orbitEl+(e.clientY-drag[1])*.007));drag=[e.clientX,e.clientY];renderThree()});
+  threeHost.addEventListener('pointerup',()=>drag=null);threeHost.addEventListener('pointercancel',()=>drag=null);
+  threeHost.addEventListener('wheel',e=>{e.preventDefault();zoom=Math.max(.5,Math.min(4,zoom*Math.exp(e.deltaY*.001)));renderThree()},{passive:false});
+  new ResizeObserver(resizeThree).observe(threeHost);
+  return true;
+ }
+ function fetchElevations(points){
+  return Promise.all(Array.from({length:Math.ceil(points.length/12)},(_,k)=>{
+   const group=points.slice(k*12,k*12+12);
+   const params='latitude='+encodeURIComponent(group.map(p=>p.lat.toFixed(6)).join(','))+'&longitude='+encodeURIComponent(group.map(p=>p.lng.toFixed(6)).join(','));
+   return fetch('https://api.open-meteo.com/v1/elevation?'+params,{signal:AbortSignal.timeout(16000)})
+   .then(r=>{if(!r.ok)throw Error('Elevation HTTP '+r.status);return r.json()}).then(j=>j.elevation||[]);
+  })).then(x=>x.flat());
+ }
+ function loadTerrain(){
+  if(!renderer){$('threeStatus').textContent='Visor 3D no disponible (WebGL)';return}
+  const id=++terrainRequest,n=9,half=400;
+  const center=$('terrainCenter').value==='antenna'&&antenna?antenna:map.getCenter();
+  $('threeStatus').textContent='Consultando elevaciones…';$('terrainSideStatus').textContent='Consultando Open-Meteo…';
+  const points=[];
+  for(let j=0;j<n;j++)for(let i=0;i<n;i++){
+   const north=(j/(n-1)*2-1)*half,east=(i/(n-1)*2-1)*half;
+   points.push({lat:center.lat+north/111320,lng:center.lng+east/(111320*Math.max(.2,Math.cos(center.lat*Math.PI/180)))});
+  }
+  fetchElevations(points).then(heights=>{
+   if(id!==terrainRequest)return;
+   if(heights.length!==n*n||heights.some(v=>!Number.isFinite(v)))throw Error('Cotas incompletas');
+   if(terrainMesh){scene.remove(terrainMesh);terrainMesh.traverse(o=>{o.geometry?.dispose();o.material?.dispose?.()})}
+   const base=heights[(n*n-1)/2],maxDiff=Math.max(1,...heights.map(v=>Math.abs(v-base)));
+   const verts=[],indices=[],colors=[];
+   const min=Math.min(...heights),max=Math.max(...heights),span=Math.max(1,max-min);
+   for(let j=0;j<n;j++)for(let i=0;i<n;i++){
+    const t=(heights[j*n+i]-min)/span;
+    const c=new THREE.Color(0x285a54).lerp(new THREE.Color(0x9aab86),t);
+    verts.push((i/(n-1)-.5)*5.8,(heights[j*n+i]-base)*.024,(j/(n-1)-.5)*5.8);
+    colors.push(c.r,c.g,c.b);
+   }
+   for(let j=0;j<n-1;j++)for(let i=0;i<n-1;i++){const a=j*n+i,b=a+n;indices.push(a,b,a+1,b,b+1,a+1)}
+   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));g.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));g.setIndex(indices);g.computeVertexNormals();
+   const group=new THREE.Group();
+   group.add(new THREE.Mesh(g,new THREE.MeshLambertMaterial({vertexColors:true,side:THREE.DoubleSide})));
+   const grid=new THREE.LineSegments(new THREE.EdgesGeometry(g,15),new THREE.LineBasicMaterial({color:0xd1e9d4,transparent:true,opacity:.16}));group.add(grid);
+   // Schematic mast located at center sample, above the numeric DEM center datum.
+   const mast=new THREE.Mesh(new THREE.CylinderGeometry(.022,.022,.48,9),new THREE.MeshBasicMaterial({color:0xffd473}));
+   mast.position.set(0,.24,0);group.add(mast);
+   const dot=new THREE.Mesh(new THREE.SphereGeometry(.07,12,8),new THREE.MeshBasicMaterial({color:0xffd473}));
+   dot.position.set(0,.48,0);group.add(dot);
+   const cone=new THREE.Mesh(new THREE.ConeGeometry(.38,1.7,24,1,true),new THREE.MeshBasicMaterial({color:0x27c8f8,side:THREE.DoubleSide,transparent:true,opacity:.1,depthWrite:false}));
+   cone.rotation.z=-Math.PI/2;cone.position.set(.83,.48,0);group.add(cone);
+   scene.add(group);terrainMesh=group;
+   scene.updateMatrixWorld(true);
+   const b=new THREE.Box3().setFromObject(group);
+   focus=b.getCenter(new THREE.Vector3());radius=Math.max(2,b.getBoundingSphere(new THREE.Sphere()).radius);renderThree();
+   const info='Open-Meteo · '+n+'×'+n+' cotas · 800×800 m · relieve exagerado (ilustrativo)';
+   $('threeStatus').textContent=info;$('terrainSideStatus').textContent=info;
+  }).catch(e=>{if(id!==terrainRequest)return;$('threeStatus').textContent='No se pudo obtener el DEM: '+e.message;$('terrainSideStatus').textContent='Error de elevaciones: '+e.message});
+ }
+ $('resetCamera').onclick=()=>{orbitAz=1.15;orbitEl=.45;zoom=1;renderThree()};
+ $('reload3d').onclick=loadTerrain;
+ const threeScript=document.createElement('script');
+ threeScript.src='https://cdnjs.cloudflare.com/ajax/libs/three.js/0.152.2/three.min.js';
+ threeScript.onload=()=>{if(initThree())loadTerrain();else $('threeStatus').textContent='WebGL no disponible'};
+ threeScript.onerror=()=>$('threeStatus').textContent='No se pudo descargar el visor WebGL (revisa la conexión)';
+ document.head.append(threeScript);
+})();
+</script>
+</body>
+</html>
