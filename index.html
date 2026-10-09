@@ -5005,13 +5005,25 @@ function eco3dDraw(){
   const ground=new THREE.Mesh(geo,new THREE.MeshLambertMaterial({color:0x517d61,side:THREE.DoubleSide,transparent:true,opacity:.86}));
   const group=new THREE.Group();group.add(ground);
   const lines=new THREE.LineSegments(new THREE.EdgesGeometry(geo,12),new THREE.LineBasicMaterial({color:0x9ac6a2,transparent:true,opacity:.18}));group.add(lines);
-  const poleHeight=Math.max(0,Number($('ecoSiteHeight').value)||0)*verticalScale;
-  const pole=new THREE.Mesh(new THREE.CylinderGeometry(.014,.014,Math.max(.03,poleHeight),8),new THREE.MeshBasicMaterial({color:0xffc45e}));
-  pole.position.set(0,-.35+poleHeight/2,0);group.add(pole);
-  // Move illustrative beam origin to the antenna installation height; size is intentionally not a metric RF footprint.
-  mesh.position.set(.2,-.35+poleHeight,0);
+  // The DEM center sample is the antenna ground datum; never bury the mast.
+  const groundY=-.35;
+  const installMeters=Math.max(0,Number($('ecoSiteHeight').value)||0);
+  // Give short real-world masts a visible minimum on the schematic scene.
+  // Actual configured height is still retained in meters in the UI.
+  const poleHeight=Math.max(.12,installMeters*verticalScale);
+  const pole=new THREE.Mesh(new THREE.CylinderGeometry(.016,.02,poleHeight,10),new THREE.MeshPhongMaterial({color:0xffcf6b}));
+  pole.position.set(0,groundY+poleHeight/2,0);group.add(pole);
+  const foot=new THREE.Mesh(new THREE.SphereGeometry(.045,12,8),new THREE.MeshBasicMaterial({color:0xffd77e}));
+  foot.position.set(0,groundY+.015,0);group.add(foot);
+  const tip=new THREE.Mesh(new THREE.SphereGeometry(.055,12,8),new THREE.MeshBasicMaterial({color:0xffd77e}));
+  tip.position.set(0,groundY+poleHeight,0);group.add(tip);
+  // Geometry is authored along local +X from x=-0.2. Anchor the beam root
+  // to the mast tip in world space, including when the beam is rotated.
+  const rootOffset=-.2;
+  const headingRad=Number($('ecoBeamHeading').value)*Math.PI/180;
+  mesh.position.set(-rootOffset*Math.cos(headingRad),groundY+poleHeight,-rootOffset*Math.sin(headingRad));
   scene.add(group);eco3d.terrain=group;
-  $('terrain3dInfo').textContent='DEM local de 800 × 800 m · relieve exagerado visualmente ×'+$('ecoTerrainExaggeration').value+' · haz ilustrativo sin escala de alcance.';
+  $('terrain3dInfo').textContent='Base de antena sobre el DEM central · mástil '+installMeters+' m (mínimo visual aplicado) · relieve ×'+$('ecoTerrainExaggeration').value+' · haz ilustrativo.';
  }else if(showRouteTerrain3d&&active&&routeTerrain3d?.length>1){
   const pts=routeTerrain3d.map(p=>({x:(p.lng-active.lng)*111320*Math.cos(active.lat*Math.PI/180),y:(p.lat-active.lat)*111320,z:p.z}));
   const maxD=Math.max(50,...pts.map(p=>Math.hypot(p.x,p.y))),z0=pts[0].z;
