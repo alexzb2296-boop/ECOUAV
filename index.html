@@ -4921,7 +4921,7 @@ function eco3dCamera(){
  const az=(eco3dAzimuth===null?Number($('somaRotate').value):eco3dAzimuth)*Math.PI/180;
  const el=(eco3dElevation===null?Number($('somaTilt').value):eco3dElevation)*Math.PI/180;
  // Frame the full lobe around its bounding sphere, not the antenna origin.
- const center=eco3d.focus||new window.THREE.Vector3(1.05,0,0);
+ const center=eco3d.focus||new window.THREE.Vector3(0,0,0);
  const radius=eco3d.radius||2;
  const vFov=eco3d.camera.fov*Math.PI/180;
  const hFov=2*Math.atan(Math.tan(vFov/2)*eco3d.camera.aspect);
@@ -4929,6 +4929,7 @@ function eco3dCamera(){
  const dist=Math.max(2.5,fit*1.18*eco3dZoom);
  eco3d.camera.position.set(center.x+dist*Math.cos(el)*Math.cos(az),center.y+dist*Math.sin(el),center.z+dist*Math.cos(el)*Math.sin(az));
  eco3d.camera.lookAt(center);
+ eco3d.camera.updateMatrixWorld(true);
  eco3d.renderer.render(eco3d.scene,eco3d.camera);
 }
 function eco3dSetup(){
@@ -4938,6 +4939,7 @@ function eco3dSetup(){
  const camera=new THREE.PerspectiveCamera(42,1,.02,1000);
  const renderer=new THREE.WebGLRenderer({antialias:true,alpha:false});
  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+ renderer.domElement.style.cssText='display:block;width:100%;height:100%;position:absolute;inset:0';
  host.appendChild(renderer.domElement);
  scene.add(new THREE.HemisphereLight(0xcfeeff,0x243847,2.1));
  const light=new THREE.DirectionalLight(0xffffff,2.2);light.position.set(3,6,5);scene.add(light);
@@ -4953,8 +4955,8 @@ function eco3dSetup(){
  eco3dResize();
 }
 function eco3dResize(){
- if(!eco3d)return;const w=Math.max(1,eco3d.host.clientWidth),h=Math.max(1,eco3d.host.clientHeight);
- eco3d.camera.aspect=w/h;eco3d.camera.updateProjectionMatrix();eco3d.renderer.setSize(w,h,false);eco3dCamera();
+ if(!eco3d)return;const rect=eco3d.host.getBoundingClientRect();const w=Math.max(1,Math.round(rect.width)),h=Math.max(1,Math.round(rect.height));
+ eco3d.camera.aspect=w/h;eco3d.camera.updateProjectionMatrix();eco3d.renderer.setSize(w,h,false);eco3d.renderer.domElement.style.width=w+'px';eco3d.renderer.domElement.style.height=h+'px';eco3dCamera();
 }
 function eco3dDraw(){
  if(!eco3d)return;
@@ -5025,9 +5027,9 @@ function eco3dDraw(){
  if(eco3d.terrain)bounds.union(new THREE.Box3().setFromObject(eco3d.terrain));
  if(!bounds.isEmpty()){
   eco3d.focus=bounds.getCenter(new THREE.Vector3());
-  eco3d.radius=Math.max(1.7,bounds.getSize(new THREE.Vector3()).length()*.55);
+  eco3d.radius=Math.max(1.7,bounds.getBoundingSphere(new THREE.Sphere()).radius);
  }
- eco3dCamera();
+ eco3dResize();
 }
 renderSoma3D=function(){
  if(eco3d){eco3dDraw();return;}
