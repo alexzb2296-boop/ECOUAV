@@ -428,6 +428,48 @@ body.ecoMockLayout #ecoSidebarToggle{display:block}
  body.ecoMockLayout #ecoMapStatus{bottom:86px}
  body.ecoMockLayout #eco3dInset{bottom:122px;height:175px}
 }
+
+/* Reference design v2: tight cyan dashboard with responsive desktop preview */
+body.ecoMockLayout{--accent:#26c8ff;background:#06101a}
+body.ecoMockLayout .top{background:linear-gradient(90deg,#061320,#091b2a);border-bottom-color:#24718e}
+body.ecoMockLayout .top h1{font-size:22px;white-space:nowrap}
+body.ecoMockLayout .top h1:before{content:'⌁';font-size:28px;color:#31d9ff;margin-right:10px;font-weight:400}
+body.ecoMockLayout .top h1 span{color:#79cfea!important;font-size:10px}
+body.ecoMockLayout #ecoShell{gap:3px;padding:3px;grid-template-columns:260px minmax(0,1fr) 300px}
+body.ecoMockLayout #ecoWorkspace,body.ecoMockLayout #ecoContextPanel{border-radius:7px;border-color:#1f4458;background:linear-gradient(120deg,#0b2030,#071722 65%)}
+body.ecoMockLayout #ecoWorkspace .ecoTabs button{font-size:13px;border-radius:6px}
+body.ecoMockLayout #ecoWorkspace .ecoBox{background:transparent;box-shadow:none;border:0;border-top:1px solid #234051;border-radius:0;padding:12px 8px 8px}
+body.ecoMockLayout #ecoWorkspace .ecoBox strong{font-size:13px;display:block;color:#8adfff;margin-bottom:7px}
+body.ecoMockLayout #ecoWorkspace .ecoBox label{font-size:12px}
+body.ecoMockLayout #ecoWorkspace .ecoBox select{width:100%;border-color:#30536b;font-size:12px}
+body.ecoMockLayout #ecoWorkspace .ecoBox .ecoMessage{font-size:11px;line-height:1.45}
+body.ecoMockLayout #ecoWorkspace .ecoBox .ecoHint{font-size:11px}
+body.ecoMockLayout #ecoWorkspace input[type=checkbox]{appearance:none;-webkit-appearance:none;width:32px;height:18px;border-radius:12px;position:relative;vertical-align:middle;background:#334658;border:1px solid #527083;cursor:pointer;transition:background .15s}
+body.ecoMockLayout #ecoWorkspace input[type=checkbox]:checked{background:#128fc3;border-color:#3ad3ff}
+body.ecoMockLayout #ecoWorkspace input[type=checkbox]:after{content:'';position:absolute;left:2px;top:2px;width:12px;height:12px;border-radius:50%;background:#d1e9f3;transition:transform .15s}
+body.ecoMockLayout #ecoWorkspace input[type=checkbox]:checked:after{transform:translateX(14px);background:#fff}
+body.ecoMockLayout #ecoContextPanel{padding:7px;gap:7px}
+body.ecoMockLayout .ecoContextCard{background:#0c1d2c;border-radius:7px;border-color:#27495c}
+body.ecoMockLayout .ecoContextCard h3{color:#95def9;font-size:12px}
+body.ecoMockLayout #eco3dInset{border-color:#3b85a5;background:#081d2cf1;box-shadow:0 5px 35px #000b}
+body.ecoMockLayout #eco3dInsetHeader{color:#d5eef8;background:#0a1b2a}
+#ecoContextPreview{border:1px solid #305067;border-radius:6px;height:82px;background:linear-gradient(160deg,#193648,#132735);display:flex;align-items:center;justify-content:center;color:#b3cdd9;font-size:11px;margin-bottom:9px;text-align:center}
+#ecoMapTools{position:absolute;top:12px;right:9px;display:flex;flex-direction:column;gap:4px;z-index:1001}
+#ecoMapTools button{width:37px;height:37px;padding:4px;background:#071927df;border:1px solid #3b5e70;color:#f2f8fc;font-size:17px}
+#ecoMapTools button:active{background:#205470}
+body.ecoMockLayout #ecoMapStatus{border-radius:5px;bottom:9px;background:#091b29d9}
+body.ecoMockLayout #ecoBottomStatus{background:#06121b;border-top-color:#20516a}
+body.ecoMockLayout .ecoHeaderSearch{background:#102639;border-color:#284c65}
+body.ecoMockLayout #ecoShell button:focus-visible{outline:2px solid #40dfff;outline-offset:2px}
+@media(min-width:901px) and (max-width:1250px){body.ecoMockLayout #ecoShell{grid-template-columns:225px minmax(0,1fr) 255px}}
+/* iPhone: desktop reference can be previewed in landscape, while portrait remains usable. */
+@media(max-width:900px){
+ body.ecoMockLayout #ecoShell{grid-template-columns:1fr}
+ #ecoMapTools{top:52px;right:8px}
+ body.ecoMockLayout #ecoWorkspace{background:#0a2030f5}
+ body.ecoMockLayout #ecoContextPanel{background:#0a2030f5}
+}
+@media(max-width:620px){#ecoMapTools{top:54px}#ecoMapTools button{width:32px;height:32px;font-size:14px}}
 </style>
 </head>
 
@@ -5686,6 +5728,11 @@ refreshMissions();
  shell.append(workspace,mapColumn,context);
  mapWrap.parentElement.insertBefore(shell,mapWrap);
  mapColumn.append(mapWrap);
+ const mapTools=document.createElement('div');mapTools.id='ecoMapTools';
+ for(const [text,title,act] of [['▧','Capas',()=>document.getElementById('ecoSidebarToggle')?.click()],['⊙','Centrar España',()=>document.getElementById('center')?.click()],['+','Acercar mapa',()=>map.zoomIn()],['−','Alejar mapa',()=>map.zoomOut()],['3D','Alternar vista 3D',()=>document.getElementById('ecoTogglePreview')?.click()]]){
+  const btn=document.createElement('button');btn.type='button';btn.textContent=text;btn.title=title;btn.setAttribute('aria-label',title);btn.onclick=act;mapTools.append(btn);
+ }
+ mapColumn.append(mapTools);
  const mobileActions=document.createElement('div');mobileActions.id='ecoMobileMapActions';
  const plus=document.createElement('button');plus.textContent='+';plus.setAttribute('aria-label','Acercar mapa');plus.onclick=()=>map.zoomIn();
  const minus=document.createElement('button');minus.textContent='−';minus.setAttribute('aria-label','Alejar mapa');minus.onclick=()=>map.zoomOut();
@@ -5722,6 +5769,7 @@ refreshMissions();
  let c=card('⌖ Punto seleccionado');
  row(c,'Coordenadas','ecoContextCoords','Pulsa en el mapa');
  row(c,'Altitud del terreno','ecoContextElev','—');
+ const preview=document.createElement('div');preview.id='ecoContextPreview';preview.textContent='Vista de la zona seleccionada · selecciona un punto';c.insertBefore(preview,c.children[1]);
  const note=document.createElement('p');note.className='ecoContextHint';note.textContent='Elevación y coordenadas según las consultas y selecciones disponibles. No se inventan cotas.';c.append(note);
  const copy=document.createElement('button');copy.className='ecoContextAction';copy.textContent='⧉ Copiar punto seleccionado';copy.onclick=()=>document.getElementById('copyPoint')?.click();c.append(copy);
  c=card('☁ Meteorología');
@@ -5776,6 +5824,7 @@ refreshMissions();
  const controls=document.createElement('div');
  const full=document.createElement('button');full.textContent='⛶';full.title='Pantalla completa';full.onclick=()=>document.getElementById('eco3dFullscreen')?.click();
  const hide=document.createElement('button');hide.textContent='−';hide.title='Contraer vista 3D';
+ hide.id='ecoTogglePreview';
  hide.onclick=()=>{const hidden=inset.classList.toggle('ecoInsetHidden');hide.textContent=hidden?'+':'−';setTimeout(()=>{if(typeof eco3dResize==='function')eco3dResize()},160)};
  controls.append(full,hide);head.append(title,controls);
  const content=document.createElement('div');content.id='eco3dInsetContent';content.append(viewer);
@@ -5800,6 +5849,8 @@ refreshMissions();
   else workspace.classList.remove('ecoSidebarOpen');
   map.invalidateSize({pan:false});
  });
+ // Keep native Leaflet zoom button free of the mockup's compact map controls.
+ const nativeZoom=document.querySelector('#ecoMapColumn .leaflet-control-zoom');if(nativeZoom)nativeZoom.style.display='none';
  requestAnimationFrame(()=>{map.invalidateSize({pan:false});if(typeof eco3dResize==='function')eco3dResize()});
 })();
 
