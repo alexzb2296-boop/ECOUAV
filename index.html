@@ -284,7 +284,7 @@ Planificador UAS · Terreno · RF · Rutas · Misiones
  <div class="ecoView ecoActive" data-ecoview="terrain">
   <div class="ecoCells">
    <div class="ecoBox"><strong>Cartografía</strong><label for="ecoBase">Mapa base</label><select id="ecoBase"><option value="esri">Satélite Esri</option><option value="pnoa">Ortofoto PNOA · IGN</option><option value="osm">OpenStreetMap</option></select><div class="ecoHint">PNOA procede del servicio público WMTS del IGN; necesita conexión.</div></div>
-   <div class="ecoBox"><strong>Relieve</strong><p class="ecoMessage">MDT05 del IGN cuando sus teselas estén disponibles. Curvas de nivel y visor 3D siguen en las herramientas existentes.</p><button id="ecoContoursShortcut" type="button">Mostrar/ocultar curvas DEM</button><button id="eco3dShortcut" type="button">Ir al visor 3D</button></div>
+   <div class="ecoBox"><strong>Relieve</strong><p class="ecoMessage">MDT05 del IGN cuando sus teselas estén disponibles. El visor indica qué fuente se ha cargado. Las curvas actuales usan muestras de Open-Meteo, no curvas oficiales IGN.</p><button id="ecoContoursShortcut" type="button">Mostrar/ocultar curvas DEM</button><button id="eco3dShortcut" type="button">Ir al visor 3D</button></div>
    <div class="ecoBox"><strong>Información UAS oficial</strong><p class="ecoMessage">Comprueba zonas geográficas UAS y sus condiciones en la fuente oficial; ECOUAV no autoriza vuelos.</p><a href="https://drones.enaire.es/" target="_blank" rel="noopener noreferrer">Abrir ENAIRE Drones ↗</a></div>
   </div>
  </div>
@@ -5295,13 +5295,20 @@ refreshMissions();
   ecoBaseNow=value;q('ecoBase').value=value;
  }
  q('ecoBase').addEventListener('change',e=>selectBase(e.target.value));
+ // Legacy buttons remain usable and reflect their choice in the workspace.
+ q('sat').addEventListener('click',()=>{ecoBaseNow='esri';q('ecoBase').value='esri';});
+ q('topo').addEventListener('click',()=>{ecoBaseNow='osm';q('ecoBase').value='osm';});
+
  root.querySelectorAll('[data-ecotab]').forEach(b=>b.addEventListener('click',()=>{
   const which=b.dataset.ecotab;
   root.querySelectorAll('[data-ecotab]').forEach(x=>x.setAttribute('aria-selected',String(x===b)));
   root.querySelectorAll('[data-ecoview]').forEach(x=>x.classList.toggle('ecoActive',x.dataset.ecoview===which));
  }));
  function jump(el){if(el){el.scrollIntoView({behavior:'smooth',block:'center'});}}
- q('ecoContoursShortcut').onclick=()=>{if(typeof demContoursOn!=='undefined'){const b=q('contourControls');if(b){b.classList.remove('hidden');jump(b)}}};
+ q('ecoContoursShortcut').onclick=()=>{
+  const b=q('contourControls');if(b){b.classList.remove('hidden');jump(b);}
+  if(typeof drawDemContours==='function')drawDemContours();
+ };
  q('eco3dShortcut').onclick=()=>jump(q('soma3d'));
  q('ecoAntennaShortcut').onclick=()=>jump(q('soma3d'));
  q('ecoWeatherLoad').onclick=async()=>{
