@@ -4829,6 +4829,39 @@ function ecoRfRefresh(){
 }
 // IGN WCS: request numeric GeoTIFF; failures fall back to the existing elevation provider.
 // WCS coverage identifiers vary by zone, so we discover them from GetCapabilities.
+async function ecoLoadIgnMdt05(active,half,n){
+ // Official OGC API Coverages: discover the current 5 m collection ID rather than guessing it.
+ const root='https://api-coverages.idee.es';
+ const response=await fetch(root+'/collections?f=json',{signal:AbortSignal.timeout(12000)});
+ if(!response.ok)throw Error('API IGN catálogo HTTP '+response.status);
+ const data=await response.json();
+ const candidates=(data.collections||[]).filter(c=>/MDT/i.test((c.title||'')+' '+(c.description||''))&&/(?:\\b5\\s*m\\b|\\b5\\s*metros\\b|\\b5\\b$)/i.test(c.title||''));
+ const isCanary=active.lat>27&&active.lat<30&&active.lng< -13;
+ const preferred=candidates.find(c=>isCanary?/canarias/i.test(c.title||''):/península|baleares|iberica|ibérica/i.test(c.title||''))||candidates[0];
+ if(!preferred?.id)throw Error('Colección MDT 5 m no encontrada en catálogo');
+ const latDelta=half/111320,lonDelta=half/(111320*Math.max(.2,Math.cos(active.lat*Math.PI/180)));
+ const bbox=[active.lng-lonDelta,active.lat-latDelta,active.lng+lonDelta,active.lat+latDelta].join(',');
+ const url=root+'/collections/'+encodeURIComponent(preferred.id)+'/coverage?'+new URLSearchParams({bbox,'f':'tiff'});
+ const res=await fetch(url,{signal:AbortSignal.timeout(25000)});
+ if(!res.ok)throw Error('API IGN MDT05 HTTP '+res.status);
+ const buffer=await res.arrayBuffer();
+ if(buffer.byteLength>24*1024*1024)throw Error('MDT05 excede tamaño máximo');
+ const header=new Uint8Array(buffer,0,Math.min(4,buffer.byteLength));
+ if(!((header[0]===73&&header[1]===73)||(header[0]===77&&header[1]===77)))throw Error('API IGN no devolvió TIFF (formato incompatible)');
+ if(!window.GeoTIFF){
+  await new Promise((resolve,reject)=>{const sc=document.createElement('script');sc.src='https://cdn.jsdelivr.net/npm/geotiff@2.1.3/dist-browser/geotiff.js';sc.onload=resolve;sc.onerror=reject;document.head.appendChild(sc)});
+ }
+ if(!window.GeoTIFF?.fromArrayBuffer)throw Error('GeoTIFF no disponible');
+ const tif=await window.GeoTIFF.fromArrayBuffer(buffer),img=await tif.getImage();
+ const raster=await img.readRasters({samples:[0],width:n,height:n,interleave:true,resampleMethod:'bilinear'});
+ const nodata=img.getGDALNoData?.();
+ const heights=Array.from(raster,Number);
+ if(heights.length!==n*n||heights.some(v=>!Number.isFinite(v)||v< -500||v>9000||(nodata!==null&&nodata!==undefined&&v===nodata)))throw Error('MDT05 incompleto o con zonas sin datos');
+ // GeoTIFF rows run north to south, while the 3D terrain grid runs south to north.
+ const corrected=[];
+ for(let j=n-1;j>=0;j--)for(let i=0;i<n;i++)corrected.push(heights[j*n+i]);
+ return corrected;
+}
 async function ecoLoadIgnCoverage(active,half,n){
  const endpoint='https://servicios.idee.es/wcs-inspire/mdt';
  const cap=await fetch(endpoint+'?SERVICE=WCS&VERSION=2.0.1&REQUEST=GetCapabilities',{signal:AbortSignal.timeout(12000)});
@@ -4868,10 +4901,10 @@ async function ecoLoadSiteSurface(){
  let ignError='';
  try{
   const half=400;
-  let heights=null,n=41,source='IGN WCS MDT';
+  let heights=null,n=161,source='IGN MDT05 · API Coberturas (5 m)';
   if($('ecoPreferIgn').checked){
    $('ecoSurfaceStatus').textContent='Consultando IGN MDT…';
-   try{heights=await ecoLoadIgnCoverage(active,half,n);}
+   try{heights=await ecoLoadIgnMdt05(active,half,n);}
    catch(e){ignError=e.message||String(e);}
   }
   if(!heights){
@@ -4889,7 +4922,7 @@ async function ecoLoadSiteSurface(){
   if(request!==ecoSiteRequest)return;
   if(heights.length!==n*n||heights.some(v=>!Number.isFinite(v)))throw Error('Cotas incompletas');
   ecoSiteSurface={lat:active.lat,lng:active.lng,half,n,heights,source};
-  $('ecoSurfaceStatus').textContent='Terreno cargado · '+source+' · '+n+' × '+n+' puntos · 800 × 800 m.'+(ignError?' IGN WCS no accesible (no se usan datos IGN): '+ignError:'');
+  $('ecoSurfaceStatus').textContent='Terreno cargado · '+source+' · '+n+' × '+n+' puntos · 800 × 800 m.'+(ignError?' IGN MDT05 no accesible (no se usan datos IGN): '+ignError:'');
   renderSoma3D();
  }catch(e){
   if(request!==ecoSiteRequest)return;
