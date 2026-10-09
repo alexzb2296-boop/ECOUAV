@@ -5382,7 +5382,7 @@ refreshMissions();
     if(v===null||v===undefined){antennas[k]=null;continue;}
     if(Number.isFinite(Number(v.lat))&&Number.isFinite(Number(v.lng))&&Math.abs(v.lat)<=90&&Math.abs(v.lng)<=180)antennas[k]={lat:Number(v.lat),lng:Number(v.lng)};
    }
-   if(typeof renderAntennas==='function')renderAntennas();
+   if(typeof renderAll==='function')renderAll();
   }
   if(q('antId')&&['A','B','C'].includes(p.selectedAntenna))q('antId').value=p.selectedAntenna;
   for(const [id,val] of [['ecoSiteHeight',p.siteHeight],['ecoBeamHeading',p.beamHeading],['ecoTerrainExaggeration',p.terrainExaggeration]])if(q(id)&&val!==undefined){q(id).value=val;q(id).dispatchEvent(new Event('input'));}
