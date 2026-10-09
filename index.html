@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>ECOUAV v0.9.7</title>
+<title>ECOUAV v1.0</title>
 
 <link rel="stylesheet"
 href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
@@ -524,6 +524,22 @@ preserveAspectRatio="none">
 <div id="routeTerrainInfo" class="mini">Muestra cotas y tramos de subida/bajada sobre la ruta.</div>
 </div>
 
+<div class="card full" id="geoLibraryCard">
+<div class="label">🗺️ MAPA+ · CARTOGRAFÍA LOCAL Y BIBLIOTECA · v1.0</div>
+<div class="mini">Carga un modelo de elevación GeoTIFF geográfico (WGS84 / EPSG:4326). Se muestra sobre el mapa y se conserva en este navegador. Los archivos DTED o UTM necesitan conversión previa a GeoTIFF WGS84.</div>
+<div class="actions"><button id="geoImportBtn">📂 Importar DEM GeoTIFF</button><button id="geoRestoreBtn">↻ Recuperar DEM</button><button id="geoShowBtn">👁 Mostrar / ocultar DEM</button><button id="geoClearBtn">🗑 Eliminar DEM</button></div>
+<input type="file" id="geoImportFile" accept=".tif,.tiff,image/tiff" class="hidden">
+<div id="geoStatus" class="mini" role="status">Sin modelo local cargado.</div>
+<div class="formgrid" style="margin-top:10px">
+ <div class="field"><label>Opacidad del relieve local</label><input id="geoOpacity" type="range" min="0" max="100" value="55"></div>
+ <div class="field"><label>Biblioteca de antenas</label><select id="geoAntennaList"></select></div>
+ <div class="field"><label>Ganancia declarada (dBi)</label><input id="geoGain" type="number" step=".1" min="-20" max="50" placeholder="Ej. 13"></div>
+ <div class="field"><label>Haz H / V (grados)</label><input id="geoBeams" type="text" placeholder="150 / 62"></div>
+</div>
+<div class="actions"><button id="geoAntennaApply">Aplicar al visor educativo</button><button id="geoAntennaSave">Guardar antena personalizada</button><button id="geoAntennaDelete">Eliminar personalizada</button></div>
+<div id="geoAntennaStatus" class="mini">Los patrones son ilustrativos salvo que se aporten mediciones verificadas.</div>
+<div class="mini">Offline: los DEM importados y los ajustes guardados se recuperan sin red. Las teselas satélite, meteorología y consultas de elevación online siguen necesitando conexión. No se calcula cobertura RF real ni seguridad de vuelo.</div>
+</div>
 <div id="mapToolsCard" class="card full hidden">
 <div class="label">🧭 MAPA+ · HERRAMIENTAS DE PLANIFICACIÓN</div>
 <div class="actions">
@@ -974,7 +990,7 @@ class="danger">
 <div id="missionInfo"
 class="mini">
 
-GeoJSON es el formato editable nativo de ECOUAV v0.9.7.
+GeoJSON es el formato editable nativo de ECOUAV v1.0.
 
 </div>
 
@@ -3325,7 +3341,7 @@ function setDeleteMode(on){
  document.body.classList.toggle('deleteMode',on);
  $('missionInfo').textContent=on
   ?'🗑️ Eliminar activo: toca un POI, antena o waypoint. También puedes tocar muy cerca del elemento.'
-  :'GeoJSON es el formato editable nativo de ECOUAV v0.9.7.';
+  :'GeoJSON es el formato editable nativo de ECOUAV v1.0.';
 }
 function finishDelete(){ setDeleteMode(false); }
 
@@ -3866,6 +3882,110 @@ JSON.stringify(m)
 
 
 
+
+
+/* ECOUAV v1.0 — cartografía local geográfica, almacenamiento y biblioteca */
+(function(){
+ const status=$('geoStatus'),file=$('geoImportFile');
+ let localOverlay=null,localData=null,localVisible=true,dbPromise=null;
+ const db=()=>dbPromise||(dbPromise=new Promise((resolve,reject)=>{
+  if(!window.indexedDB){reject(Error('IndexedDB no disponible'));return;}
+  const req=indexedDB.open('ecouav-geo-v1',1);
+  req.onupgradeneeded=()=>{const d=req.result;if(!d.objectStoreNames.contains('assets'))d.createObjectStore('assets');};
+  req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);
+ }));
+ async function put(key,value){const d=await db();return new Promise((resolve,reject)=>{const tx=d.transaction('assets','readwrite');tx.objectStore('assets').put(value,key);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});}
+ async function get(key){const d=await db();return new Promise((resolve,reject)=>{const tx=d.transaction('assets','readonly');const q=tx.objectStore('assets').get(key);q.onsuccess=()=>resolve(q.result);q.onerror=()=>reject(q.error);});}
+ async function del(key){const d=await db();return new Promise((resolve,reject)=>{const tx=d.transaction('assets','readwrite');tx.objectStore('assets').delete(key);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});}
+ async function loadTiffLibrary(){
+  if(window.GeoTIFF)return;
+  await new Promise((resolve,reject)=>{
+   const script=document.createElement('script');
+   script.src='https://cdn.jsdelivr.net/npm/geotiff@2.1.3/dist-browser/geotiff.js';
+   script.onload=()=>window.GeoTIFF?resolve():reject(Error('Librería GeoTIFF no disponible'));
+   script.onerror=()=>reject(Error('Sin conexión para cargar lector GeoTIFF'));
+   document.head.appendChild(script);
+  });
+ }
+ async function displayTiff(blob,name){
+  status.textContent='Leyendo '+name+'…';
+  await loadTiffLibrary();
+  const tiff=await GeoTIFF.fromArrayBuffer(await blob.arrayBuffer());
+  const image=await tiff.getImage(),geo=image.getGeoKeys();
+  if(Number(geo.GeographicTypeGeoKey)!==4326 || geo.ProjectedCSTypeGeoKey)
+   throw Error('Solo se admiten GeoTIFF georreferenciados en EPSG:4326. Convierte DTED/UTM antes de importarlos.');
+  const bbox=image.getBoundingBox();
+  if(bbox.length!==4||!bbox.every(Number.isFinite)||bbox[0]<-180||bbox[2]>180||bbox[1]<-90||bbox[3]>90||bbox[2]<=bbox[0]||bbox[3]<=bbox[1])
+   throw Error('Extensión geográfica inválida.');
+  const w=image.getWidth(),h=image.getHeight(),scale=Math.min(1,768/Math.max(w,h));
+  const width=Math.max(1,Math.round(w*scale)),height=Math.max(1,Math.round(h*scale));
+  const rasters=await image.readRasters({samples:[0],width,height,interleave:true,resampleMethod:'bilinear'});
+  const nodata=image.getGDALNoData();
+  let lo=Infinity,hi=-Infinity;
+  for(const v of rasters){if(Number.isFinite(v)&&(nodata===null||v!==nodata)){lo=Math.min(lo,v);hi=Math.max(hi,v);}}
+  if(!Number.isFinite(lo))throw Error('El DEM no contiene cotas válidas.');
+  const canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;
+  const ctx=canvas.getContext('2d'),pixels=ctx.createImageData(width,height);
+  for(let i=0;i<rasters.length;i++){
+   const z=rasters[i],o=i*4;
+   if(!Number.isFinite(z)||(nodata!==null&&z===nodata)){pixels.data[o+3]=0;continue;}
+   const v=Math.max(0,Math.min(1,(z-lo)/Math.max(1,hi-lo)));
+   pixels.data[o]=Math.round(35+185*v);
+   pixels.data[o+1]=Math.round(82+125*v);
+   pixels.data[o+2]=Math.round(60+110*v);
+   pixels.data[o+3]=205;
+  }
+  ctx.putImageData(pixels,0,0);
+  if(localOverlay)map.removeLayer(localOverlay);
+  localOverlay=L.imageOverlay(canvas.toDataURL('image/png'),[[bbox[1],bbox[0]],[bbox[3],bbox[2]]],{opacity:Number($('geoOpacity').value)/100,interactive:false});
+  localData={bbox,w,h,preview:[width,height],min:lo,max:hi,name};
+  if(localVisible)localOverlay.addTo(map);
+  map.fitBounds(localOverlay.getBounds(),{maxZoom:13});
+  status.textContent=name+' · '+w+'×'+h+' px · cotas '+lo.toFixed(0)+'–'+hi.toFixed(0)+' m · DEM local'+(localVisible?' visible':' oculto');
+ }
+ $('geoImportBtn').onclick=()=>file.click();
+ file.onchange=async()=>{
+  const f=file.files&&file.files[0];if(!f)return;
+  if(f.size>80*1024*1024){status.textContent='Archivo demasiado grande (máx. 80 MB).';return;}
+  try{await displayTiff(f,f.name);await put('dem',{blob:f,name:f.name});status.textContent+=' · guardado para próximas sesiones';}
+  catch(e){status.textContent='No se pudo importar: '+e.message;}
+  file.value='';
+ };
+ $('geoRestoreBtn').onclick=async()=>{try{const v=await get('dem');if(!v)throw Error('No hay DEM guardado');await displayTiff(v.blob,v.name);}catch(e){status.textContent='Recuperación: '+e.message;}};
+ $('geoShowBtn').onclick=()=>{localVisible=!localVisible;if(localOverlay){if(localVisible)localOverlay.addTo(map);else map.removeLayer(localOverlay);}status.textContent=localData?localData.name+(localVisible?' · visible':' · oculto'):'Sin DEM cargado';};
+ $('geoClearBtn').onclick=async()=>{try{await del('dem');if(localOverlay)map.removeLayer(localOverlay);localOverlay=null;localData=null;status.textContent='DEM eliminado del mapa y almacenamiento local.';}catch(e){status.textContent=e.message;}};
+ $('geoOpacity').oninput=()=>{if(localOverlay)localOverlay.setOpacity(Number($('geoOpacity').value)/100);};
+ const presets=[
+  {name:'SOMA Patch 3.3',freq:3300,gain:null,h:60,v:60,model:'soma'},
+  {name:'TrueRC Sniper 5.8',freq:5800,gain:null,h:60,v:60,model:'true'},
+  {name:'TrueRC X²-AIR 5 (datos facilitados)',freq:5800,gain:13,h:150,v:62,model:'x2air5'}
+ ];
+ const select=$('geoAntennaList');let custom=[];
+ const library=()=>presets.concat(custom);
+ function refresh(){select.innerHTML='';library().forEach((p,i)=>{const op=document.createElement('option');op.value=i;op.textContent=p.name;select.appendChild(op);});select.onchange();}
+ select.onchange=()=>{const p=library()[Number(select.value)];if(!p)return;$('geoGain').value=p.gain??'';$('geoBeams').value=p.h+' / '+p.v;};
+ $('geoAntennaApply').onclick=()=>{
+  const p=library()[Number(select.value)];if(!p)return;
+  if(p.model)$('antennaModel').value=p.model;
+  $('somaFreq').value=p.freq;
+  $('somaAngle').value=p.h;
+  if(typeof renderSomaViewer==='function')renderSomaViewer();
+  if(typeof renderSoma3D==='function')renderSoma3D();
+  $('geoAntennaStatus').textContent=p.name+' aplicado al visor como representación ilustrativa. H '+p.h+'° / V '+p.v+'°.';
+ };
+ $('geoAntennaSave').onclick=async()=>{
+  const name=prompt('Nombre de la antena personalizada:');if(!name)return;
+  const m=$('geoBeams').value.match(/^\s*(\d+(?:\.\d+)?)\s*[/,;]\s*(\d+(?:\.\d+)?)\s*$/);
+  if(!m){$('geoAntennaStatus').textContent='Introduce los haces como H / V (ej. 150 / 62).';return;}
+  const h=+m[1],v=+m[2],freq=+$('somaFreq').value,gain=$('geoGain').value===''?null:+$('geoGain').value;
+  if(!(h>0&&h<180&&v>0&&v<180&&freq>=100&&freq<=100000&&(gain===null||gain>=-20&&gain<=50))){$('geoAntennaStatus').textContent='Parámetros fuera de rango.';return;}
+  custom.push({name:name.slice(0,80),freq,gain,h,v,model:null});
+  try{await put('antennas',custom);refresh();select.value=String(library().length-1);select.onchange();$('geoAntennaStatus').textContent='Antena guardada localmente.';}catch(e){$('geoAntennaStatus').textContent='Error guardando: '+e.message;}
+ };
+ $('geoAntennaDelete').onclick=async()=>{const i=Number(select.value)-presets.length;if(i<0){$('geoAntennaStatus').textContent='Las antenas incluidas no se eliminan.';return;}custom.splice(i,1);await put('antennas',custom);refresh();$('geoAntennaStatus').textContent='Antena personalizada eliminada.';};
+ refresh();
+ (async()=>{try{const a=await get('antennas');if(Array.isArray(a)){custom=a.filter(p=>p&&typeof p.name==='string'&&Number.isFinite(p.h)&&Number.isFinite(p.v));refresh();}const d=await get('dem');if(d)status.textContent='DEM guardado: '+d.name+' · pulsa «Recuperar DEM» para cargarlo.';}catch(e){status.textContent='Almacenamiento local no disponible: '+e.message;}})();
+})();
 
 refreshMissions();
 
