@@ -266,6 +266,23 @@ min-height:390px
 #ecoWorkspace button:focus-visible,#ecoSidebarToggle:focus-visible{outline:2px solid #8bdcff;outline-offset:2px}
 @media(max-width:720px){#ecoWorkspace{top:61px;max-height:calc(100dvh - 61px)}#map{height:73dvh;min-height:440px}#ecoMapStatus{left:8px;right:8px;bottom:8px;font-size:11px;gap:6px}#flightStatus{display:none}.toolbar{max-width:calc(100% - 18px);top:8px;left:9px}.top{padding:10px}}
 @media(prefers-reduced-motion:reduce){#ecoWorkspace{transition:none}}
+
+/* Visual phase 2: 3D viewport, legend, layer manager, live weather cards. */
+.eco3dActions{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin:9px 0}
+.eco3dLegend{font-size:12px;color:#a7cbd8;padding:5px 9px;background:#13232e;border:1px solid #355064;border-radius:8px}
+.eco3dLegend i{display:inline-block;width:12px;height:10px;background:#6ca286;margin-right:3px}
+.eco3dLegend b{color:#ffd16b;margin:0 4px}
+.eco3dLegend em{color:#59c3ff;font-style:normal;margin:0 4px}
+#soma3d:fullscreen{width:100vw!important;height:100dvh!important;min-height:100dvh!important;border-radius:0!important;background:#0a1420!important}
+#soma3d:-webkit-full-screen{width:100vw!important;height:100vh!important;border-radius:0!important}
+.ecoWeatherBars{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:11px}
+.ecoWeatherBars .ecoMetric{border:1px solid #375065;border-radius:9px;padding:9px;background:#0d1d29;min-width:0}
+.ecoWeatherBars .ecoMetric strong{display:block;font-size:19px;color:#d3f3ff}
+.ecoWeatherBars .ecoMetric small{color:#99b9cb}
+.ecoWeatherBars .ecoMeter{height:5px;margin-top:6px;border-radius:8px;background:#283d4b;overflow:hidden}
+.ecoWeatherBars .ecoMeter span{display:block;background:#59c3ff;height:100%;border-radius:8px}
+#ecoWorkspace .ecoBox input[type=checkbox]{margin-right:7px;accent-color:#59c3ff}
+#ecoWorkspace input[type=range]{width:100%;accent-color:#59c3ff}
 </style>
 </head>
 
@@ -300,15 +317,15 @@ Planificador UAS · Terreno · RF · Rutas · Misiones
  </div>
  <div class="ecoView ecoActive" data-ecoview="terrain">
   <div class="ecoCells">
-   <div class="ecoBox"><strong>Cartografía</strong><label for="ecoBase">Mapa base</label><select id="ecoBase"><option value="esri">Satélite Esri</option><option value="pnoa">Ortofoto PNOA · IGN</option><option value="osm">OpenStreetMap</option></select><div class="ecoHint">PNOA procede del servicio público WMTS del IGN; necesita conexión.</div></div>
+   <div class="ecoBox"><strong>Cartografía</strong><label for="ecoBase">Mapa base</label><select id="ecoBase"><option value="esri">Satélite Esri</option><option value="pnoa">Ortofoto PNOA · IGN</option><option value="osm">OpenStreetMap</option></select><div class="ecoHint">PNOA procede del servicio público WMTS del IGN; necesita conexión.</div><label for="ecoSatelliteOpacity">Opacidad de la ortofoto PNOA: <span id="ecoOpacityText">100 %</span></label><input id="ecoSatelliteOpacity" type="range" min="25" max="100" step="5" value="100"></div>
    <div class="ecoBox"><strong>Relieve</strong><p class="ecoMessage">MDT05 del IGN cuando sus teselas estén disponibles. El visor indica qué fuente se ha cargado. Las curvas actuales usan muestras de Open-Meteo, no curvas oficiales IGN.</p><button id="ecoReliefShortcut" type="button">🏔️ Activar relieve IGN</button><p id="ecoReliefStatus" class="ecoHint" role="status">Capa de sombreado IGN (visual, no datos de cotas).</p><button id="ecoContoursShortcut" type="button">Calcular curvas DEM</button><button id="eco3dShortcut" type="button">Ir al visor 3D</button></div>
-   <div class="ecoBox"><strong>Información UAS oficial</strong><p class="ecoMessage">Comprueba zonas geográficas UAS y sus condiciones en la fuente oficial; ECOUAV no autoriza vuelos.</p><a href="https://drones.enaire.es/" target="_blank" rel="noopener noreferrer">Abrir ENAIRE Drones ↗</a></div>
+   <div class="ecoBox"><strong>Capas visibles</strong><label><input id="ecoLayersAntennas" type="checkbox" checked> Antenas</label><label><input id="ecoLayersRoutes" type="checkbox" checked> Rutas</label><label><input id="ecoLayersContours" type="checkbox" checked> Curvas DEM calculadas</label><p class="ecoHint">Los controles de relieve IGN anteriores permanecen pendientes de verificación.</p></div><div class="ecoBox"><strong>Información UAS oficial</strong><p class="ecoMessage">Comprueba zonas geográficas UAS y sus condiciones en la fuente oficial; ECOUAV no autoriza vuelos.</p><a href="https://drones.enaire.es/" target="_blank" rel="noopener noreferrer">Abrir ENAIRE Drones ↗</a></div>
   </div>
  </div>
  <div class="ecoView" data-ecoview="weather">
   <div class="ecoCells">
    <div class="ecoBox"><strong>Previsión local</strong><p class="ecoHint">Consulta el centro actual del mapa (no la ubicación personal).</p><button id="ecoWeatherLoad" type="button">Consultar meteorología</button><p id="ecoWeatherStatus" class="ecoMessage">Sin datos cargados.</p></div>
-   <div class="ecoBox"><strong>Condiciones</strong><div id="ecoWeatherReading" class="ecoMessage">Temperatura, viento, rachas, precipitación y nubosidad, con fecha y hora del pronóstico.</div></div>
+   <div class="ecoBox"><strong>Condiciones</strong><div id="ecoWeatherReading" class="ecoMessage">Temperatura, viento, rachas, precipitación y nubosidad, con fecha y hora del pronóstico.</div><div id="ecoWeatherVisual" class="ecoWeatherBars" aria-label="Indicadores meteorológicos">Consulta la meteorología para ver los indicadores.</div></div>
   </div>
  </div>
  <div class="ecoView" data-ecoview="antenna">
@@ -596,7 +613,7 @@ preserveAspectRatio="none">
 <div class="actions"><button id="ecoLoadSurface" type="button">⛰️ Cargar terreno 3D en antena</button><label style="display:inline-flex;gap:6px;align-items:center;font-size:12px"><input id="ecoPreferIgn" type="checkbox" checked> Priorizar IGN MDT (experimental)</label><button id="ecoResetCamera" type="button">◎ Centrar cámara</button></div>
 <div class="field"><label>Exageración visual del relieve</label><input id="ecoTerrainExaggeration" type="range" min="1" max="8" value="3" step=".5"></div><div id="ecoSurfaceStatus" class="mini">Selecciona una antena en el mapa para cargar una cuadrícula DEM local.</div>
 <div id="ecoRfStatus" class="mini">RF: parámetros declarados y mediciones introducidas por el usuario. Sin predicción de cobertura.</div>
-<div id="soma3d" style="width:100%;height:350px;min-height:280px;background:#0d161e;border-radius:10px;overflow:hidden;position:relative;touch-action:none" aria-label="Visor tridimensional interactivo del lóbulo de antena"><div class="mini" style="padding:18px">Preparando visor 3D…</div></div>
+<div class="eco3dActions"><button type="button" id="eco3dFullscreen">⛶ Pantalla completa 3D</button><button type="button" id="eco3dResetVisual">◎ Centrar vista</button><span class="eco3dLegend"><i></i> Relieve <b>●</b> Antena <em>◯</em> Haz ilustrativo</span></div><div id="soma3d" style="width:100%;height:350px;min-height:280px;background:#0d161e;border-radius:10px;overflow:hidden;position:relative;touch-action:none" aria-label="Visor tridimensional interactivo del lóbulo de antena"><div class="mini" style="padding:18px">Preparando visor 3D…</div></div>
 <div class="actions"><button id="terrain3dToggle">⛰️ Mostrar relieve de ruta en 3D</button></div><div id="terrain3dInfo" class="mini">Analiza primero el relieve de una ruta para mostrar su perfil y sombreado topográfico en el visor 3D.</div><div class="mini">El sombreado indica únicamente iluminación esquemática del relieve; no representa sombras de radio ni predice cobertura de señal.</div><div class="mini">Vista 3D interactiva: arrastra para girar y usa la rueda para acercar. El volumen representa una apertura ilustrativa, no ganancia, alcance ni patrón medido.</div>
 <div class="mini">Leyenda: 🟡 antena / eje · 🔵 lóbulo esquemático · 🟠 traza de relieve DEM. La representación no permite determinar cobertura de señal.</div><div class="mini">Polarización circular RHCP: el campo eléctrico rota durante la propagación. La apertura real horizontal/vertical requiere datos medidos del fabricante. Este dibujo no representa una medición.</div></div></div>
 </div>
@@ -5338,6 +5355,19 @@ refreshMissions();
  map.on('moveend zoomend',refreshStatus);refreshStatus();
  window.ecoUpdateMapSource=label=>{document.getElementById('ecoMapSource').textContent='Mapa: '+label};
 })();
+/* ECOUAV 3D presentation controls. */
+(function(){
+ const host=document.getElementById('soma3d');
+ document.getElementById('eco3dFullscreen').addEventListener('click',async()=>{
+  try{if(document.fullscreenElement===host)await document.exitFullscreen();else if(host.requestFullscreen)await host.requestFullscreen();else throw Error('Pantalla completa no disponible');}
+  catch(e){document.getElementById('terrain3dInfo').textContent='Pantalla completa no disponible en este navegador: '+e.message;}
+ });
+ document.getElementById('eco3dResetVisual').addEventListener('click',()=>document.getElementById('ecoResetCamera')?.click());
+ document.addEventListener('fullscreenchange',()=>{
+  document.getElementById('eco3dFullscreen').textContent=document.fullscreenElement===host?'⛶ Salir de pantalla completa':'⛶ Pantalla completa 3D';
+  if(typeof eco3dResize==='function')setTimeout(eco3dResize,70);
+ });
+})();
 /* ECOUAV integrated modes, 2026-10. Visual and historical analysis only. */
 (function(){
  const root=document.getElementById('ecoWorkspace');
@@ -5358,6 +5388,10 @@ refreshMissions();
   ecoBaseNow=value;q('ecoBase').value=value;window.ecoUpdateMapSource?.(value==='pnoa'?'PNOA / IGN':value==='osm'?'OSM':'Esri');
  }
  q('ecoBase').addEventListener('change',e=>selectBase(e.target.value));
+ q('ecoSatelliteOpacity').addEventListener('input',e=>{pnoa.setOpacity(Number(e.target.value)/100);q('ecoOpacityText').textContent=e.target.value+' %';});
+ q('ecoLayersAntennas').addEventListener('change',e=>{for(const layer of Object.values(antennaMarkers)){if(!layer)continue;if(e.target.checked)layer.addTo(map);else map.removeLayer(layer);}});
+ q('ecoLayersRoutes').addEventListener('change',e=>{for(const layer of [routeLayer,ecoImportedLayer]){if(e.target.checked)layer.addTo(map);else map.removeLayer(layer);}});
+ q('ecoLayersContours').addEventListener('change',e=>{if(e.target.checked)demContourLayer.addTo(map);else map.removeLayer(demContourLayer);});
  // Legacy buttons remain usable and reflect their choice in the workspace.
  q('sat').addEventListener('click',()=>{ecoBaseNow='esri';q('ecoBase').value='esri';});
  q('topo').addEventListener('click',()=>{ecoBaseNow='osm';q('ecoBase').value='osm';});
@@ -5386,6 +5420,15 @@ refreshMissions();
    const data=await res.json(),v=data.current;
    if(!v)throw Error('No hay valores actuales');
    msg('ecoWeatherReading','Temperatura: '+v.temperature_2m+' °C · Viento a 10 m: '+v.wind_speed_10m+' km/h · Dirección: '+v.wind_direction_10m+'° · Rachas: '+v.wind_gusts_10m+' km/h · Precipitación: '+v.precipitation+' mm · Nubosidad: '+v.cloud_cover+' %.');
+   const values=[['Temperatura',v.temperature_2m,'°C',Math.min(100,Math.max(0,(v.temperature_2m+15)*2))],['Viento 10 m',v.wind_speed_10m,'km/h',Math.min(100,v.wind_speed_10m)],['Rachas',v.wind_gusts_10m,'km/h',Math.min(100,v.wind_gusts_10m)],['Nubosidad',v.cloud_cover,'%',Math.min(100,v.cloud_cover)]];
+   q('ecoWeatherVisual').innerHTML='';
+   for(const [label,value,unit,percent] of values){
+    const card=document.createElement('div');card.className='ecoMetric';
+    const small=document.createElement('small');small.textContent=label;
+    const strong=document.createElement('strong');strong.textContent=value+' '+unit;
+    const track=document.createElement('div');track.className='ecoMeter';const fill=document.createElement('span');fill.style.width=percent+'%';track.appendChild(fill);
+    card.append(small,strong,track);q('ecoWeatherVisual').appendChild(card);
+   }
    msg('ecoWeatherStatus','Open-Meteo · '+v.time+' ('+(data.timezone_abbreviation||data.timezone||'hora local')+') · lat '+center.lat.toFixed(4)+' lon '+center.lng.toFixed(4)+'. Datos de modelo; no sustituyen una estación local.');
   }catch(e){msg('ecoWeatherStatus','No se pudieron consultar las condiciones: '+(e.message||e));}
   finally{btn.disabled=false;}
