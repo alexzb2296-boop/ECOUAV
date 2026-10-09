@@ -4813,7 +4813,7 @@ function renderSoma3D(){
 
 // ECOUAV 1.1: visor WebGL 3D de geometría educativa, independiente del mapa.
 const oldRenderSoma3D=renderSoma3D;
-let eco3d=null,eco3dLoading=false,eco3dZoom=5.3,eco3dAzimuth=null,eco3dElevation=null;
+let eco3d=null,eco3dLoading=false,eco3dZoom=1,eco3dAzimuth=null,eco3dElevation=null;
 function loadEcoThree(){
  if(window.THREE)return Promise.resolve(window.THREE);
  if(window.ecoThreePromise)return window.ecoThreePromise;
@@ -4828,8 +4828,15 @@ function eco3dCamera(){
  if(!eco3d)return;
  const az=(eco3dAzimuth===null?Number($('somaRotate').value):eco3dAzimuth)*Math.PI/180;
  const el=(eco3dElevation===null?Number($('somaTilt').value):eco3dElevation)*Math.PI/180;
- eco3d.camera.position.set(eco3dZoom*Math.cos(el)*Math.cos(az),eco3dZoom*Math.sin(el),eco3dZoom*Math.cos(el)*Math.sin(az));
- eco3d.camera.lookAt(0.65,0,0);
+ // Frame the full lobe around its bounding sphere, not the antenna origin.
+ const center=eco3d.focus||new window.THREE.Vector3(1.05,0,0);
+ const radius=eco3d.radius||2;
+ const vFov=eco3d.camera.fov*Math.PI/180;
+ const hFov=2*Math.atan(Math.tan(vFov/2)*eco3d.camera.aspect);
+ const fit=radius/Math.sin(Math.max(.08,Math.min(vFov,hFov)/2));
+ const dist=Math.max(2.5,fit*1.18*eco3dZoom);
+ eco3d.camera.position.set(center.x+dist*Math.cos(el)*Math.cos(az),center.y+dist*Math.sin(el),center.z+dist*Math.cos(el)*Math.sin(az));
+ eco3d.camera.lookAt(center);
  eco3d.renderer.render(eco3d.scene,eco3d.camera);
 }
 function eco3dSetup(){
@@ -4849,7 +4856,7 @@ function eco3dSetup(){
  host.addEventListener('pointerdown',e=>{last={x:e.clientX,y:e.clientY};host.setPointerCapture(e.pointerId)});
  host.addEventListener('pointermove',e=>{if(!last)return;eco3dAzimuth=(eco3dAzimuth??Number($('somaRotate').value))+(e.clientX-last.x)*.6;eco3dElevation=Math.max(5,Math.min(85,(eco3dElevation??Number($('somaTilt').value))+(e.clientY-last.y)*.4));last={x:e.clientX,y:e.clientY};eco3dCamera()});
  host.addEventListener('pointerup',()=>{last=null});host.addEventListener('pointercancel',()=>{last=null});
- host.addEventListener('wheel',e=>{e.preventDefault();eco3dZoom=Math.max(2.2,Math.min(16,eco3dZoom*Math.exp(e.deltaY*.001)));eco3dCamera()},{passive:false});
+ host.addEventListener('wheel',e=>{e.preventDefault();eco3dZoom=Math.max(.55,Math.min(5,eco3dZoom*Math.exp(e.deltaY*.001)));eco3dCamera()},{passive:false});
  if(window.ResizeObserver)new ResizeObserver(()=>eco3dResize()).observe(host);
  eco3dResize();
 }
@@ -4860,7 +4867,7 @@ function eco3dResize(){
 function eco3dDraw(){
  if(!eco3d)return;
  const THREE=window.THREE,{scene}=eco3d;
- if(eco3d.mesh){scene.remove(eco3d.mesh);eco3d.mesh.geometry.dispose();eco3d.mesh.material.dispose();}
+ if(eco3d.mesh){scene.remove(eco3d.mesh);eco3d.mesh.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material)o.material.dispose()});}
  if(eco3d.terrain){scene.remove(eco3d.terrain);eco3d.terrain.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material)o.material.dispose()});eco3d.terrain=null;}
  const x2=$('antennaModel').value==='x2air5';
  let h=x2?150:(Number($('somaAngle').value)||60),v=x2?62:h;
@@ -4886,6 +4893,11 @@ function eco3dDraw(){
  const wire=new THREE.LineSegments(new THREE.EdgesGeometry(geometry,25),new THREE.LineBasicMaterial({color:0x75ddff,transparent:true,opacity:.38}));
  // Wireframe is a child; its geometry/material will be disposed on redraw below.
  mesh.add(wire);scene.add(mesh);eco3d.mesh=mesh;
+ geometry.computeBoundingSphere();
+ eco3d.focus=geometry.boundingSphere.center.clone();
+ eco3d.radius=geometry.boundingSphere.radius;
+ // Include a small margin for the grid and axis marker.
+ eco3d.radius=Math.max(eco3d.radius,1.7);
  const active=antennas[$('antId').value];
  if(showRouteTerrain3d&&active&&routeTerrain3d?.length>1){
   const pts=routeTerrain3d.map(p=>({x:(p.lng-active.lng)*111320*Math.cos(active.lat*Math.PI/180),y:(p.lat-active.lat)*111320,z:p.z}));
