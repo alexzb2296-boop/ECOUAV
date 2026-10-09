@@ -507,11 +507,11 @@ preserveAspectRatio="none">
 </div>
 <div id="somaStats" class="mini"></div>
 <svg id="somaPolar" viewBox="0 0 640 310" style="width:100%;max-height:310px;background:#0d161e;border-radius:10px;margin-top:10px" aria-label="Diagramas polares ilustrativos horizontal y vertical"></svg>
-<div class="label" style="margin-top:12px">🧊 HAZ 3D · MODELO ILUSTRATIVO</div>
+<div id="viewer3dPanel" style="margin-top:12px;border:1px solid #33485a;border-radius:12px;padding:10px;background:#101922"><div class="actions" style="justify-content:space-between;align-items:center"><div class="label">🧊 VISOR 3D · ANTENA Y RELIEVE</div><div class="actions"><button id="viewer3dMin" type="button">▁ Minimizar</button><button id="viewer3dMax" type="button">⛶ Maximizar</button></div></div><div id="viewer3dBody">
 <div class="formgrid"><div class="field"><label>Girar vista (°)</label><input id="somaRotate" type="range" min="0" max="360" value="35"></div><div class="field"><label>Inclinación (°)</label><input id="somaTilt" type="range" min="10" max="80" value="30"></div></div>
 <svg id="soma3d" viewBox="0 0 640 350" style="width:100%;max-height:350px;background:#0d161e;border-radius:10px" aria-label="Representación tridimensional ilustrativa del lóbulo de antena"></svg>
 <div class="actions"><button id="terrain3dToggle">⛰️ Mostrar relieve de ruta en 3D</button></div><div id="terrain3dInfo" class="mini">Analiza primero el relieve de una ruta para mostrar su perfil y sombreado topográfico en el visor 3D.</div><div class="mini">El sombreado indica únicamente iluminación esquemática del relieve; no representa sombras de radio ni predice cobertura de señal.</div><div class="mini">Vista 3D esquemática y giratoria; no representa ganancia, alcance ni patrón de radiación medido.</div>
-<div class="mini">Polarización circular RHCP: el campo eléctrico rota durante la propagación. La apertura real horizontal/vertical requiere datos medidos del fabricante. Este dibujo no representa una medición.</div>
+<div class="mini">Leyenda: 🟡 antena / eje · 🔵 lóbulo esquemático · 🟠 traza de relieve DEM. La representación no permite determinar cobertura de señal.</div><div class="mini">Polarización circular RHCP: el campo eléctrico rota durante la propagación. La apertura real horizontal/vertical requiere datos medidos del fabricante. Este dibujo no representa una medición.</div></div></div>
 </div>
 <div id="routeProfileCard" class="card full">
 <div class="label">📊 PERFIL DE RUTA</div>
@@ -4590,6 +4590,24 @@ document.getElementById('somaFreq').addEventListener('input',renderSomaViewer);
 document.getElementById('somaAngle').addEventListener('input',renderSomaViewer);
 
 let routeTerrain3d=null,showRouteTerrain3d=false;
+let viewer3dExpanded=false,viewer3dCollapsed=false;
+const viewer3dPanel=document.getElementById('viewer3dPanel');
+const viewer3dBody=document.getElementById('viewer3dBody');
+function setViewer3dSize(){
+ viewer3dBody.style.display=viewer3dCollapsed?'none':'';
+ viewer3dPanel.style.position=viewer3dExpanded?'fixed':'relative';
+ viewer3dPanel.style.inset=viewer3dExpanded?'12px':'auto';
+ viewer3dPanel.style.zIndex=viewer3dExpanded?'5000':'auto';
+ viewer3dPanel.style.overflow=viewer3dExpanded?'auto':'visible';
+ viewer3dPanel.style.boxShadow=viewer3dExpanded?'0 0 0 9999px #000b':'none';
+ document.getElementById('soma3d').style.maxHeight=viewer3dExpanded?'65vh':'350px';
+ document.getElementById('soma3d').style.height=viewer3dExpanded?'65vh':'auto';
+ document.getElementById('viewer3dMax').textContent=viewer3dExpanded?'⤢ Restaurar':'⛶ Maximizar';
+ document.getElementById('viewer3dMin').textContent=viewer3dCollapsed?'▣ Mostrar':'▁ Minimizar';
+}
+document.getElementById('viewer3dMax').addEventListener('click',()=>{viewer3dExpanded=!viewer3dExpanded;viewer3dCollapsed=false;setViewer3dSize();});
+document.getElementById('viewer3dMin').addEventListener('click',()=>{viewer3dCollapsed=!viewer3dCollapsed;if(viewer3dCollapsed)viewer3dExpanded=false;setViewer3dSize();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&viewer3dExpanded){viewer3dExpanded=false;setViewer3dSize();}});
 document.getElementById('terrain3dToggle').addEventListener('click',()=>{
  showRouteTerrain3d=!showRouteTerrain3d;
  document.getElementById('terrain3dToggle').textContent=showRouteTerrain3d?'⛰️ Ocultar relieve 3D':'⛰️ Mostrar relieve de ruta en 3D';
