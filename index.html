@@ -595,6 +595,14 @@ Planificador UAS · Terreno · RF · Rutas · Misiones
     <button type="button" data-eco-old="mapToolsCard">Medición · Radio · Área · Cuadrícula</button>
     <button type="button" data-eco-old="terrainCard">Perfil de desnivel A / B</button>
    </div>
+   <div class="ecoBox"><strong>🛠️ Acciones directas del mapa</strong>
+    <button type="button" data-eco-click="measureBtn">Medir sobre el mapa</button>
+    <button type="button" data-eco-click="routeBtn">Dibujar ruta</button>
+    <button type="button" data-eco-click="deleteBtn">Eliminar elemento</button>
+    <button type="button" data-eco-click="undoBtn">Deshacer</button>
+    <button type="button" data-eco-click="redoBtn">Rehacer</button>
+    <button type="button" data-eco-click="clearBtn">Finalizar herramienta</button>
+   </div>
    <div class="ecoBox"><strong>📍 Puntos y rutas</strong>
     <button type="button" data-eco-old="poiCard">Puntos de interés (POI)</button>
     <button type="button" data-eco-old="routeProfileCard">Perfil de ruta y distancias</button>
@@ -5651,6 +5659,13 @@ refreshMissions();
    if(toggle)toggle.textContent='⚙ Ocultar herramientas avanzadas';
   }
  };
+ root.querySelectorAll('[data-eco-click]').forEach(button=>button.addEventListener('click',()=>{
+  const original=document.getElementById(button.dataset.ecoClick);
+  if(!original){status.textContent='Acción no disponible en esta versión.';return;}
+  original.click();
+  window.ecoCloseSidebar?.();
+  status.textContent='Acción del mapa activada: '+button.textContent.trim()+'.';
+ }));
  root.querySelectorAll('[data-eco-old],[data-eco-action]').forEach(button=>button.addEventListener('click',()=>{
   const id=button.dataset.ecoOld,action=button.dataset.ecoAction;
   if(action==='ecoAdvancedToggle'){
