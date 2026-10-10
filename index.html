@@ -566,6 +566,22 @@ html.ecoLoginLocked #ecoLoginGate{display:flex;visibility:visible!important}
 #ecoLoginEnter{width:100%;background:#59c3ff;color:#081724;border:0;border-radius:10px;padding:13px;margin-top:14px;font-size:15px;font-weight:800;cursor:pointer}
 #ecoLoginError{min-height:24px;color:#ff9e9e;font-size:13px;margin-top:12px}
 #ecoLoginBox small{display:block;color:#849fb1;line-height:1.45;font-size:11px}
+
+/* Desktop legacy-tool integration: the right context rail becomes a tool inspector. */
+@media(min-width:901px){
+ body.ecoMockLayout #ecoContextPanel.ecoContextToolOpen{overflow:hidden;padding:0}
+ body.ecoMockLayout #ecoContextPanel.ecoContextToolOpen > :not(#ecoLegacyDock){display:none!important}
+ body.ecoMockLayout #ecoContextPanel > #ecoLegacyDock.ecoDockOpen{
+  display:flex;position:relative;inset:auto;top:auto;left:auto;right:auto;bottom:auto;
+  flex:1;width:100%;max-height:100%;min-height:0;margin:0;border:0;border-radius:0;
+  background:#0b1b29;box-shadow:none;z-index:auto;
+ }
+ body.ecoMockLayout #ecoContextPanel > #ecoLegacyDock #ecoLegacyDockBody{padding:9px}
+ body.ecoMockLayout #ecoContextPanel > #ecoLegacyDock .formgrid{grid-template-columns:1fr}
+ body.ecoMockLayout #ecoContextPanel > #ecoLegacyDock .field.wide{grid-column:auto}
+ #ecoContextPanel .ecoContextQuickButtons{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+ #ecoContextPanel .ecoContextQuickButtons button{font-size:11px;padding:8px 5px;margin:0;min-width:0;white-space:normal}
+}
 </style>
 </head>
 
@@ -5714,6 +5730,7 @@ refreshMissions();
   }
   current=null;placeholder=null;
   dock.classList.remove('ecoDockOpen');dock.setAttribute('aria-hidden','true');
+  document.getElementById('ecoContextPanel')?.classList.remove('ecoContextToolOpen');
  }
  function openPanel(id,label){
   const target=document.getElementById(id);
@@ -5735,6 +5752,10 @@ refreshMissions();
   current=target;body.appendChild(target);
   target.classList.remove('hidden');
   title.textContent=label;
+  const desktop=window.innerWidth>900&&document.body.classList.contains('ecoMockLayout');
+  const context=document.getElementById('ecoContextPanel');
+  if(desktop&&context){context.appendChild(dock);context.classList.add('ecoContextToolOpen');}
+  else if(dock.parentElement!==document.body)document.body.appendChild(dock);
   dock.classList.add('ecoDockOpen');dock.setAttribute('aria-hidden','false');
   // A dock does not require showing the old advanced tool section.
   window.ecoCloseSidebar?.();
@@ -6013,6 +6034,22 @@ refreshMissions();
  }
  const weatherAction=document.createElement('button');weatherAction.className='ecoContextAction';weatherAction.textContent='↻ Consultar condiciones del centro del mapa';weatherAction.onclick=()=>document.getElementById('ecoWeatherLoad')?.click();c.append(weatherAction);
  const weatherNote=document.createElement('p');weatherNote.className='ecoContextHint';weatherNote.textContent='Sin medición en directo; valores de la fuente de previsión cuando se consulten.';c.append(weatherNote);
+ // Desktop shortcuts to original, fully functional panels.
+ c=card('🧰 Herramientas clásicas');
+ const quick=document.createElement('div');quick.className='ecoContextQuickButtons';c.append(quick);
+ for(const [label,id] of [
+  ['⌖ Coordenadas','coordCard'],['▦ Mapa+','mapToolsCard'],
+  ['⛰ Desnivel A/B','terrainCard'],['📊 Perfil ruta','routeProfileCard'],
+  ['📍 POI','poiCard'],['📡 Antenas','antennaCard'],
+  ['💾 Misiones','missionCard']
+ ]){
+  const btn=document.createElement('button');btn.type='button';btn.textContent=label;
+  btn.addEventListener('click',()=>window.ecoOpenLegacyTool?.(id,label));
+  quick.append(btn);
+ }
+ const legend=document.createElement('p');legend.className='ecoContextHint';
+ legend.textContent='Abre los controles originales en esta columna. El mapa permanece visible.';
+ c.append(legend);
  c=card('⌁ Ruta y perfil');
  row(c,'Medición / ruta','ecoContextRoute','Sin ruta');
  const routeNote=document.createElement('p');routeNote.className='ecoContextHint';routeNote.textContent='Importa un GPX o dibuja una ruta para consultar sus datos reales.';c.append(routeNote);
