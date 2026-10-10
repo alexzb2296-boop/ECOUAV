@@ -526,6 +526,24 @@ body.ecoMockLayout #ecoShell button:focus-visible{outline:2px solid #40dfff;outl
 .ecoViewSwitch a{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:7px 11px;background:#133749;border:1px solid #387b9c;border-radius:8px;color:#b5e9ff;font-size:12px;text-decoration:none;font-weight:700;white-space:nowrap}
 .ecoViewSwitch a:hover{background:#19506c}
 @media(max-width:620px){.ecoViewSwitch{display:none}}
+
+/* Legacy tools directly docked into the new interface — no advanced area needed. */
+#ecoLegacyDock{position:fixed;z-index:1660;right:10px;top:73px;bottom:40px;width:min(445px,calc(100vw - 20px));display:none;flex-direction:column;background:#0b1b29f5;border:1px solid #4c819a;border-radius:12px;box-shadow:0 12px 48px #000b;overflow:hidden;backdrop-filter:blur(12px)}
+#ecoLegacyDock.ecoDockOpen{display:flex}
+#ecoLegacyDockHeader{flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:11px 13px;background:#142e41;border-bottom:1px solid #34556b}
+#ecoLegacyDockHeader strong{color:#b8ecff;font-size:13px}
+#ecoLegacyDockClose{font-size:13px;padding:6px 10px}
+#ecoLegacyDockBody{min-height:0;overflow:auto;padding:10px}
+#ecoLegacyDockBody>.card{display:block!important;width:100%;max-width:none;margin:0;grid-column:auto}
+#ecoLegacyDockBody .formgrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+#ecoLegacyDockBody .field{min-width:0}
+#ecoLegacyDockBody input[type=file]{display:block;max-width:100%}
+#ecoWorkspace [data-eco-old],#ecoWorkspace [data-eco-click]{width:100%;text-align:left}
+@media(max-width:900px){
+ #ecoLegacyDock{top:auto;bottom:calc(45px + env(safe-area-inset-bottom,0px));left:5px;right:5px;width:auto;max-height:68dvh}
+ #ecoLegacyDockBody .formgrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:530px){#ecoLegacyDockBody .formgrid{grid-template-columns:1fr}#ecoLegacyDockBody .wide{grid-column:auto}}
 </style>
 </head>
 
@@ -565,19 +583,19 @@ Planificador UAS · Terreno · RF · Rutas · Misiones
  <div class="ecoView ecoActive" data-ecoview="terrain">
   <div class="ecoCells">
    <div class="ecoBox"><strong>Cartografía</strong><label for="ecoBase">Mapa base</label><select id="ecoBase"><option value="esri">Satélite Esri</option><option value="pnoa">Ortofoto PNOA · IGN</option><option value="osm">OpenStreetMap</option></select><div class="ecoHint">PNOA procede del servicio público WMTS del IGN; necesita conexión.</div><label for="ecoSatelliteOpacity">Opacidad de la ortofoto PNOA: <span id="ecoOpacityText">100 %</span></label><input id="ecoSatelliteOpacity" type="range" min="25" max="100" step="5" value="100"></div>
-   <div class="ecoBox"><strong>Relieve</strong><p class="ecoMessage">MDT05 del IGN cuando sus teselas estén disponibles. El visor indica qué fuente se ha cargado. Las curvas actuales usan muestras de Open-Meteo, no curvas oficiales IGN.</p><button id="ecoReliefShortcut" type="button">🏔️ Activar relieve IGN</button><p id="ecoReliefStatus" class="ecoHint" role="status">Capa de sombreado IGN (visual, no datos de cotas).</p><button id="ecoContoursShortcut" type="button">Calcular curvas DEM</button><button id="eco3dShortcut" type="button">Ir al visor 3D</button></div>
+   <div class="ecoBox"><strong>Accesos rápidos al terreno</strong><button type="button" data-eco-old="terrainCard">Perfil A/B</button><button type="button" data-eco-old="routeProfileCard">Perfil de ruta</button></div><div class="ecoBox"><strong>Relieve</strong><p class="ecoMessage">MDT05 del IGN cuando sus teselas estén disponibles. El visor indica qué fuente se ha cargado. Las curvas actuales usan muestras de Open-Meteo, no curvas oficiales IGN.</p><button id="ecoReliefShortcut" type="button">🏔️ Activar relieve IGN</button><p id="ecoReliefStatus" class="ecoHint" role="status">Capa de sombreado IGN (visual, no datos de cotas).</p><button id="ecoContoursShortcut" type="button">Calcular curvas DEM</button><button id="eco3dShortcut" type="button">Ir al visor 3D</button></div>
    <div class="ecoBox"><strong>Capas visibles</strong><label><input id="ecoLayersAntennas" type="checkbox" checked> Antenas</label><label><input id="ecoLayersRoutes" type="checkbox" checked> Rutas</label><label><input id="ecoLayersContours" type="checkbox" checked> Curvas DEM calculadas</label><p class="ecoHint">Los controles de relieve IGN anteriores permanecen pendientes de verificación.</p></div><div class="ecoBox"><strong>Información UAS oficial</strong><p class="ecoMessage">Comprueba zonas geográficas UAS y sus condiciones en la fuente oficial; ECOUAV no autoriza vuelos.</p><a href="https://drones.enaire.es/" target="_blank" rel="noopener noreferrer">Abrir ENAIRE Drones ↗</a></div>
   </div>
  </div>
  <div class="ecoView" data-ecoview="weather">
   <div class="ecoCells">
-   <div class="ecoBox"><strong>Previsión local</strong><p class="ecoHint">Consulta el centro actual del mapa (no la ubicación personal).</p><button id="ecoWeatherLoad" type="button">Consultar meteorología</button><p id="ecoWeatherStatus" class="ecoMessage">Sin datos cargados.</p></div>
+   <div class="ecoBox"><strong>Historial y condiciones</strong><p class="ecoHint">Se mantienen los datos ampliados de la versión anterior en el panel de información del mapa.</p></div><div class="ecoBox"><strong>Previsión local</strong><p class="ecoHint">Consulta el centro actual del mapa (no la ubicación personal).</p><button id="ecoWeatherLoad" type="button">Consultar meteorología</button><p id="ecoWeatherStatus" class="ecoMessage">Sin datos cargados.</p></div>
    <div class="ecoBox"><strong>Condiciones</strong><div id="ecoWeatherReading" class="ecoMessage">Temperatura, viento, rachas, precipitación y nubosidad, con fecha y hora del pronóstico.</div><div id="ecoWeatherVisual" class="ecoWeatherBars" aria-label="Indicadores meteorológicos">Consulta la meteorología para ver los indicadores.</div></div>
   </div>
  </div>
  <div class="ecoView" data-ecoview="antenna">
   <div class="ecoCells">
-   <div class="ecoBox"><strong>Visor de antenas</strong><p class="ecoMessage">Antenas A/B/C, altura del mástil, orientación y lóbulo 3D ilustrativo; sin predicción de cobertura RF.</p><button type="button" id="ecoAntennaShortcut">Abrir controles 3D</button></div>
+   <div class="ecoBox"><strong>Controles existentes</strong><button type="button" data-eco-old="antennaCard">Abrir antenas A/B/C</button></div><div class="ecoBox"><strong>Visor de antenas</strong><p class="ecoMessage">Antenas A/B/C, altura del mástil, orientación y lóbulo 3D ilustrativo; sin predicción de cobertura RF.</p><button type="button" id="ecoAntennaShortcut">Abrir controles 3D</button></div>
    <div class="ecoBox"><strong>Modelos de superficie</strong><p class="ecoMessage">MDT = elevación del suelo. MDS = elevación de la superficie visible, incluidos objetos cuando existan. La comparación MDT/MDS requiere datos MDS compatibles: aún no está conectada.</p></div>
   </div>
  </div>
@@ -5625,49 +5643,75 @@ refreshMissions();
  const toggle=document.getElementById('ecoSidebarToggle'),panel=document.getElementById('ecoWorkspace');
  const show=open=>{panel.classList.toggle('ecoSidebarOpen',open);panel.setAttribute('aria-hidden',String(!open));toggle.setAttribute('aria-expanded',String(open));toggle.textContent=open?'✕ Cerrar panel':'☰ Herramientas';};
  toggle.addEventListener('click',()=>show(!panel.classList.contains('ecoSidebarOpen')));
- document.addEventListener('keydown',e=>{if(e.key==='Escape'&&panel.classList.contains('ecoSidebarOpen'))show(false)});
- function refreshStatus(){
-  const c=map.getCenter(),z=map.getZoom(),meters=156543.03392*Math.cos(c.lat*Math.PI/180)/Math.pow(2,z);
-  document.getElementById('ecoMapCoords').textContent='WGS84 · '+c.lat.toFixed(5)+'°, '+c.lng.toFixed(5)+'°';
-  document.getElementById('ecoMapScale').textContent='Zoom '+z+' · '+Math.round(meters*100)/100+' m/px aprox.';
- }
- map.on('moveend zoomend',refreshStatus);refreshStatus();
- window.ecoUpdateMapSource=label=>{document.getElementById('ecoMapSource').textContent='Mapa: '+label};
- window.ecoCloseSidebar=()=>show(false);
-})();
-/* ECOUAV 3D presentation controls. */
+ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&panel.classList.contains('ecoSidebarOpen'))show(fals/* Legacy tools dock: relocate the real panel, never clone it. */
 (function(){
- const host=document.getElementById('soma3d');
- document.getElementById('eco3dFullscreen').addEventListener('click',async()=>{
-  try{if(document.fullscreenElement===host)await document.exitFullscreen();else if(host.requestFullscreen)await host.requestFullscreen();else throw Error('Pantalla completa no disponible');}
-  catch(e){document.getElementById('terrain3dInfo').textContent='Pantalla completa no disponible en este navegador: '+e.message;}
- });
- document.getElementById('eco3dResetVisual').addEventListener('click',()=>document.getElementById('ecoResetCamera')?.click());
- document.addEventListener('fullscreenchange',()=>{
-  document.getElementById('eco3dFullscreen').textContent=document.fullscreenElement===host?'⛶ Salir de pantalla completa':'⛶ Pantalla completa 3D';
-  if(typeof eco3dResize==='function')setTimeout(eco3dResize,70);
- });
-})();
-/* Legacy-tool access bridge: reuse original components and existing handlers. */
-(function(){
- const root=document.getElementById('ecoWorkspace');
- const status=document.getElementById('ecoClassicStatus');
- const openAdvanced=()=>{
-  if(!document.body.classList.contains('ecoAdvancedOpen')){
-   document.body.classList.add('ecoAdvancedOpen');
-   const toggle=document.getElementById('ecoAdvancedToggle');
-   if(toggle)toggle.textContent='⚙ Ocultar herramientas avanzadas';
+ const root=document.getElementById('ecoWorkspace'),status=document.getElementById('ecoClassicStatus');
+ if(!root)return;
+ const dock=document.createElement('aside');
+ dock.id='ecoLegacyDock';dock.setAttribute('role','region');dock.setAttribute('aria-label','Herramienta ECOUAV');dock.setAttribute('aria-hidden','true');
+ dock.innerHTML='<header id="ecoLegacyDockHeader"><strong id="ecoLegacyDockTitle">Herramienta</strong><button id="ecoLegacyDockClose" type="button" aria-label="Cerrar herramienta">✕ Cerrar</button></header><div id="ecoLegacyDockBody"></div>';
+ document.body.appendChild(dock);
+ const body=dock.querySelector('#ecoLegacyDockBody'),title=dock.querySelector('#ecoLegacyDockTitle'),close=dock.querySelector('#ecoLegacyDockClose');
+ let current=null,placeholder=null,wasHidden=false;
+ function undock(){
+  if(current&&placeholder&&placeholder.parentNode){
+   placeholder.replaceWith(current);
+   current.classList.toggle('hidden',wasHidden);
   }
- };
+  current=null;placeholder=null;
+  dock.classList.remove('ecoDockOpen');dock.setAttribute('aria-hidden','true');
+ }
+ function openPanel(id,label){
+  const target=document.getElementById(id);
+  if(!target){if(status)status.textContent='Panel no encontrado: '+id;return;}
+  if(id==='soma3d'){
+   undock();
+   const preview=document.getElementById('eco3dInset');
+   if(preview?.classList.contains('ecoInsetHidden'))document.getElementById('ecoTogglePreview')?.click();
+   window.ecoCloseSidebar?.();
+   target.scrollIntoView({behavior:'smooth',block:'center'});
+   if(status)status.textContent='Visor 3D activo en el mapa.';
+   return;
+  }
+  if(current===target){undock();return;}
+  undock();
+  placeholder=document.createComment('ECOUAV original panel position: '+id);
+  wasHidden=target.classList.contains('hidden');
+  target.parentNode.insertBefore(placeholder,target);
+  current=target;body.appendChild(target);
+  target.classList.remove('hidden');
+  title.textContent=label;
+  dock.classList.add('ecoDockOpen');dock.setAttribute('aria-hidden','false');
+  // A dock does not require showing the old advanced tool section.
+  window.ecoCloseSidebar?.();
+  document.getElementById('ecoMobileDrawer')?.classList.remove('ecoDrawerOpen');
+  if(status)status.textContent='Abierto en panel lateral: '+label+'.';
+  requestAnimationFrame(()=>{body.scrollTop=0;map.invalidateSize({pan:false});});
+ }
+ close.addEventListener('click',undock);
+ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&dock.classList.contains('ecoDockOpen'))undock();});
  root.querySelectorAll('[data-eco-click]').forEach(button=>button.addEventListener('click',()=>{
   const original=document.getElementById(button.dataset.ecoClick);
-  if(!original){status.textContent='Acción no disponible en esta versión.';return;}
-  original.click();
-  window.ecoCloseSidebar?.();
-  status.textContent='Acción del mapa activada: '+button.textContent.trim()+'.';
+  if(!original){if(status)status.textContent='Acción no disponible.';return;}
+  original.click();window.ecoCloseSidebar?.();
+  if(status)status.textContent='Acción del mapa activada: '+button.textContent.trim()+'.';
  }));
  root.querySelectorAll('[data-eco-old],[data-eco-action]').forEach(button=>button.addEventListener('click',()=>{
   const id=button.dataset.ecoOld,action=button.dataset.ecoAction;
+  if(action==='ecoAdvancedToggle'){
+   const advanced=document.getElementById('ecoAdvancedToggle');
+   if(advanced&&!document.body.classList.contains('ecoAdvancedOpen'))advanced.click();
+   window.ecoCloseSidebar?.();
+   advanced?.scrollIntoView({behavior:'smooth',block:'center'});
+   return;
+  }
+  if(!id)return;
+  openPanel(id,button.textContent.trim());
+  if(action&&action!=='ecoAdvancedToggle')document.getElementById(action)?.click();
+ }));
+ window.ecoOpenLegacyTool=openPanel;
+})();
+.ecoOld,action=button.dataset.ecoAction;
   if(action==='ecoAdvancedToggle'){
    openAdvanced();
    const advanced=document.getElementById('ecoAdvancedToggle');
