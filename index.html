@@ -12,6 +12,14 @@
  }
 })();
 </script>
+<script>
+/* Basic client-side visual access gate; NOT an authentication/security boundary. */
+(function(){
+ let opened=false;
+ try{opened=sessionStorage.getItem('ecouav-simple-unlocked')==='1'}catch(e){}
+ if(!opened)document.documentElement.classList.add('ecoLoginLocked');
+})();
+</script>
 <title>ECOUAV v1.0</title>
 
 <link rel="stylesheet"
@@ -544,10 +552,56 @@ body.ecoMockLayout #ecoShell button:focus-visible{outline:2px solid #40dfff;outl
  #ecoLegacyDockBody .formgrid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media(max-width:530px){#ecoLegacyDockBody .formgrid{grid-template-columns:1fr}#ecoLegacyDockBody .wide{grid-column:auto}}
+
+/* ECOUAV simple password screen. All GitHub Pages content remains publicly accessible. */
+html.ecoLoginLocked body > :not(#ecoLoginGate):not(script){visibility:hidden!important}
+#ecoLoginGate{display:none;position:fixed;inset:0;z-index:2147483647;align-items:center;justify-content:center;min-height:100dvh;padding:20px;background:radial-gradient(circle at 50% 20%,#17394b 0%,#0b1824 47%,#060e16 100%);font-family:system-ui,-apple-system,'Segoe UI',sans-serif;color:#e9f7ff}
+html.ecoLoginLocked #ecoLoginGate{display:flex;visibility:visible!important}
+#ecoLoginBox{width:min(420px,100%);padding:32px 26px;background:#102433;border:1px solid #35637b;border-radius:18px;box-shadow:0 26px 85px #000b;text-align:center}
+#ecoLoginIcon{font-size:38px;color:#59c3ff;margin-bottom:12px}
+#ecoLoginBox h2{margin:0 0 5px;font-size:27px;letter-spacing:.07em}
+#ecoLoginBox p{color:#abc2d0;font-size:14px;margin:6px 0 23px}
+#ecoLoginBox label{display:block;text-align:left;font-size:13px;color:#bbd5e3;margin-bottom:8px}
+#ecoLoginPassword{display:block;width:100%;padding:13px;border:1px solid #55788a;border-radius:10px;background:#091824;color:white;font-size:18px;text-align:center;letter-spacing:.2em}
+#ecoLoginEnter{width:100%;background:#59c3ff;color:#081724;border:0;border-radius:10px;padding:13px;margin-top:14px;font-size:15px;font-weight:800;cursor:pointer}
+#ecoLoginError{min-height:24px;color:#ff9e9e;font-size:13px;margin-top:12px}
+#ecoLoginBox small{display:block;color:#849fb1;line-height:1.45;font-size:11px}
 </style>
 </head>
 
 <body>
+<div id="ecoLoginGate" role="dialog" aria-modal="true" aria-labelledby="ecoLoginHeading">
+ <form id="ecoLoginBox" autocomplete="off">
+  <div id="ecoLoginIcon" aria-hidden="true">◇</div>
+  <h2 id="ecoLoginHeading">ECOUAV</h2>
+  <p>Introduce el código de acceso para abrir la aplicación.</p>
+  <label for="ecoLoginPassword">Contraseña</label>
+  <input id="ecoLoginPassword" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="24" placeholder="••••" required autocomplete="off">
+  <button id="ecoLoginEnter" type="submit">Entrar en ECOUAV →</button>
+  <div id="ecoLoginError" role="alert" aria-live="polite"></div>
+  <small>Acceso visual básico. Esta pantalla no protege los archivos públicos.</small>
+ </form>
+</div>
+<script>
+(function(){
+ const form=document.getElementById('ecoLoginBox'),field=document.getElementById('ecoLoginPassword'),error=document.getElementById('ecoLoginError');
+ if(!document.documentElement.classList.contains('ecoLoginLocked'))return;
+ field.focus();
+ form.addEventListener('submit',e=>{
+  e.preventDefault();
+  if(field.value==='1234'){
+   try{sessionStorage.setItem('ecouav-simple-unlocked','1')}catch(e){}
+   document.documentElement.classList.remove('ecoLoginLocked');
+   field.value='';error.textContent='';
+   window.dispatchEvent(new Event('resize'));
+  }else{
+   error.textContent='Contraseña incorrecta. Inténtalo de nuevo.';
+   field.value='';field.focus();
+  }
+ });
+})();
+</script>
+
 
 <header class="top">
 
