@@ -417,6 +417,43 @@ footer strong{font-weight:500;color:#cae7f5}
   const url=URL.createObjectURL(new Blob([JSON.stringify(geo,null,2)],{type:'application/geo+json'}));
   const a=document.createElement('a');a.href=url;a.download='ecouav-desktop-v2.geojson';a.click();setTimeout(()=>URL.revokeObjectURL(url),1200);
  };
+ $('importProject').onclick=()=>$('importProjectFile').click();
+ $('importProjectFile').addEventListener('change',async e=>{
+  const file=e.target.files?.[0];if(!file)return;
+  const status=$('projectImportStatus');status.textContent='Leyendo proyecto…';
+  try{
+   if(file.size>3*1024*1024)throw Error('Archivo demasiado grande (máximo 3 MB)');
+   const data=JSON.parse(await file.text());
+   if(data.type!=='FeatureCollection'||!Array.isArray(data.features)||data.features.length>1500)throw Error('GeoJSON no válido o demasiado extenso');
+   const parsedRoute=[],parsedPois=[];let parsedAntenna=null;
+   const point=(c)=>{
+    if(!Array.isArray(c)||c.length<2)return null;
+    const lng=Number(c[0]),lat=Number(c[1]);
+    return Number.isFinite(lat)&&Number.isFinite(lng)&&Math.abs(lat)<=90&&Math.abs(lng)<=180?{lat,lng}:null;
+   };
+   for(const f of data.features){
+    if(!f||f.type!=='Feature'||!f.geometry)continue;
+    const g=f.geometry,p=f.properties||{};
+    if(g.type==='LineString'&&Array.isArray(g.coordinates)&&!parsedRoute.length){
+     if(g.coordinates.length>1000)throw Error('Ruta demasiado larga');
+     for(const c of g.coordinates){const v=point(c);if(!v)throw Error('Coordenada de ruta inválida');parsedRoute.push(v)}
+    }else if(g.type==='Point'){
+     const ll=point(g.coordinates);if(!ll)continue;
+     if(p.kind==='antenna'||p.name==='Antena')parsedAntenna=ll;
+     else if(parsedPois.length<200){
+      const name=typeof p.name==='string'&&p.name.trim()?p.name.trim().slice(0,80):'POI '+(parsedPois.length+1);
+      parsedPois.push({...ll,name});
+     }
+    }
+   }
+   route=parsedRoute;pois=parsedPois;antenna=parsedAntenna;demo=false;setMode('inspect');redraw();
+   const coords=[...route,...pois,...(antenna?[antenna]:[])];
+   if(coords.length){const bounds=L.latLngBounds(coords.map(p=>[p.lat,p.lng]));map.fitBounds(bounds.pad(.15),{maxZoom:15});selectAt(coords[0],'Proyecto importado')}
+   status.textContent='Importado: '+route.length+' puntos de ruta, '+pois.length+' POI'+(antenna?' y una antena':'')+'.';
+   toast('Proyecto GeoJSON importado');
+  }catch(err){status.textContent='Error al importar: '+err.message;toast('No se pudo abrir el proyecto')}
+  finally{e.target.value=''}
+ });
  function switchSection(section){
   document.querySelectorAll('[data-section]').forEach(b=>b.classList.toggle('selected',b.dataset.section===section));
   document.querySelectorAll('.headerNav button').forEach(b=>b.classList.toggle('active',b.dataset.section===section));
