@@ -6035,7 +6035,18 @@ refreshMissions();
  const weatherAction=document.createElement('button');weatherAction.className='ecoContextAction';weatherAction.textContent='↻ Consultar condiciones del centro del mapa';weatherAction.onclick=()=>document.getElementById('ecoWeatherLoad')?.click();c.append(weatherAction);
  const weatherNote=document.createElement('p');weatherNote.className='ecoContextHint';weatherNote.textContent='Sin medición en directo; valores de la fuente de previsión cuando se consulten.';c.append(weatherNote);
  // Desktop shortcuts to original, fully functional panels.
- c=card('🧰 Herramientas clásicas');
+ c=card('✎ Acciones rápidas');
+ const actions=document.createElement('div');actions.className='ecoContextQuickButtons';c.append(actions);
+ for(const [label,id] of [
+  ['📏 Medir','measureBtn'],['✈️ Dibujar ruta','routeBtn'],
+  ['📍 Crear POI','poiBtn'],['↩ Deshacer','undoBtn'],
+  ['↪ Rehacer','redoBtn'],['✕ Finalizar','clearBtn']
+ ]){
+  const button=document.createElement('button');button.type='button';button.textContent=label;
+  button.addEventListener('click',()=>document.getElementById(id)?.click());
+  actions.append(button);
+ }
+  c=card('🧰 Herramientas clásicas');
  const quick=document.createElement('div');quick.className='ecoContextQuickButtons';c.append(quick);
  for(const [label,id] of [
   ['⌖ Coordenadas','coordCard'],['▦ Mapa+','mapToolsCard'],
