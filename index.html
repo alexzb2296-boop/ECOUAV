@@ -5713,7 +5713,30 @@ refreshMissions();
  const toggle=document.getElementById('ecoSidebarToggle'),panel=document.getElementById('ecoWorkspace');
  const show=open=>{panel.classList.toggle('ecoSidebarOpen',open);panel.setAttribute('aria-hidden',String(!open));toggle.setAttribute('aria-expanded',String(open));toggle.textContent=open?'✕ Cerrar panel':'☰ Herramientas';};
  toggle.addEventListener('click',()=>show(!panel.classList.contains('ecoSidebarOpen')));
- document.addEventListener('keydown',e=>{if(e.key==='Escape'&&panel.classList.contains('ecoSidebarOpen'))show(fals/* Legacy tools dock: relocate the real panel, never clone it. */
+ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&panel.classList.contains('ecoSidebarOpen'))show(false)});
+ function refreshStatus(){
+  const c=map.getCenter(),z=map.getZoom(),meters=156543.03392*Math.cos(c.lat*Math.PI/180)/Math.pow(2,z);
+  document.getElementById('ecoMapCoords').textContent='WGS84 · '+c.lat.toFixed(5)+'°, '+c.lng.toFixed(5)+'°';
+  document.getElementById('ecoMapScale').textContent='Zoom '+z+' · '+Math.round(meters*100)/100+' m/px aprox.';
+ }
+ map.on('moveend zoomend',refreshStatus);refreshStatus();
+ window.ecoUpdateMapSource=label=>{document.getElementById('ecoMapSource').textContent='Mapa: '+label};
+ window.ecoCloseSidebar=()=>show(false);
+})();
+/* ECOUAV 3D presentation controls. */
+(function(){
+ const host=document.getElementById('soma3d');
+ document.getElementById('eco3dFullscreen').addEventListener('click',async()=>{
+  try{if(document.fullscreenElement===host)await document.exitFullscreen();else if(host.requestFullscreen)await host.requestFullscreen();else throw Error('Pantalla completa no disponible');}
+  catch(e){document.getElementById('terrain3dInfo').textContent='Pantalla completa no disponible en este navegador: '+e.message;}
+ });
+ document.getElementById('eco3dResetVisual').addEventListener('click',()=>document.getElementById('ecoResetCamera')?.click());
+ document.addEventListener('fullscreenchange',()=>{
+  document.getElementById('eco3dFullscreen').textContent=document.fullscreenElement===host?'⛶ Salir de pantalla completa':'⛶ Pantalla completa 3D';
+  if(typeof eco3dResize==='function')setTimeout(eco3dResize,70);
+ });
+})();
+/* Legacy tools dock: relocate the real panel, never clone it. */
 (function(){
  const root=document.getElementById('ecoWorkspace'),status=document.getElementById('ecoClassicStatus');
  if(!root)return;
@@ -5785,33 +5808,6 @@ refreshMissions();
   if(action&&action!=='ecoAdvancedToggle')document.getElementById(action)?.click();
  }));
  window.ecoOpenLegacyTool=openPanel;
-})();
-.ecoOld,action=button.dataset.ecoAction;
-  if(action==='ecoAdvancedToggle'){
-   openAdvanced();
-   const advanced=document.getElementById('ecoAdvancedToggle');
-   if(advanced)advanced.scrollIntoView({behavior:'smooth',block:'center'});
-   status.textContent='Herramientas originales visibles bajo el mapa.';
-   return;
-  }
-  const target=id?document.getElementById(id):null;
-  if(!target){status.textContent='Esta herramienta no está disponible en la versión actual.';return;}
-  openAdvanced();
-  if(target.classList.contains('hidden'))target.classList.remove('hidden');
-  if(id==='mapToolsCard')document.getElementById('mapToolsBtn')?.classList.add('active');
-  if(id==='coordCard')document.getElementById('coordBtn')?.classList.add('active');
-  if(id==='terrainCard')document.getElementById('terrainBtn')?.classList.add('active');
-  if(id==='antennaCard')document.getElementById('antennaBtn')?.classList.add('active');
-  if(id==='poiCard')document.getElementById('poiBtn')?.classList.add('active');
-  if(id==='missionCard')document.getElementById('missionBtn')?.classList.add('active');
-  window.ecoCloseSidebar?.();
-  document.getElementById('ecoMobileDrawer')?.classList.remove('ecoDrawerOpen');
-  requestAnimationFrame(()=>{
-   target.scrollIntoView({behavior:'smooth',block:'start'});
-   if(id==='soma3d'&&typeof eco3dResize==='function')eco3dResize();
-  });
-  status.textContent='Abierto: '+button.textContent.trim()+'. Se conservan sus controles originales.';
- }));
 })();
 /* ECOUAV integrated modes, 2026-10. Visual and historical analysis only. */
 (function(){
