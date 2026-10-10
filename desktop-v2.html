@@ -118,6 +118,15 @@ footer{background:#061622;display:flex;align-items:center;justify-content:space-
 footer strong{font-weight:500;color:#cae7f5}
 @media(max-width:1400px){main{grid-template-columns:235px minmax(0,1fr) 295px}.headerNav button{font-size:9px}.liveStatus{gap:8px}}
 
+/* Keep desktop cards stable; POIs scroll independently instead of shifting lower panels. */
+.rightPanel>.infoCard{flex:0 0 auto}
+#poiDesktopList{max-height:154px;min-height:35px;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#4b829e #0b1e2c;padding-right:6px;margin-top:9px}
+#poiDesktopList::-webkit-scrollbar{width:8px}
+#poiDesktopList::-webkit-scrollbar-track{background:#0d2635;border-radius:9px}
+#poiDesktopList::-webkit-scrollbar-thumb{background:#4b829e;border-radius:9px;border:2px solid #0d2635}
+#poiDesktopList:focus-visible{outline:2px solid #3ad0ff;outline-offset:2px}
+#poiDesktopList .poiDesktopLine{min-width:0}
+#poiDesktopList .poiDesktopLine span{min-width:0}
 /* Mobile-origin actions ported into the dedicated desktop map. */
 .poiDesktopLine{display:flex;align-items:center;gap:5px;padding:5px 0;border-bottom:1px solid #28495a}
 .poiDesktopLine span{flex:1;overflow-wrap:anywhere;font-size:11px;color:#bad8e6}
@@ -209,7 +218,7 @@ footer strong{font-weight:500;color:#cae7f5}
   </div></section>
   <section class="infoCard"><div class="infoTitle">📍 &nbsp;Puntos de interés</div><div class="infoBody">
    <button id="addPoiPanel" type="button" class="smallAction">+ Colocar POI en el mapa</button>
-   <div id="poiDesktopList" class="miniNote" aria-live="polite">No hay POI creados.</div>
+   <div id="poiDesktopList" class="miniNote" role="region" aria-label="Lista desplazable de puntos de interés" tabindex="0" aria-live="polite">No hay POI creados.</div>
   </div></section>
   <section class="infoCard"><div class="infoTitle">⌁ &nbsp;Información de la ruta</div><div class="infoBody">
    <div class="metricGrid"><div class="metricBox"><label>Distancia total</label><strong id="distanceInfo">—</strong></div><div class="metricBox"><label>Puntos</label><strong id="pointsInfo">—</strong></div><div class="metricBox"><label>Desnivel +</label><strong>Sin cálculo</strong></div><div class="metricBox"><label>Tiempo estimado</label><strong>Sin velocidad</strong></div></div>
