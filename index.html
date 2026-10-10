@@ -560,6 +560,7 @@ Planificador UAS · Terreno · RF · Rutas · Misiones
   <button type="button" data-ecotab="antenna" aria-selected="false">📡 Antenas</button>
   <button type="button" data-ecotab="flights" aria-selected="false">🛩️ Vuelos</button>
   <button type="button" data-ecotab="projects" aria-selected="false">💾 Proyectos</button>
+  <button type="button" data-ecotab="classic" aria-selected="false">🧰 Herramientas anteriores</button>
  </div>
  <div class="ecoView ecoActive" data-ecoview="terrain">
   <div class="ecoCells">
@@ -585,6 +586,30 @@ Planificador UAS · Terreno · RF · Rutas · Misiones
    <div class="ecoBox"><strong>Importar registros</strong><label for="ecoFlightFile">GPX o CSV con latitud y longitud</label><input id="ecoFlightFile" type="file" accept=".gpx,.csv,text/csv,application/gpx+xml"><p class="ecoHint">Para CSV: columnas lat, lon (o latitude, longitude); tiempo y altitud opcionales.</p><button id="ecoClearFlight" type="button">Quitar trayecto importado</button><p id="ecoFlightInfo" class="ecoMessage">Sin registro.</p></div>
    <div class="ecoBox"><strong>Perfil del recorrido</strong><button id="ecoProfileLoad" type="button">Consultar elevación del suelo</button><svg id="ecoProfileSvg" viewBox="0 0 520 170" aria-label="Gráfico de perfil de elevación"><text x="20" y="80" fill="#a9c3d4" font-size="14">Importa un GPX o CSV para comenzar</text></svg><p id="ecoProfileInfo" class="ecoMessage">Las cotas del perfil provienen de una consulta independiente al servicio de elevación; no son alturas de vuelo.</p></div>
   </div>
+ </div>
+ <div class="ecoView" data-ecoview="classic">
+  <p class="ecoHint">Todas estas funciones proceden de la versión anterior. Se abre su panel original sin duplicar su lógica ni alterar los datos.</p>
+  <div class="ecoCells">
+   <div class="ecoBox"><strong>🧭 Cartografía y coordenadas</strong>
+    <button type="button" data-eco-old="coordCard">Latitud / Longitud · UTM · MGRS</button>
+    <button type="button" data-eco-old="mapToolsCard">Medición · Radio · Área · Cuadrícula</button>
+    <button type="button" data-eco-old="terrainCard">Perfil de desnivel A / B</button>
+   </div>
+   <div class="ecoBox"><strong>📍 Puntos y rutas</strong>
+    <button type="button" data-eco-old="poiCard">Puntos de interés (POI)</button>
+    <button type="button" data-eco-old="routeProfileCard">Perfil de ruta y distancias</button>
+    <button type="button" data-eco-old="routeProfileCard" data-eco-action="routeTerrainBtn">Analizar relieve de ruta</button>
+   </div>
+   <div class="ecoBox"><strong>📡 Antenas y análisis</strong>
+    <button type="button" data-eco-old="antennaCard">Antenas A / B / C y controles clásicos</button>
+    <button type="button" data-eco-old="soma3d">Visor 3D de antenas</button>
+   </div>
+   <div class="ecoBox"><strong>💾 Misiones y gestión</strong>
+    <button type="button" data-eco-old="missionCard">Misiones · Importación y exportación</button>
+    <button type="button" data-eco-action="ecoAdvancedToggle">Mostrar todas las herramientas originales</button>
+   </div>
+  </div>
+  <p id="ecoClassicStatus" class="ecoMessage" role="status">Selecciona una herramienta para abrirla.</p>
  </div>
  <div class="ecoView" data-ecoview="projects">
   <div class="ecoCells">
@@ -5614,6 +5639,45 @@ refreshMissions();
   document.getElementById('eco3dFullscreen').textContent=document.fullscreenElement===host?'⛶ Salir de pantalla completa':'⛶ Pantalla completa 3D';
   if(typeof eco3dResize==='function')setTimeout(eco3dResize,70);
  });
+})();
+/* Legacy-tool access bridge: reuse original components and existing handlers. */
+(function(){
+ const root=document.getElementById('ecoWorkspace');
+ const status=document.getElementById('ecoClassicStatus');
+ const openAdvanced=()=>{
+  if(!document.body.classList.contains('ecoAdvancedOpen')){
+   document.body.classList.add('ecoAdvancedOpen');
+   const toggle=document.getElementById('ecoAdvancedToggle');
+   if(toggle)toggle.textContent='⚙ Ocultar herramientas avanzadas';
+  }
+ };
+ root.querySelectorAll('[data-eco-old],[data-eco-action]').forEach(button=>button.addEventListener('click',()=>{
+  const id=button.dataset.ecoOld,action=button.dataset.ecoAction;
+  if(action==='ecoAdvancedToggle'){
+   openAdvanced();
+   const advanced=document.getElementById('ecoAdvancedToggle');
+   if(advanced)advanced.scrollIntoView({behavior:'smooth',block:'center'});
+   status.textContent='Herramientas originales visibles bajo el mapa.';
+   return;
+  }
+  const target=id?document.getElementById(id):null;
+  if(!target){status.textContent='Esta herramienta no está disponible en la versión actual.';return;}
+  openAdvanced();
+  if(target.classList.contains('hidden'))target.classList.remove('hidden');
+  if(id==='mapToolsCard')document.getElementById('mapToolsBtn')?.classList.add('active');
+  if(id==='coordCard')document.getElementById('coordBtn')?.classList.add('active');
+  if(id==='terrainCard')document.getElementById('terrainBtn')?.classList.add('active');
+  if(id==='antennaCard')document.getElementById('antennaBtn')?.classList.add('active');
+  if(id==='poiCard')document.getElementById('poiBtn')?.classList.add('active');
+  if(id==='missionCard')document.getElementById('missionBtn')?.classList.add('active');
+  window.ecoCloseSidebar?.();
+  document.getElementById('ecoMobileDrawer')?.classList.remove('ecoDrawerOpen');
+  requestAnimationFrame(()=>{
+   target.scrollIntoView({behavior:'smooth',block:'start'});
+   if(id==='soma3d'&&typeof eco3dResize==='function')eco3dResize();
+  });
+  status.textContent='Abierto: '+button.textContent.trim()+'. Se conservan sus controles originales.';
+ }));
 })();
 /* ECOUAV integrated modes, 2026-10. Visual and historical analysis only. */
 (function(){
