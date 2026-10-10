@@ -581,6 +581,10 @@ html.ecoLoginLocked #ecoLoginGate{display:flex;visibility:visible!important}
  body.ecoMockLayout #ecoContextPanel > #ecoLegacyDock .field.wide{grid-column:auto}
  #ecoContextPanel .ecoContextQuickButtons{display:grid;grid-template-columns:1fr 1fr;gap:6px}
  #ecoContextPanel .ecoContextQuickButtons button{font-size:11px;padding:8px 5px;margin:0;min-width:0;white-space:normal}
+ #ecoContextPanel .ecoQuickProject{display:grid;gap:7px}
+ #ecoContextPanel .ecoQuickProject>input,#ecoContextPanel .ecoQuickProject>select{width:100%;min-width:0;background:#0d2130;color:#e5f6ff;border:1px solid #376077;border-radius:8px;padding:9px;font-size:12px}
+ #ecoContextPanel .ecoQuickProject .ecoContextQuickButtons{grid-template-columns:1fr 1fr}
+
 }
 </style>
 </head>
@@ -6057,6 +6061,40 @@ refreshMissions();
  const legend=document.createElement('p');legend.className='ecoContextHint';
  legend.textContent='Abre los controles originales en esta columna. El mapa permanece visible.';
  c.append(legend);
+ c=card('💾 Proyectos rápidos');
+ const pr=document.createElement('div');pr.className='ecoQuickProject';c.append(pr);
+ const name=document.createElement('input');name.id='ecoDesktopProjectName';name.type='text';name.maxLength=70;name.placeholder='Nombre del proyecto';name.value='Proyecto ECOUAV';name.setAttribute('aria-label','Nombre del proyecto');
+ const choices=document.createElement('select');choices.id='ecoDesktopProjectSelect';choices.setAttribute('aria-label','Proyecto guardado');
+ const buttons=document.createElement('div');buttons.className='ecoContextQuickButtons';
+ function make(label,fn){const b=document.createElement('button');b.type='button';b.textContent=label;b.onclick=fn;buttons.append(b);}
+ function syncProjects(){
+  const origin=document.getElementById('ecoProjectSelect');if(!origin)return;
+  const previous=choices.value;
+  choices.replaceChildren(...[...origin.options].map(opt=>new Option(opt.text,opt.value)));
+  if([...choices.options].some(o=>o.value===previous))choices.value=previous;
+ }
+ make('Guardar',()=>{
+  const input=document.getElementById('ecoProjectName'),save=document.getElementById('ecoProjectSave');
+  if(!input||!save)return;
+  input.value=name.value.trim()||'Proyecto ECOUAV';save.click();syncProjects();
+  const origin=document.getElementById('ecoProjectSelect');if(origin)choices.value=origin.value;
+  const status=document.getElementById('ecoDesktopProjectMessage');if(status)status.textContent=document.getElementById('ecoProjectStatus')?.textContent||'Guardado.';
+ });
+ make('Recuperar',()=>{
+  const origin=document.getElementById('ecoProjectSelect'),restore=document.getElementById('ecoProjectRestore');
+  if(!origin||!restore||!choices.value)return;
+  origin.value=choices.value;restore.click();
+  const status=document.getElementById('ecoDesktopProjectMessage');if(status)status.textContent=document.getElementById('ecoProjectStatus')?.textContent||'Restaurado.';
+ });
+ make('Exportar JSON',()=>document.getElementById('ecoProjectExport')?.click());
+ make('Más opciones',()=>{
+  document.getElementById('ecoSidebarToggle')?.click();
+  document.querySelector('[data-ecotab="projects"]')?.click();
+ });
+ const projectMsg=document.createElement('p');projectMsg.id='ecoDesktopProjectMessage';projectMsg.className='ecoContextHint';projectMsg.textContent='Configuraciones guardadas en este navegador.';
+ pr.append(name,choices,buttons,projectMsg);
+ syncProjects();
+ const sourceSelect=document.getElementById('ecoProjectSelect');if(sourceSelect)new MutationObserver(syncProjects).observe(sourceSelect,{childList:true});
  c=card('⌁ Ruta y perfil');
  row(c,'Medición / ruta','ecoContextRoute','Sin ruta');
  const routeNote=document.createElement('p');routeNote.className='ecoContextHint';routeNote.textContent='Importa un GPX o dibuja una ruta para consultar sus datos reales.';c.append(routeNote);
