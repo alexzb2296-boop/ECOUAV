@@ -314,8 +314,15 @@ footer strong{font-weight:500;color:#cae7f5}
    const line=document.createElement('div');line.className='poiDesktopLine';
    const name=document.createElement('span');name.textContent=p.name+' · '+p.lat.toFixed(4)+', '+p.lng.toFixed(4);
    const go=document.createElement('button');go.type='button';go.textContent='⌖';go.title='Centrar POI';go.onclick=()=>{map.setView([p.lat,p.lng],Math.max(14,map.getZoom()));selectAt(p,p.name)};
+   const rename=document.createElement('button');rename.type='button';rename.textContent='✎';rename.title='Renombrar POI';rename.onclick=()=>{
+    const value=window.prompt('Nuevo nombre del punto de interés:',p.name);
+    if(value===null)return;
+    const cleaned=value.trim().slice(0,80);
+    if(!cleaned){toast('El nombre no puede estar vacío');return}
+    p.name=cleaned;redraw();
+   };
    const remove=document.createElement('button');remove.type='button';remove.textContent='×';remove.title='Eliminar POI';remove.onclick=()=>{pois.splice(i,1);demo=false;redraw()};
-   line.append(name,go,remove);list.append(line);
+   line.append(name,go,rename,remove);list.append(line);
   }
  }
  function setMode(next){
