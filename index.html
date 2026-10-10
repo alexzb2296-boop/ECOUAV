@@ -6098,6 +6098,19 @@ refreshMissions();
  c=card('⌁ Ruta y perfil');
  row(c,'Medición / ruta','ecoContextRoute','Sin ruta');
  const routeNote=document.createElement('p');routeNote.className='ecoContextHint';routeNote.textContent='Importa un GPX o dibuja una ruta para consultar sus datos reales.';c.append(routeNote);
+ // Live desktop route workspace, reusing existing route and terrain tools.
+ c=card('📊 Herramientas de ruta');
+ const routeActions=document.createElement('div');routeActions.className='ecoContextQuickButtons';c.append(routeActions);
+ for(const [label,callback] of [
+  ['✈ Dibujar ruta',()=>document.getElementById('routeBtn')?.click()],
+  ['⛰ Perfil de ruta',()=>window.ecoOpenLegacyTool?.('routeProfileCard','Perfil de ruta')],
+  ['⌖ Coordenadas',()=>window.ecoOpenLegacyTool?.('coordCard','Coordenadas UTM / MGRS')],
+  ['📍 POI',()=>window.ecoOpenLegacyTool?.('poiCard','Puntos de interés')]
+ ]){
+  const b=document.createElement('button');b.type='button';b.textContent=label;b.onclick=callback;routeActions.append(b);
+ }
+ const routeStatus=document.createElement('p');routeStatus.className='ecoContextHint';routeStatus.textContent='Utiliza las herramientas del mapa; los perfiles muestran elevación del terreno.';
+ c.append(routeStatus);
  c=card('⌁ Antenas y terreno');
  row(c,'Antena seleccionada','ecoContextAntenna','—');
  row(c,'Fuente del relieve','ecoContextTerrain','Sin terreno 3D');
