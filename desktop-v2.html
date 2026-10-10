@@ -117,6 +117,11 @@ main{display:grid;grid-template-columns:252px minmax(0,1fr) 314px;min-height:0;m
 footer{background:#061622;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:0 12px;border-top:1px solid #28617d;color:#9fbdca;font-size:10px}
 footer strong{font-weight:500;color:#cae7f5}
 @media(max-width:1400px){main{grid-template-columns:235px minmax(0,1fr) 295px}.headerNav button{font-size:9px}.liveStatus{gap:8px}}
+
+/* Mobile-origin actions ported into the dedicated desktop map. */
+.poiDesktopLine{display:flex;align-items:center;gap:5px;padding:5px 0;border-bottom:1px solid #28495a}
+.poiDesktopLine span{flex:1;overflow-wrap:anywhere;font-size:11px;color:#bad8e6}
+.poiDesktopLine button{padding:4px 7px;background:#173d51;color:#e0f5ff;border:1px solid #457087;border-radius:5px}
 </style>
 </head>
 <body>
@@ -164,6 +169,9 @@ footer strong{font-weight:500;color:#cae7f5}
   <section class="sideSection"><div class="sectionTitle">☷ &nbsp;Proyecto <b>⌃</b></div><div class="sideContent">
    <button type="button" class="smallAction" id="resetDemo">↻ Restablecer demostración</button>
    <button type="button" class="smallAction" id="saveProject">↓ Exportar proyecto GeoJSON</button>
+   <button type="button" class="smallAction" id="importProject">↑ Importar proyecto GeoJSON</button>
+   <input id="importProjectFile" type="file" accept=".geojson,.json,application/geo+json,application/json" hidden>
+   <p id="projectImportStatus" class="sideMessage" role="status">Los archivos se procesan en este navegador.</p>
    <p class="sideMessage">Puedes dibujar puntos de ruta y colocar la antena en el mapa. Guarda tu trabajo en GeoJSON.</p>
   </div></section>
  </aside>
@@ -176,6 +184,8 @@ footer strong{font-weight:500;color:#cae7f5}
    <button id="zoomIn" title="Acercar" aria-label="Acercar">+</button>
    <button id="zoomOut" title="Alejar" aria-label="Alejar">−</button>
    <button id="threeAction" title="Alternar visor 3D" aria-label="Vista 3D" style="font-size:13px;font-weight:700">3D</button>
+   <button id="undoRoute" title="Deshacer último punto de ruta" aria-label="Deshacer punto de ruta">↩</button>
+   <button id="addPoi" title="Crear un punto de interés (POI)" aria-label="Crear POI">📍</button>
   </div>
   <div id="toast" role="status"></div>
   <div class="mapLegend"><span class="legendLine"></span> Ruta ilustrativa&nbsp; <span class="legendSector"></span> Lóbulo visual (sin predicción RF)</div>
@@ -196,6 +206,10 @@ footer strong{font-weight:500;color:#cae7f5}
   <section class="infoCard"><div class="infoTitle">☁ &nbsp;Condiciones en el punto (modelo)</div><div class="infoBody">
    <div class="weatherGrid"><div><i>≋</i><label>Viento 10 m</label><strong id="wxWind">—</strong></div><div><i>≋</i><label>Rachas</label><strong id="wxGust">—</strong></div><div><i>♧</i><label>Temperatura</label><strong id="wxTemp">—</strong></div><div><i>☁</i><label>Nubosidad</label><strong id="wxCloud">—</strong></div></div>
    <p id="wxTime" class="miniNote">Consulta Open-Meteo para obtener datos reales del modelo.</p>
+  </div></section>
+  <section class="infoCard"><div class="infoTitle">📍 &nbsp;Puntos de interés</div><div class="infoBody">
+   <button id="addPoiPanel" type="button" class="smallAction">+ Colocar POI en el mapa</button>
+   <div id="poiDesktopList" class="miniNote" aria-live="polite">No hay POI creados.</div>
   </div></section>
   <section class="infoCard"><div class="infoTitle">⌁ &nbsp;Información de la ruta</div><div class="infoBody">
    <div class="metricGrid"><div class="metricBox"><label>Distancia total</label><strong id="distanceInfo">—</strong></div><div class="metricBox"><label>Puntos</label><strong id="pointsInfo">—</strong></div><div class="metricBox"><label>Desnivel +</label><strong>Sin cálculo</strong></div><div class="metricBox"><label>Tiempo estimado</label><strong>Sin velocidad</strong></div></div>
@@ -219,7 +233,7 @@ footer strong{font-weight:500;color:#cae7f5}
  'use strict';
  const $=id=>document.getElementById(id);
  const safe=(x)=>String(x??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
- let map,baseLayer,source='Satélite Esri',mode='inspect',selected=null,selectedName='Punto seleccionado',demo=true,route=[],antenna=null,weather=null,weatherDate=null,terrainRequest=0,selectionRequest=0;
+ let map,baseLayer,source='Satélite Esri',mode='inspect',selected=null,selectedName='Punto seleccionado',demo=true,route=[],antenna=null,pois=[],weather=null,weatherDate=null,terrainRequest=0,selectionRequest=0;
  const startCenter={lat:40.935,lng:-3.585};
  const demoRoute=[{lat:40.915,lng:-3.665},{lat:40.949,lng:-3.620},{lat:40.974,lng:-3.553},{lat:40.949,lng:-3.495}];
  const demoAntenna={lat:40.914,lng:-3.552};
@@ -283,21 +297,33 @@ footer strong{font-weight:500;color:#cae7f5}
    L.polygon(pts,{color:'#43c9f5',weight:1.3,opacity:.55,fillColor:'#169cd4',fillOpacity:.15}).addTo(antennaLayer);
   }
   if(demo){
-   const pois=[{lat:40.932,lng:-3.678,name:'POI demo · cruce'},{lat:40.918,lng:-3.493,name:'POI demo · charca'}];
-   pois.forEach(p=>mark(p,p.name,'pin','#ffb84a').addTo(poiLayer));
+   [{lat:40.932,lng:-3.678,name:'POI demo · cruce'},{lat:40.918,lng:-3.493,name:'POI demo · charca'}].forEach(p=>mark(p,p.name,'pin','#ffb84a').addTo(poiLayer));
   }
-  updateRouteInfo();
+  pois.forEach(p=>mark(p,p.name,'pin','#ffc46c').addTo(poiLayer));
+  updateRouteInfo();updatePoiList();
  }
  function updateRouteInfo(){
   $('distanceInfo').textContent=route.length>1?(distance()/1000).toFixed(2)+' km':'—';
   $('pointsInfo').textContent=route.length+' puntos';
   $('routeNote').textContent=demo?'Ruta de demostración ilustrativa, no verificada. Inicia tu propia ruta con «Planificar vuelo».':'Ruta creada manualmente. No se calculan tiempo seguro, cobertura ni desnivel.';
  }
+ function updatePoiList(){
+  const list=$('poiDesktopList');list.replaceChildren();
+  if(!pois.length){list.textContent='No hay POI propios.';return;}
+  for(const [i,p] of pois.entries()){
+   const line=document.createElement('div');line.className='poiDesktopLine';
+   const name=document.createElement('span');name.textContent=p.name+' · '+p.lat.toFixed(4)+', '+p.lng.toFixed(4);
+   const go=document.createElement('button');go.type='button';go.textContent='⌖';go.title='Centrar POI';go.onclick=()=>{map.setView([p.lat,p.lng],Math.max(14,map.getZoom()));selectAt(p,p.name)};
+   const remove=document.createElement('button');remove.type='button';remove.textContent='×';remove.title='Eliminar POI';remove.onclick=()=>{pois.splice(i,1);demo=false;redraw()};
+   line.append(name,go,remove);list.append(line);
+  }
+ }
  function setMode(next){
   mode=next;$('planButton').setAttribute('aria-pressed',String(next==='route'));
   $('planButton').textContent=next==='route'?'✓ Añade puntos en el mapa':'▶ Planificar vuelo';
   $('modeLabel').textContent=next==='route'?'⌁ Pulsa en el mapa para añadir puntos':'● '+(demo?'Demostración':'Mapa')+' · haz clic para inspeccionar';
   if(next==='antenna')$('modeLabel').textContent='♧ Pulsa en el mapa para colocar la antena';
+  if(next==='poi')$('modeLabel').textContent='📍 Pulsa en el mapa para crear un punto de interés';
  }
  function selectAt(ll,name){
   selected={lat:ll.lat,lng:ll.lng};selectedName=name||'Punto seleccionado';
@@ -335,7 +361,7 @@ footer strong{font-weight:500;color:#cae7f5}
    }).catch(e=>{$('weatherNote').textContent='Error Open-Meteo: '+e.message;toast('No se pudo consultar meteorología')}).finally(()=>button.disabled=false);
  }
  function resetDemo(){
-  demo=true;route=demoRoute.map(p=>({...p}));antenna={...demoAntenna};redraw();setMode('inspect');map.setView([startCenter.lat,startCenter.lng],12);selectAt(route[2],'B · waypoint demo');toast('Demostración restaurada');
+  demo=true;route=demoRoute.map(p=>({...p}));antenna={...demoAntenna};pois=[];redraw();setMode('inspect');map.setView([startCenter.lat,startCenter.lng],12);selectAt(route[2],'B · waypoint demo');toast('Demostración restaurada');
  }
  map=L.map('map',{center:[startCenter.lat,startCenter.lng],zoom:12,zoomControl:false,preferCanvas:true});
  routeLayer.addTo(map);antennaLayer.addTo(map);poiLayer.addTo(map);setBase('esri');setTopo(true);
@@ -344,6 +370,9 @@ footer strong{font-weight:500;color:#cae7f5}
   const ll={lat:ev.latlng.lat,lng:ev.latlng.lng};
   if(mode==='route'){route.push(ll);redraw();selectAt(ll,'Punto '+route.length);return;}
   if(mode==='antenna'){antenna=ll;redraw();setMode('inspect');selectAt(ll,'Antena');$('antennaInfo').textContent='Antena colocada manualmente';return;}
+  if(mode==='poi'){
+   const name='POI '+(pois.length+1);pois.push({...ll,name});demo=false;redraw();setMode('inspect');selectAt(ll,name);toast('Punto de interés guardado. Puedes renombrarlo en el panel.');return;
+  }
   selectAt(ll,'Punto seleccionado');
  });
  document.querySelectorAll('[name=basemap]').forEach(el=>el.addEventListener('change',()=>{if(el.checked)setBase(el.value)}));
@@ -369,6 +398,9 @@ footer strong{font-weight:500;color:#cae7f5}
   setMode('route');toast('Añade puntos haciendo clic en el mapa. Vuelve a pulsar Planificar para terminar.');
  };
  $('placeAntenna').onclick=()=>{setMode('antenna');toast('Haz clic en el mapa para colocar la antena')};
+ const startPoi=()=>{setMode('poi');toast('Haz clic en el mapa para añadir un POI')};
+ $('addPoi').onclick=startPoi;$('addPoiPanel').onclick=startPoi;
+ $('undoRoute').onclick=()=>{if(!route.length){toast('La ruta no tiene puntos');return}route.pop();demo=false;redraw();toast('Último punto de ruta eliminado')};
  $('resetDemo').onclick=resetDemo;
  $('searchForm').onsubmit=e=>{
   e.preventDefault();const match=$('searchCoords').value.trim().match(/^(-?\d+(?:\.\d+)?)\s*[,; ]\s*(-?\d+(?:\.\d+)?)$/);
@@ -379,7 +411,8 @@ footer strong{font-weight:500;color:#cae7f5}
  $('saveProject').onclick=()=>{
   const features=[];
   if(route.length)features.push({type:'Feature',properties:{name:'Ruta ECOUAV',demo},geometry:{type:'LineString',coordinates:route.map(p=>[p.lng,p.lat])}});
-  if(antenna)features.push({type:'Feature',properties:{name:'Antena',note:'Sin predicción de cobertura'},geometry:{type:'Point',coordinates:[antenna.lng,antenna.lat]}});
+  if(antenna)features.push({type:'Feature',properties:{name:'Antena',kind:'antenna',note:'Sin predicción de cobertura'},geometry:{type:'Point',coordinates:[antenna.lng,antenna.lat]}});
+  for(const p of pois)features.push({type:'Feature',properties:{name:p.name,kind:'poi'},geometry:{type:'Point',coordinates:[p.lng,p.lat]}});
   const geo={type:'FeatureCollection',properties:{name:'ECOUAV Desktop v2',exportedAt:new Date().toISOString()},features};
   const url=URL.createObjectURL(new Blob([JSON.stringify(geo,null,2)],{type:'application/geo+json'}));
   const a=document.createElement('a');a.href=url;a.download='ecouav-desktop-v2.geojson';a.click();setTimeout(()=>URL.revokeObjectURL(url),1200);
