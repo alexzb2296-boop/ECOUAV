@@ -258,9 +258,9 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
    <label class="setting"><span># Cuadrícula visual del mapa</span><input type="checkbox" class="toggle" id="geoGridToggle"></label>
    <div class="sectionTitle" style="margin:11px -11px 8px">▦ &nbsp;Cuadrícula de zona</div>
    <div class="geoFields"><input type="number" id="zoneGridWidth" min="50" max="20000" value="1000" step="50" aria-label="Anchura de zona en metros" placeholder="Ancho (m)"><input type="number" id="zoneGridHeight" min="50" max="20000" value="1000" step="50" aria-label="Altura de zona en metros" placeholder="Alto (m)"></div>
-   <div class="geoFields"><select id="zoneGridCell" aria-label="Tamaño de celda de zona"><option value="50">Celda 50 m</option><option value="100" selected>Celda 100 m</option><option value="250">Celda 250 m</option><option value="500">Celda 500 m</option></select><input id="zoneGridName" type="text" maxlength="45" value="Zona 1" aria-label="Nombre de cuadrícula"></div>
+   <div class="geoFields"><select id="zoneGridCell" aria-label="Tamaño de celda de zona"><option value="50">Celda 50 m</option><option value="100">Celda 100 m</option><option value="200" selected>Celda 200 × 200 m</option><option value="250">Celda 250 m</option><option value="500">Celda 500 m</option></select><input id="zoneGridName" type="text" maxlength="45" value="Zona 1" aria-label="Nombre de cuadrícula"></div>
    <div class="geoTools"><button class="smallAction" type="button" id="zoneGridCreate">▦ Crear / actualizar</button><button class="smallAction" type="button" id="zoneGridMove" aria-pressed="false">⌖ Cambiar centro</button><button class="smallAction" type="button" id="zoneGridZoom">◎ Ver zona</button><button class="smallAction" type="button" id="zoneGridDelete">✕ Borrar zona</button></div>
-   <p id="zoneGridStatus" class="sideMessage" role="status">Define dimensiones y pulsa «Crear». Arrastra el centro para mover; las esquinas para ampliar o reducir.</p>
+   <p id="zoneGridStatus" class="sideMessage" role="status">Cada celda mantiene sus metros reales. Arrastra una esquina para añadir o quitar cuadrados completos; el centro sirve para mover la zona.</p>
    <p id="geoShapeOutput" class="geoMeasures">Figuras: sin geometrías. El radio usa metros; el área se cierra con «Terminar área».</p>
   </div></section>
   <section class="sideSection"><div class="sectionTitle">⛰ &nbsp;Terreno <b>⌃</b></div><div class="sideContent">
@@ -822,13 +822,16 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
  function zoneGridRead(){
   const width=Number($('zoneGridWidth').value),height=Number($('zoneGridHeight').value),cell=Number($('zoneGridCell').value);
   if(!Number.isFinite(width)||!Number.isFinite(height)||width<50||height<50||width>20000||height>20000)throw Error('Ancho y alto deben estar entre 50 y 20000 m');
-  if(![50,100,250,500].includes(cell))throw Error('Tamaño de celda no válido');
+  if(![50,100,200,250,500].includes(cell))throw Error('Tamaño de celda no válido');
   if(Math.ceil(width/cell)>26||Math.ceil(height/cell)>30)throw Error('Máximo 26 columnas (A–Z) y 30 filas (1–30). Aumenta el tamaño de celda o reduce la zona');
-  return {width,height,cell};
+  const cols=Math.round(width/cell),rows=Math.round(height/cell);
+  if(cols<1||rows<1||cols>26||rows>30)throw Error('La zona debe contener entre 1 y 26 columnas y entre 1 y 30 filas');
+  return {width:cols*cell,height:rows*cell,cell};
  }
  function zoneGridDraw(){
   if(!zoneGridCenter)return;
   const {width,height,cell}=zoneGridRead(),c=zoneGridCenter;
+  $('zoneGridWidth').value=width;$('zoneGridHeight').value=height;
   const latPerM=1/111320,lngPerM=1/(111320*Math.max(.1,Math.cos(c.lat*Math.PI/180)));
   const south=c.lat-height/2*latPerM,north=c.lat+height/2*latPerM,west=c.lng-width/2*lngPerM,east=c.lng+width/2*lngPerM;
   if(south< -90||north>90||west< -180||east>180)throw Error('Zona fuera de los límites del mapa');
@@ -867,9 +870,11 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
    L.marker([lat,lng],{draggable:true,autoPan:true,icon:handle,title:'Redimensionar esquina '+name})
     .on('dragend',e=>{
      const p=e.target.getLatLng();
-     const newW=Math.round(Math.abs(p.lng-c.lng)/lngPerM*2);
-     const newH=Math.round(Math.abs(p.lat-c.lat)/latPerM*2);
-     const clampedW=Math.max(50,Math.min(20000,newW)),clampedH=Math.max(50,Math.min(20000,newH));
+     const newW=Math.abs(p.lng-c.lng)/lngPerM*2;
+     const newH=Math.abs(p.lat-c.lat)/latPerM*2;
+     // Corner resizing adds/removes WHOLE metric cells, never stretches their sides.
+     const clampedW=Math.max(cell,Math.min(26*cell,Math.round(newW/cell)*cell));
+     const clampedH=Math.max(cell,Math.min(30*cell,Math.round(newH/cell)*cell));
      if(Math.ceil(clampedW/cell)>26||Math.ceil(clampedH/cell)>30){
       zoneGridStatus('Máximo A–Z y 1–30. Elige celdas más grandes antes de ampliar.');zoneGridDraw();return;
      }
@@ -877,7 +882,7 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
      try{zoneGridDraw()}catch(err){zoneGridStatus(err.message)}
     }).addTo(zoneGridLayer);
   }
-  zoneGridStatus(($('zoneGridName').value.trim()||'Cuadrícula')+' · '+countX+' columnas (A–'+String.fromCharCode(64+countX)+') × '+countY+' filas (1–'+countY+') · '+width+' × '+height+' m · centro '+c.lat.toFixed(5)+', '+c.lng.toFixed(5));
+  zoneGridStatus(($('zoneGridName').value.trim()||'Cuadrícula')+' · celdas '+cell+' × '+cell+' m fijas · '+countX+' columnas (A–'+String.fromCharCode(64+countX)+') × '+countY+' filas (1–'+countY+') · '+width+' × '+height+' m · centro '+c.lat.toFixed(5)+', '+c.lng.toFixed(5));
  }
  $('zoneGridCreate').onclick=()=>{try{zoneGridRead();if(!zoneGridCenter){const c=selected||map.getCenter();zoneGridCenter={lat:c.lat,lng:c.lng}}zoneGridDraw();toast('Cuadrícula de zona creada / actualizada')}catch(err){zoneGridStatus(err.message)}};
  $('zoneGridMove').onclick=()=>{
