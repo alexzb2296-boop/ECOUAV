@@ -297,6 +297,8 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
    <p id="localProjectStatus" class="sideMessage" role="status">Las sesiones se guardan solo en este navegador (máximo 15).</p>
    <div class="geoTools"><button type="button" class="smallAction" id="projectExportJson">↓ Exportar sesión JSON</button><button type="button" class="smallAction" id="projectImportJson">↑ Importar sesión JSON</button></div>
    <input id="projectImportJsonFile" type="file" accept=".json,application/json" hidden>
+   <div class="geoTools"><button type="button" class="smallAction" id="projectBackupAll">↓ Copia de todos</button><button type="button" class="smallAction" id="projectRestoreAll">↑ Importar copia</button></div>
+   <input type="file" id="projectBackupFile" accept=".json,application/json" hidden>
    <button type="button" class="smallAction" id="resetDemo">↻ Restablecer demostración</button>
    <button type="button" class="smallAction" id="saveProject">↓ Exportar proyecto GeoJSON</button>
    <button type="button" class="smallAction" id="importProject">↑ Importar proyecto GeoJSON</button>
@@ -954,6 +956,53 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
    toast('Proyecto importado correctamente');
   }catch(err){$('localProjectStatus').textContent='Importación: '+err.message}
   finally{event.target.value=''}
+ };
+
+ // Portable backup of the full locally saved project catalogue.
+ function downloadProjectJson(obj,filename){
+  const url=URL.createObjectURL(new Blob([JSON.stringify(obj,null,2)],{type:'application/json'}));
+  const a=document.createElement('a');a.href=url;a.download=filename;
+  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),3000);
+ }
+ function validatePortableProject(p){
+  if(!p||p.version!==1||typeof p.name!=='string'||!p.name.trim()||p.name.length>500||
+    !Array.isArray(p.route)||p.route.length>1000||!Array.isArray(p.pois)||p.pois.length>200||
+    p.route.some(v=>!projectPoint(v))||p.pois.some(v=>!projectPoint(v)||typeof v.name!=='string')||
+    (p.antenna&&!projectPoint(p.antenna))||!projectPoint(p.view?.center)||
+    !Number.isFinite(p.view?.zoom)||p.view.zoom<1||p.view.zoom>19)throw Error('Proyecto inválido: '+String(p?.name||'sin nombre').slice(0,50));
+  return {id:Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,10),
+   name:p.name.trim().slice(0,70),savedAt:new Date().toISOString(),version:1,
+   route:p.route.map(projectPoint),
+   pois:p.pois.map(v=>({...projectPoint(v),name:v.name.slice(0,80)})),
+   antenna:p.antenna?projectPoint(p.antenna):null,demo:p.demo===true,
+   view:{center:projectPoint(p.view.center),zoom:p.view.zoom,base:p.view.base==='pnoa'?'pnoa':'esri'}};
+ }
+ $('projectBackupAll').onclick=()=>{
+  try{
+   const projects=projectRead();if(!projects.length)throw Error('No hay proyectos locales que exportar');
+   downloadProjectJson({format:'IMPERIAL-backup',formatVersion:1,exportedAt:new Date().toISOString(),projects},
+    'imperial-copia-proyectos-'+new Date().toISOString().slice(0,10)+'.json');
+   $('localProjectStatus').textContent='Copia descargada: '+projects.length+' proyectos. No incluye archivos DEM.';
+  }catch(err){$('localProjectStatus').textContent='Copia: '+err.message}
+ };
+ $('projectRestoreAll').onclick=()=>$('projectBackupFile').click();
+ $('projectBackupFile').onchange=async e=>{
+  const file=e.target.files?.[0];if(!file)return;
+  try{
+   if(file.size>1024*1024)throw Error('Archivo demasiado grande (máximo 1 MB)');
+   const data=JSON.parse(await file.text());
+   if(data?.format!=='IMPERIAL-backup'||data.formatVersion!==1||!Array.isArray(data.projects)||
+    data.projects.length<1||data.projects.length>15)throw Error('Formato de copia no compatible');
+   const existing=projectRead();
+   if(existing.length+data.projects.length>15)throw Error('La suma supera 15 proyectos; elimina algunos antes de importar');
+   // Validate the entire backup before committing any changes.
+   const restored=data.projects.map(validatePortableProject);
+   projectWrite([...restored,...existing]);projectRefresh();
+   $('localProjectSelect').value=restored[0].id;
+   $('localProjectStatus').textContent='Importados '+restored.length+' proyectos. Selecciona uno y pulsa Recuperar.';
+   toast('Copia de proyectos importada');
+  }catch(err){$('localProjectStatus').textContent='Importación de copia: '+err.message}
+  finally{e.target.value=''}
  };
  function switchSection(section){
   document.querySelectorAll('[data-section]').forEach(b=>b.classList.toggle('selected',b.dataset.section===section));
