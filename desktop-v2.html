@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=1440,initial-scale=1">
 <meta name="theme-color" content="#071522">
-<title>ECOUAV · Desktop v2</title>
+<title>IMPERIAL · Escritorio</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
 <style>
 :root{color-scheme:dark;--bg:#06131f;--nav:#091b2a;--panel:#0c1d2b;--card:#102332;--line:#2a5065;--muted:#9eb8c8;--cyan:#3ad0ff;--white:#eef8fe;--green:#51d3a4;--amber:#ffc46c}
@@ -131,12 +131,14 @@ footer strong{font-weight:500;color:#cae7f5}
 .poiDesktopLine{display:flex;align-items:center;gap:5px;padding:5px 0;border-bottom:1px solid #28495a}
 .poiDesktopLine span{flex:1;overflow-wrap:anywhere;font-size:11px;color:#bad8e6}
 .poiDesktopLine button{padding:4px 7px;background:#173d51;color:#e0f5ff;border:1px solid #457087;border-radius:5px}
+header .brand .imperialBrandLogo{width:36px;height:36px}
 </style>
+<link rel="stylesheet" href="./imperial-brand.css?v=3720abd">
 </head>
 <body>
 <div id="app">
 <header>
- <div class="brand" aria-label="ECOUAV"><svg viewBox="0 0 55 38" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M2 33 18 10 26 20 34 3 53 33H2"/><path d="m14 33 11-14 12 14M33 18l6 6"/></svg>ECOUAV</div>
+ <div class="brand" aria-label="IMPERIAL"><span class="imperialBrandLogo" aria-hidden="true"></span>IMPERIAL</div>
  <nav class="headerNav" aria-label="Secciones principales"><button data-section="planning" class="active">PLANIFICACIÓN</button><button data-section="terrain">TERRENO</button><button data-section="antenna">ANTENAS</button><button data-section="flights">VUELOS</button><button data-section="projects">PROYECTOS</button></nav>
  <form id="searchForm" class="headerSearch" autocomplete="off"><span aria-hidden="true">⌕</span><input id="searchCoords" aria-label="Coordenadas de destino" placeholder="Coordenadas: latitud, longitud"><button aria-label="Ir" title="Ir a coordenadas" type="submit">↵</button></form>
  <div class="liveStatus"><span><i class="statusDot" id="gpsDot"></i><span id="gpsInfo">GPS no conectado</span></span><span id="topWx">Meteo —</span><span id="clock">—</span></div>
