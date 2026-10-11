@@ -212,6 +212,7 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
 
 .zoneGridCellIcon{background:transparent;border:0!important;pointer-events:none!important}.zoneGridCellIcon span{display:block;text-align:center;font-size:11px;font-weight:800;letter-spacing:.02em;color:#fff8dc;text-shadow:0 1px 3px #000,0 0 5px #000;background:#091e2a88;border-radius:3px}
 .zoneGridHandle,.zoneGridResizeHandle{background:transparent!important;border:0!important}.zoneGridHandle span,.zoneGridResizeHandle span{display:grid;place-items:center;width:100%;height:100%;background:#122c3b;color:#ffdf85;border:2px solid #ffe0a1;border-radius:8px;box-shadow:0 0 9px #000b;font-weight:900;cursor:move;touch-action:none}.zoneGridResizeHandle span{background:#8a5923;color:white;cursor:nwse-resize}
+.zoneCornerLabels,.zoneCornerRow{display:grid;grid-template-columns:30px minmax(0,1fr) minmax(0,1fr);align-items:center;gap:5px;margin:5px 0}.zoneCornerLabels{font-size:10px;color:#9dc6dc}.zoneCornerRow label{font-size:11px;color:#ffe0a1;font-weight:700}.zoneCornerRow input{min-width:0;width:100%;border:1px solid #3a6076;border-radius:5px;background:#122d40;color:#e9f8ff;padding:7px 4px;font-size:11px}#zoneCornerCell{min-width:0}
 </style>
 <link rel="stylesheet" href="./imperial-brand.css?v=6bfc8b7">
 </head>
@@ -260,6 +261,16 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
    <div class="geoFields"><input type="number" id="zoneGridWidth" min="50" max="20000" value="1000" step="50" aria-label="Anchura de zona en metros" placeholder="Ancho (m)"><input type="number" id="zoneGridHeight" min="50" max="20000" value="1000" step="50" aria-label="Altura de zona en metros" placeholder="Alto (m)"></div>
    <div class="geoFields"><select id="zoneGridCell" aria-label="Tamaño de celda de zona"><option value="50">Celda 50 m</option><option value="100">Celda 100 m</option><option value="200" selected>Celda 200 × 200 m</option><option value="250">Celda 250 m</option><option value="500">Celda 500 m</option></select><input id="zoneGridName" type="text" maxlength="45" value="Zona 1" aria-label="Nombre de cuadrícula"></div>
    <div class="geoTools"><button class="smallAction" type="button" id="zoneGridCreate">▦ Crear / actualizar</button><button class="smallAction" type="button" id="zoneGridMove" aria-pressed="false">⌖ Cambiar centro</button><button class="smallAction" type="button" id="zoneGridZoom">◎ Ver zona</button><button class="smallAction" type="button" id="zoneGridDelete">✕ Borrar zona</button></div>
+   <div class="sectionTitle" style="margin:12px -11px 8px">⌖ &nbsp;Zona mediante cuatro esquinas</div>
+   <p class="sideMessage">Introduce latitud y longitud WGS84 de cada esquina, en orden NO, NE, SE y SO. La zona puede ser un cuadrilátero.</p>
+   <div class="zoneCornerLabels"><span>Esquina</span><span>Latitud °</span><span>Longitud °</span></div>
+   <div class="zoneCornerRow"><label for="zoneCornerNWLat">NO</label><input id="zoneCornerNWLat" type="number" min="-85" max="85" step="any" placeholder="Latitud NO"><input id="zoneCornerNWLng" type="number" min="-180" max="180" step="any" placeholder="Longitud NO"></div>
+   <div class="zoneCornerRow"><label for="zoneCornerNELat">NE</label><input id="zoneCornerNELat" type="number" min="-85" max="85" step="any" placeholder="Latitud NE"><input id="zoneCornerNELng" type="number" min="-180" max="180" step="any" placeholder="Longitud NE"></div>
+   <div class="zoneCornerRow"><label for="zoneCornerSELat">SE</label><input id="zoneCornerSELat" type="number" min="-85" max="85" step="any" placeholder="Latitud SE"><input id="zoneCornerSELng" type="number" min="-180" max="180" step="any" placeholder="Longitud SE"></div>
+   <div class="zoneCornerRow"><label for="zoneCornerSWLat">SO</label><input id="zoneCornerSWLat" type="number" min="-85" max="85" step="any" placeholder="Latitud SO"><input id="zoneCornerSWLng" type="number" min="-180" max="180" step="any" placeholder="Longitud SO"></div>
+   <div class="selectRow"><label for="zoneCornerCell">Tamaño orientativo de celda</label><select id="zoneCornerCell"><option value="50">50 m</option><option value="100">100 m</option><option value="200" selected>200 m</option><option value="250">250 m</option><option value="500">500 m</option><option value="1000">1 km</option></select></div>
+   <div class="geoTools"><button class="smallAction" type="button" id="zoneCornersFromView">⌖ Rellenar desde vista</button><button class="smallAction" type="button" id="zoneCornersCreate">▦ Crear cuadrícula</button><button class="smallAction" type="button" id="zoneCornersZoom">◎ Ver zona</button><button class="smallAction" type="button" id="zoneCornersDelete">✕ Borrar zona</button></div>
+   <p id="zoneCornersStatus" class="sideMessage" role="status">Escribe las ocho coordenadas o usa «Rellenar desde vista» como ejemplo editable.</p>
    <p id="zoneGridStatus" class="sideMessage" role="status">Cada celda mantiene sus metros reales. Arrastra una esquina para añadir o quitar cuadrados completos; el centro sirve para mover la zona.</p>
    <p id="geoShapeOutput" class="geoMeasures">Figuras: sin geometrías. El radio usa metros; el área se cierra con «Terminar área».</p>
   </div></section>
@@ -814,6 +825,79 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
  };
  $('demClearContours').onclick=clearContours;
  $('demContourInterval').onchange=clearContours;
+
+
+ // Four-corner zone grid: WGS84 quadrilateral, with interpolated grid edges.
+ const zoneCornersLayer=L.layerGroup().addTo(map);
+ let zoneCornersBounds=null,zoneCornersShape=null;
+ const zoneCornerIds=['NW','NE','SE','SW'];
+ const zoneCornersStatus=text=>$('zoneCornersStatus').textContent=text;
+ const zoneCornersSet=(k,p)=>{$('zoneCorner'+k+'Lat').value=p.lat.toFixed(6);$('zoneCorner'+k+'Lng').value=p.lng.toFixed(6)};
+ $('zoneCornersFromView').onclick=()=>{
+  const b=map.getBounds();
+  zoneCornersSet('NW',b.getNorthWest());zoneCornersSet('NE',b.getNorthEast());
+  zoneCornersSet('SE',b.getSouthEast());zoneCornersSet('SW',b.getSouthWest());
+  zoneCornersStatus('Coordenadas de la vista rellenadas. Puedes editarlas antes de crear.');
+ };
+ function zoneCornersRead(){
+  const p=zoneCornerIds.map(k=>{
+   const a=$('zoneCorner'+k+'Lat'),b=$('zoneCorner'+k+'Lng');
+   if(a.value.trim()===''||b.value.trim()==='')throw Error('Rellena las ocho coordenadas de las cuatro esquinas');
+   const lat=Number(a.value),lng=Number(b.value);
+   if(!Number.isFinite(lat)||!Number.isFinite(lng)||Math.abs(lat)>85||Math.abs(lng)>180)throw Error('Coordenada no válida en '+k);
+   return {lat,lng};
+  });
+  // Local grid only: avoid antimeridian crossings and excessively large zones.
+  const minLat=Math.min(...p.map(q=>q.lat)),maxLat=Math.max(...p.map(q=>q.lat));
+  const minLng=Math.min(...p.map(q=>q.lng)),maxLng=Math.max(...p.map(q=>q.lng));
+  if(maxLng-minLng>2||maxLat-minLat>2)throw Error('Zona demasiado extensa o cruza el antimeridiano. Máximo 2° por eje');
+  const project=q=>L.CRS.EPSG3857.project(L.latLng(q.lat,q.lng));
+  const xy=p.map(project);
+  const cross=(a,b,c)=>(b.x-a.x)*(c.y-a.y)-(b.y-a.y)*(c.x-a.x);
+  const sign=Math.sign(cross(xy[0],xy[1],xy[2]));
+  if(!sign||xy.some((q,i)=>Math.sign(cross(q,xy[(i+1)%4],xy[(i+2)%4]))!==sign))throw Error('Las esquinas deben formar un cuadrilátero convexo, sin cruces');
+  const cell=Number($('zoneCornerCell').value);
+  if(![50,100,200,250,500,1000].includes(cell))throw Error('Tamaño de celda no válido');
+  const distance=(a,b)=>map.distance([a.lat,a.lng],[b.lat,b.lng]);
+  const width=(distance(p[0],p[1])+distance(p[3],p[2]))/2;
+  const height=(distance(p[0],p[3])+distance(p[1],p[2]))/2;
+  if(width<10||height<10)throw Error('Zona demasiado pequeña');
+  const cols=Math.ceil(width/cell),rows=Math.ceil(height/cell);
+  if(cols>26||rows>30)throw Error('Demasiadas celdas ('+cols+'×'+rows+'). Aumenta el tamaño o reduce la zona; máximo 26×30');
+  return {p,cell,width,height,cols,rows};
+ }
+ function zoneCornersDraw(){
+  const {p,cell,width,height,cols,rows}=zoneCornersRead();
+  // Bilinear interpolation keeps each grid vertex on a smooth subdivision
+  // of the four user-supplied corners; cell dimensions are approximate.
+  const interp=(u,v)=>({
+   lat:p[0].lat*(1-u)*(1-v)+p[1].lat*u*(1-v)+p[2].lat*u*v+p[3].lat*(1-u)*v,
+   lng:p[0].lng*(1-u)*(1-v)+p[1].lng*u*(1-v)+p[2].lng*u*v+p[3].lng*(1-u)*v
+  });
+  const tmp=L.layerGroup(),border=p.map(q=>[q.lat,q.lng]);
+  L.polygon(border,{color:'#ffcd78',weight:3,fillColor:'#ffd279',fillOpacity:.07,interactive:false}).addTo(tmp);
+  for(let c=1;c<cols;c++){const u=c/cols;L.polyline(Array.from({length:13},(_,i)=>interp(u,i/12)),{color:'#ffcd78',weight:1,opacity:.8,interactive:false}).addTo(tmp)}
+  for(let r=1;r<rows;r++){const v=r/rows;L.polyline(Array.from({length:13},(_,i)=>interp(i/12,v)),{color:'#ffcd78',weight:1,opacity:.8,interactive:false}).addTo(tmp)}
+  for(let row=0;row<rows;row++)for(let col=0;col<cols;col++){
+   const point=interp((col+.5)/cols,(row+.5)/rows);
+   const label=String.fromCharCode(65+col)+(row+1);
+   L.marker([point.lat,point.lng],{interactive:false,keyboard:false,icon:L.divIcon({className:'zoneGridCellIcon',html:'<span>'+label+'</span>',iconSize:[44,20],iconAnchor:[22,10]})}).addTo(tmp);
+  }
+  for(let i=0;i<4;i++){
+   const point=p[i],label=['NO','NE','SE','SO'][i];
+   L.circleMarker([point.lat,point.lng],{radius:6,color:'#f8e7a3',fillColor:'#d9942a',fillOpacity:1,weight:2,interactive:false}).addTo(tmp);
+   L.tooltip({permanent:true,direction:'top',opacity:.85,interactive:false}).setLatLng([point.lat,point.lng]).setContent(label).addTo(tmp);
+  }
+  zoneCornersLayer.clearLayers();
+  tmp.eachLayer(layer=>zoneCornersLayer.addLayer(layer));
+  zoneCornersBounds=L.latLngBounds(border);
+  zoneCornersShape={points:p,cell,cols,rows};
+  map.fitBounds(zoneCornersBounds.pad(.15),{maxZoom:17});
+  zoneCornersStatus('Zona de cuatro esquinas · '+cols+' columnas × '+rows+' filas ('+(cols*rows)+' celdas), aprox. '+Math.round(width)+' × '+Math.round(height)+' m. Tamaño medio ≈ '+Math.round(width/cols)+' × '+Math.round(height/rows)+' m; puede variar en un cuadrilátero irregular.');
+ }
+ $('zoneCornersCreate').onclick=()=>{try{zoneCornersDraw();toast('Cuadrícula de cuatro esquinas creada')}catch(err){zoneCornersStatus(err.message)}};
+ $('zoneCornersZoom').onclick=()=>{if(zoneCornersBounds)map.fitBounds(zoneCornersBounds.pad(.15));else toast('Crea primero una cuadrícula de cuatro esquinas')};
+ $('zoneCornersDelete').onclick=()=>{zoneCornersLayer.clearLayers();zoneCornersBounds=null;zoneCornersShape=null;zoneCornersStatus('Zona de cuatro esquinas eliminada.')};
 
  // Editable local-zone grid. Coordinates are approximate metric conversions, not a certified UTM grid.
  const zoneGridLayer=L.layerGroup().addTo(map);
