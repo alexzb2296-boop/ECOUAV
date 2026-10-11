@@ -132,6 +132,7 @@ footer strong{font-weight:500;color:#cae7f5}
 .poiDesktopLine span{flex:1;overflow-wrap:anywhere;font-size:11px;color:#bad8e6}
 .poiDesktopLine button{padding:4px 7px;background:#173d51;color:#e0f5ff;border:1px solid #457087;border-radius:5px}
 header .brand .imperialBrandLogo{width:36px;height:36px}
+#geoMgrsInput{text-transform:uppercase}#geoGridStep{background:#122d40;color:#e9f8ff;border:1px solid #3a6076;border-radius:5px;font-size:11px;width:100%}.geoFields .smallAction{margin-top:0}
 
 /* IMPERIAL unified cartography tools */
 .geoFields{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}.geoFields input{min-width:0;width:100%;background:#122d40;color:#e9f8ff;border:1px solid #3a6076;border-radius:5px;padding:7px;font-size:11px}.geoTools{display:grid;grid-template-columns:1fr 1fr;gap:6px}.geoTools button{padding:7px 4px}.geoResult{font-size:11px;color:#c8e8f6;overflow-wrap:anywhere;line-height:1.65;margin:8px 0}.geoResult strong{color:#f4d18a}.geoMeasures{font-size:11px;color:#bbdbe9;line-height:1.6}.geoActive{border-color:#46dbff!important;background:#125372!important}
@@ -174,6 +175,11 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
    <div id="geoOutput" class="geoResult" role="status">Selecciona un punto para consultar coordenadas y UTM.</div>
    <div id="geoMeasureOutput" class="geoMeasures">Medición: sin puntos A/B.</div>
    <button class="smallAction" id="geoClearMeasure" type="button">✕ Limpiar medición</button>
+   <div class="geoFields"><input id="geoMgrsInput" type="text" maxlength="40" placeholder="MGRS: 30TVK..." aria-label="Coordenada MGRS"><button id="geoMgrsGo" class="smallAction" type="button">Ir a MGRS</button></div>
+   <div class="geoTools"><button id="geoRadius" class="smallAction" type="button" aria-pressed="false">◯ Radio</button><button id="geoArea" class="smallAction" type="button" aria-pressed="false">▱ Área</button><button id="geoFinishArea" class="smallAction" type="button">✓ Terminar área</button><button id="geoClearShapes" class="smallAction" type="button">✕ Limpiar figuras</button></div>
+   <div class="geoFields"><input id="geoRadiusMeters" type="number" min="1" max="100000" step="1" value="500" aria-label="Radio en metros"><select id="geoGridStep" aria-label="Tamaño de cuadrícula"><option value="100">Cuadrícula 100 m</option><option value="250">Cuadrícula 250 m</option><option value="500" selected>Cuadrícula 500 m</option><option value="1000">Cuadrícula 1 km</option><option value="5000">Cuadrícula 5 km</option></select></div>
+   <label class="setting"><span># Cuadrícula visual del mapa</span><input type="checkbox" class="toggle" id="geoGridToggle"></label>
+   <p id="geoShapeOutput" class="geoMeasures">Figuras: sin geometrías. El radio usa metros; el área se cierra con «Terminar área».</p>
   </div></section>
   <section class="sideSection"><div class="sectionTitle">⛰ &nbsp;Terreno <b>⌃</b></div><div class="sideContent">
    <label class="setting"><span>Vista 3D</span><input class="toggle" id="view3dToggle" type="checkbox" checked></label>
@@ -251,6 +257,7 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
 <footer><span id="footerCoords">⌖ WGS84 · Centro del mapa</span><span>ESCALA APROX. · <strong id="footerScale">—</strong> &nbsp;|&nbsp; PROYECCIÓN WGS84</span><span id="footerSource">Ortofoto/MDT según fuente seleccionada · GNSS no conectado</span></footer>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mgrs@2.1.0/dist/mgrs.min.js"></script>
 <script>
 (function(){
  'use strict';
@@ -418,9 +425,10 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
   return {zone,band,easting:Math.round(E),northing:Math.round(north),hemisphere:lat<0?'S':'N'};
  }
  function geoShow(ll){if(!ll)return;const {lat,lng}=ll;$('geoLat').value=lat.toFixed(6);$('geoLon').value=lng.toFixed(6);const u=toUTM(lat,lng);
-  $('geoOutput').innerHTML='<strong>WGS84</strong> '+lat.toFixed(6)+', '+lng.toFixed(6)+'<br><strong>GMS</strong> '+fmtDms(lat,'N','S')+' · '+fmtDms(lng,'E','O')+'<br><strong>UTM</strong> '+(u?u.zone+u.band+' · E '+u.easting+' m · N '+u.northing+' m':'No disponible fuera de 80°S–84°N');
+  let mgrsText='No disponible';try{if(window.mgrs&&u)mgrsText=window.mgrs.forward([lng,lat],5)}catch(e){} $('geoOutput').innerHTML='<strong>WGS84</strong> '+lat.toFixed(6)+', '+lng.toFixed(6)+'<br><strong>GMS</strong> '+fmtDms(lat,'N','S')+' · '+fmtDms(lng,'E','O')+'<br><strong>UTM</strong> '+(u?u.zone+u.band+' · E '+u.easting+' m · N '+u.northing+' m':'No disponible fuera de 80°S–84°N')+'<br><strong>MGRS</strong> '+mgrsText;
  }
  function geoRead(){const lat=Number($('geoLat').value),lng=Number($('geoLon').value);if(!$('geoLat').value||!$('geoLon').value||!Number.isFinite(lat)||!Number.isFinite(lng)||Math.abs(lat)>90||Math.abs(lng)>180){toast('Latitud o longitud fuera de rango');return null}return {lat,lng}}
+ $('geoMgrsGo').onclick=()=>{try{if(!window.mgrs)throw Error('Biblioteca MGRS no cargada');const code=$('geoMgrsInput').value.toUpperCase().replace(/\s+/g,'');if(!/^[0-9]{1,2}[C-HJ-NP-X][A-HJ-NP-Z]{2}(?:[0-9]{2}){0,5}$/.test(code)||code.length>15)throw Error('Código MGRS inválido');const p=window.mgrs.toPoint(code);if(!Array.isArray(p)||p.length!==2||!Number.isFinite(p[0])||!Number.isFinite(p[1]))throw Error('MGRS sin coordenadas válidas');map.setView([p[1],p[0]],Math.max(map.getZoom(),13));selectAt({lat:p[1],lng:p[0]},'Coordenada MGRS');toast('MGRS localizado (centro de la celda)')}catch(e){toast('MGRS: '+e.message)}};
  $('geoGo').onclick=()=>{const ll=geoRead();if(!ll)return;map.setView([ll.lat,ll.lng],Math.max(13,map.getZoom()));selectAt(ll,'Coordenadas introducidas')};
  $('geoUseSelected').onclick=()=>{geoShow(selected||map.getCenter());toast('Coordenadas actualizadas')};
  $('geoCopy').onclick=()=>{const ll=geoRead();if(!ll)return;if(!navigator.clipboard?.writeText){toast('Portapapeles no disponible');return}navigator.clipboard.writeText(ll.lat.toFixed(6)+', '+ll.lng.toFixed(6)).then(()=>toast('Coordenadas copiadas')).catch(()=>toast('Permiso de copia denegado'))};
@@ -434,8 +442,25 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
   L.polyline([[a.lat,a.lng],[b.lat,b.lng]],{color:'#ffd37b',weight:2,dashArray:'6 5'}).addTo(geoLayer);
   $('geoMeasureOutput').textContent='A → B: '+(distance>=1000?(distance/1000).toFixed(3)+' km':distance.toFixed(1)+' m')+' · Azimut inicial '+bearing.toFixed(1)+'° (norte verdadero, aproximado)';
  }
+
+ // Map tools: mutually exclusive A/B, radius and area; grids are illustrative projected overlays.
+ const geoShapes=L.layerGroup().addTo(map),geoGrid=L.layerGroup(),geoAreaPoints=[];
+ let geoShapeMode='',geoAreaClosed=false;
+ const modes=['geoMeasure','geoRadius','geoArea'];
+ function geoActivate(id){const active=id&&!$(id).classList.contains('geoActive');for(const k of modes){$(k).classList.toggle('geoActive',k===id&&active);$(k).setAttribute('aria-pressed',String(k===id&&active))}geoShapeMode=active?id:'';if(active){setMode('inspect');if(id==='geoMeasure')geoResetMeasure();if(id==='geoArea'){geoAreaPoints.length=0;geoAreaClosed=false;geoShapes.clearLayers()}toast(id==='geoArea'?'Marca vértices y pulsa Terminar área':id==='geoRadius'?'Pulsa el centro para dibujar el radio':'Marca los puntos A y B')}else toast('Herramienta desactivada')}
+ $('geoRadius').onclick=()=>geoActivate('geoRadius');$('geoArea').onclick=()=>geoActivate('geoArea');
+ // Override the older A/B click handler with the shared tool manager.
+ $('geoMeasure').onclick=()=>geoActivate('geoMeasure');
+ function earthArea(points){const R=6371008.8;let sum=0;for(let i=0;i<points.length;i++){const p=points[i],q=points[(i+1)%points.length];let d=(q.lng-p.lng)*Math.PI/180;while(d>Math.PI)d-=2*Math.PI;while(d< -Math.PI)d+=2*Math.PI;sum+=d*(2+Math.sin(p.lat*Math.PI/180)+Math.sin(q.lat*Math.PI/180))}return Math.abs(sum*R*R/2)}
+ function geoFinishPolygon(){if(geoAreaPoints.length<3){toast('Marca al menos tres vértices');return}if(geoAreaClosed)return;geoAreaClosed=true;L.polygon(geoAreaPoints.map(p=>[p.lat,p.lng]),{color:'#ffa65e',fillColor:'#fbb976',fillOpacity:.16,weight:2}).addTo(geoShapes);const area=earthArea(geoAreaPoints);$('geoShapeOutput').textContent='Área: '+(area>=1000000?(area/1000000).toFixed(3)+' km²':area.toFixed(1)+' m²')+' · '+geoAreaPoints.length+' vértices (aprox.)';geoActivate('geoArea')}
+ $('geoFinishArea').onclick=geoFinishPolygon;
+ $('geoClearShapes').onclick=()=>{geoShapes.clearLayers();geoAreaPoints.length=0;geoAreaClosed=false;$('geoShapeOutput').textContent='Figuras: sin geometrías.'};
+ function geoShapeClick(ll){if(geoShapeMode==='geoRadius'){const meters=Number($('geoRadiusMeters').value);if(!Number.isFinite(meters)||meters<1||meters>100000){toast('Radio válido: 1–100000 m');return}geoShapes.clearLayers();L.circle([ll.lat,ll.lng],{radius:meters,color:'#ffca69',fillOpacity:.08,weight:2}).addTo(geoShapes);$('geoShapeOutput').textContent='Centro: '+ll.lat.toFixed(5)+', '+ll.lng.toFixed(5)+' · radio '+meters+' m · superficie ≈ '+(Math.PI*meters*meters/1000000).toFixed(3)+' km²';return}if(geoShapeMode==='geoArea'){if(geoAreaClosed){geoShapes.clearLayers();geoAreaPoints.length=0;geoAreaClosed=false}if(geoAreaPoints.length>=150){toast('Máximo de 150 vértices');return}geoAreaPoints.push(ll);geoShapes.clearLayers();geoAreaPoints.forEach((p,i)=>L.circleMarker([p.lat,p.lng],{radius:4,color:'#ffb47b'}).bindTooltip(String(i+1)).addTo(geoShapes));if(geoAreaPoints.length>1)L.polyline(geoAreaPoints.map(p=>[p.lat,p.lng]),{color:'#ffb47b',weight:2}).addTo(geoShapes);$('geoShapeOutput').textContent='Área: '+geoAreaPoints.length+' vértices. Pulsa «Terminar área».'}}
+ function geoDrawGrid(){geoGrid.clearLayers();if(!$('geoGridToggle').checked)return;const b=map.getBounds(),south=b.getSouth(),north=b.getNorth(),west=b.getWest(),east=b.getEast(),step=Number($('geoGridStep').value);if(!Number.isFinite(step)||step<=0)return;const center=(south+north)/2,latStep=step/111320,lonStep=step/(111320*Math.max(.1,Math.cos(center*Math.PI/180)));if((north-south)/latStep+(east-west)/lonStep>160){$('geoShapeOutput').textContent='Cuadrícula demasiado densa: amplía el zoom o aumenta el tamaño de celda.';return}let count=0;for(let lat=Math.ceil(south/latStep)*latStep;lat<north&&count<160;lat+=latStep,count++)L.polyline([[lat,west],[lat,east]],{color:'#81c9ea',weight:1,opacity:.45,interactive:false}).addTo(geoGrid);for(let lng=Math.ceil(west/lonStep)*lonStep;lng<east&&count<160;lng+=lonStep,count++)L.polyline([[south,lng],[north,lng]],{color:'#81c9ea',weight:1,opacity:.45,interactive:false}).addTo(geoGrid)}
+ $('geoGridToggle').onchange=()=>{$('geoGridToggle').checked?geoGrid.addTo(map):map.removeLayer(geoGrid);geoDrawGrid()};$('geoGridStep').onchange=geoDrawGrid;map.on('moveend zoomend',geoDrawGrid);
  map.on('click',ev=>{
-  if($('geoMeasure').classList.contains('geoActive')){geoMeasureClick({lat:ev.latlng.lat,lng:ev.latlng.lng});return;}
+  if(geoShapeMode==='geoRadius'||geoShapeMode==='geoArea'){geoShapeClick({lat:ev.latlng.lat,lng:ev.latlng.lng});return;}
+  if(geoShapeMode==='geoMeasure'){geoMeasureClick({lat:ev.latlng.lat,lng:ev.latlng.lng});return;}
   const ll={lat:ev.latlng.lat,lng:ev.latlng.lng};
   if(mode==='route'){route.push(ll);redraw();selectAt(ll,'Punto '+route.length);return;}
   if(mode==='antenna'){antenna=ll;redraw();setMode('inspect');selectAt(ll,'Antena');$('antennaInfo').textContent='Antena colocada manualmente';return;}
