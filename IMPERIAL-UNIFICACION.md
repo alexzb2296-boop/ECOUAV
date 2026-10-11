@@ -142,3 +142,11 @@ Fecha de auditoría: 2026-10-11
 - La posición puede modificarse pulsando un nuevo centro en el mapa o arrastrando el marcador; también se redibuja al editar las dimensiones, nombre o tamaño de celda.
 - **Limitaciones:** retícula rectangular construida mediante aproximación métrica local lat/lon, **no** cuadrícula UTM geodésica oficial, sin rotación ni exportación individual de celdas. Límite 2500 celdas para evitar bloquear el navegador. La nueva cuadrícula no se guarda todavía dentro de los proyectos locales.
 - Comprobación de sintaxis JavaScript y referencias a elementos HTML superada. Pendiente revisión visual funcional en navegadores reales.
+
+## Ajuste de cuadrícula etiquetada y meteorología (2026-10-11)
+
+- La meteorología se presenta en **un solo panel** de la columna izquierda; quedan eliminadas las tarjetas meteorológicas repetidas en la derecha, preservando datos actuales y previsión horaria.
+- La **cuadrícula de zona** se numera por celdas de oeste a este **A–Z** y de norte a sur **1–30**: ejemplos A1, B1, A2, Z30. Se muestran etiquetas sobre las celdas.
+- El marcador central permite mover la cuadrícula; las **cuatro esquinas arrastrables** permiten ampliarla o reducirla sin cambiar el centro. Los campos de anchura y altura se actualizan cuando se arrastra una esquina.
+- Límite de 26 columnas y 30 filas, tamaño de celda seleccionable 50/100/250/500 m. No representa cuadrícula UTM certificada; las distancias se estiman mediante aproximación geográfica local.
+- Verificada sintaxis JavaScript y referencias HTML (sin IDs duplicados ni referencias a elementos inexistentes). La prueba visual/táctil real en navegador sigue pendiente.
