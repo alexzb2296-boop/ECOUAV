@@ -126,3 +126,11 @@ Fecha de auditoría: 2026-10-11
 - Los proyectos importados adquieren IDs nuevos; los ya guardados se conservan. La copia **no incluye DEM almacenados en IndexedDB**.
 - Revisión estática: JavaScript válido, 139 IDs únicos en HTML, y ninguna referencia `$('id')` sin elemento correspondiente.
 - Falta ejecutar pruebas manuales de descargas y carga de archivos en Safari iOS y navegadores de escritorio.
+
+## Unificación meteorológica — 2026-10-11
+
+- Eliminados los dos bloques meteorológicos redundantes de la columna derecha (**Condiciones en el punto** y **Meteorología Open-Meteo**).
+- Se mantiene un único panel **Meteorología** en la columna izquierda: selección de ubicación (punto seleccionado o centro del mapa), actualización, temperatura, viento, rachas, nubosidad, dirección del viento y pronóstico de 6 horas.
+- El indicador superior de temperatura se conserva como referencia compacta y no como segundo panel.
+- Ajustada la función `loadWeather` para actualizar exclusivamente los controles del panel consolidado, sin referencias a IDs eliminados.
+- Verificada sintaxis JavaScript y comprobadas las referencias a elementos DOM. Pendiente validación visual en navegadores reales.
