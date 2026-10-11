@@ -65,3 +65,12 @@ Fecha de auditoría: 2026-10-11
 - Cuadrícula de referencia visual con pasos de 100, 250, 500, 1000 y 5000 m; supresión de mallas densas y actualización al mover el mapa. **Nota:** cuadrícula visual aproximada en latitud/longitud, no una malla UTM reglamentaria ni cuadrícula de zona con celdas geodésicas exactas.
 - Se mantuvieron las capas de ruta/POI/antena y se aislaron las figuras en capas propias; actualizado `escritorio.html`.
 - Verificada sintaxis JavaScript; sin pruebas integrales de ejecución y sin validación numérica contra datos de control. Quedan pendientes cuadrícula UTM de zona real, test de librería externa y controles móviles.
+
+## Progreso — perfiles de terreno A/B y ruta (2026-10-11)
+
+- Integrado en `desktop-v2.html` panel **Perfiles y desniveles** con selección de A/B sobre el mapa, marcadores arrastrables y limpieza independiente.
+- Incluida consulta de 64 cotas interpoladas de Open-Meteo Elevation para A/B y 72 para rutas existentes (dibujadas o importadas), con consultas agrupadas mediante el cliente de elevaciones ya existente.
+- Los gráficos SVG presentan cotas mínimas y máximas, distancia, ascenso acumulado, descenso acumulado, pendiente neta y pendiente máxima muestreada.
+- Protección frente a respuestas asíncronas obsoletas cuando se modifican los puntos o las rutas. Los cálculos no tienen exactitud certificada y se muestran como aproximados.
+- Modo de marcado A/B excluyente con otras herramientas activas y actualización de `escritorio.html` para cargar la versión revisada.
+- **Comprobación realizada:** sintaxis JavaScript. **Pendiente:** prueba funcional de interfaz real y validación numérica de datos; migración de DEM GeoTIFF local, contornos y demás funciones avanzadas de terreno.
