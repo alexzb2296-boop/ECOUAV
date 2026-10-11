@@ -110,3 +110,11 @@ Fecha de auditoría: 2026-10-11
 - Revisión estática del último `desktop-v2.html`: **JavaScript sintácticamente válido**, **133 IDs HTML únicos**, **110 referencias `$('id')` comprobadas, ninguna ausente**, y presencia de controles de navegación móvil.
 - **Límite de esta revisión:** no se ha podido abrir la aplicación desplegada con un navegador de prueba desde este entorno, por lo que **no está verificado** el comportamiento visual y táctil real. El despliegue posterior (#119) estaba en curso en la última consulta.
 - Por este motivo **no se redirige `index.html` ni se elimina la interfaz legada**. Antes de fijar IMPERIAL como página inicial definitiva hay que pasar las pruebas manuales en móvil y tablet.
+
+## Página principal unificada y sesiones portátiles (2026-10-11)
+
+- Después de la confirmación del usuario de que el comportamiento observado iba bien, se ha hecho `index.html` la entrada principal a la aplicación adaptable `desktop-v2.html` (redirección inmediata, preservando parámetros y ancla; `?classic=1` permite abrir el legado).
+- **Copia íntegra y recuperable** de la página antigua: `legacy-index.html` (203710 caracteres, idéntica a la versión anterior en el momento del respaldo). La navegación «Clásico» del escritorio apunta allí.
+- Se ha integrado **importación y exportación de sesiones de proyectos IMPERIAL en JSON**, con comprobación de versión, límites de archivo y validación de coordenadas. No equivale al formato GeoJSON que permanece disponible por separado.
+- Controles existentes y CSS adaptable preservados. Revisión estática: sintaxis JS correcta, ningún ID HTML duplicado, ninguna referencia `$('id')` sin nodo correspondiente.
+- **Pendiente:** publicación GitHub Pages de los últimos commits y prueba completa en navegador y dispositivos. Se mantiene el respaldo accesible para regresar al sistema anterior si hiciera falta.
