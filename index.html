@@ -20,7 +20,7 @@
  if(!opened)document.documentElement.classList.add('ecoLoginLocked');
 })();
 </script>
-<title>ECOUAV v1.0</title>
+<title>IMPERIAL · Tactical Geospatial System</title>
 
 <link rel="stylesheet"
 href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
@@ -586,14 +586,16 @@ html.ecoLoginLocked #ecoLoginGate{display:flex;visibility:visible!important}
  #ecoContextPanel .ecoQuickProject .ecoContextQuickButtons{grid-template-columns:1fr 1fr}
 
 }
+.top h1{display:flex;align-items:center;gap:8px}.top .imperialBrandLogo{width:42px;height:42px}#ecoLoginIcon .imperialBrandLogo{margin:auto}
 </style>
+<link rel="stylesheet" href="./imperial-brand.css?v=3720abd">
 </head>
 
 <body>
 <div id="ecoLoginGate" role="dialog" aria-modal="true" aria-labelledby="ecoLoginHeading">
  <form id="ecoLoginBox" autocomplete="off">
-  <div id="ecoLoginIcon" aria-hidden="true">◇</div>
-  <h2 id="ecoLoginHeading">ECOUAV</h2>
+  <div id="ecoLoginIcon" aria-hidden="true"><span class="imperialBrandLogo imperialBrandLogo--large"></span></div>
+  <h2 id="ecoLoginHeading">IMPERIAL</h2>
   <p>Introduce el código de acceso para abrir la aplicación.</p>
   <label for="ecoLoginPassword">Contraseña</label>
   <input id="ecoLoginPassword" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="24" placeholder="••••" required autocomplete="off">
@@ -627,7 +629,7 @@ html.ecoLoginLocked #ecoLoginGate{display:flex;visibility:visible!important}
 
 <div>
 <h1>
-ECOUAV
+<span class="imperialBrandLogo" aria-label="Emblema IMPERIAL"></span> IMPERIAL
 <span style="color:var(--accent)">VISOR</span>
 </h1>
 
@@ -645,7 +647,7 @@ Planificador UAS · Terreno · RF · Rutas · Misiones
 
 <!-- ECOUAV unified workspace; existing tools below remain intact -->
 <section id="ecoWorkspace" aria-label="Centro de herramientas ECOUAV" aria-hidden="true">
- <div><strong>🧭 Centro ECOUAV</strong> <small style="color:#94b5c7">Terreno · Meteo · Antenas · Vuelos · Proyectos</small></div>
+ <div><strong>🧭 Centro IMPERIAL</strong> <small style="color:#94b5c7">Terreno · Meteo · Antenas · Vuelos · Proyectos</small></div>
  <div class="ecoTabs" role="tablist" aria-label="Herramientas">
   <button type="button" data-ecotab="terrain" aria-selected="true">⛰️ Terreno</button>
   <button type="button" data-ecotab="weather" aria-selected="false">🌬️ Meteo</button>
@@ -6190,7 +6192,7 @@ refreshMissions();
  const shell=document.getElementById('ecoShell'),workspace=document.getElementById('ecoWorkspace'),context=document.getElementById('ecoContextPanel'),mapColumn=document.getElementById('ecoMapColumn');
  if(!shell||!mapColumn)return;
  const headline=document.createElement('div');headline.id='ecoMobileHeadline';
- headline.innerHTML='<span>◈ ECOUAV</span><small>Cartografía · Terreno · Meteorología</small><span>MAPA</span>';
+ headline.innerHTML='<span>◈ IMPERIAL</span><small>Cartografía · Terreno · Meteorología</small><span>MAPA</span>';
  mapColumn.append(headline);
  const nav=document.createElement('nav');nav.id='ecoMobileNav';nav.setAttribute('aria-label','Navegación móvil');
  const choices=[['⌖','Mapa','map'],['▤','Capas','layers'],['⛰','Terreno','terrain'],['☁','Meteo','weather'],['⋯','Más','more']];
