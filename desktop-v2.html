@@ -167,7 +167,12 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
  .rightPanel.mobileShown{visibility:visible;transform:translateX(0)}
  .mapShell{grid-column:1;grid-row:1;min-height:0}
  .mobileBackdrop{display:block;position:absolute;z-index:1050;inset:0;background:#0008}
- .mobileBottomNav{display:none}
+ .mobileBottomNav{display:grid;grid-template-columns:repeat(3,1fr);background:#091e2c;border-top:1px solid #336780;position:relative;z-index:1200}
+ .mobileBottomNav button{border:0;background:transparent;color:#c7e3f3;font-size:18px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:1px}
+ .mobileBottomNav button span{font-size:10px}
+ .mobileBottomNav button.mobileSelected{background:#19445a;color:#65d7ff}
+ #app{grid-template-rows:56px minmax(0,1fr) 55px}
+ footer{display:none}
  .mapStatus{max-width:calc(100% - 16px);gap:5px;flex-wrap:wrap;font-size:9px}
  #preview3d{width:min(650px,75%);height:205px;bottom:48px}
 }
