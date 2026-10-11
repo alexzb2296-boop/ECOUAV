@@ -166,7 +166,8 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
  .rightPanel{right:0;left:auto;transform:translateX(110%);border-left:1px solid #315870}
  .rightPanel.mobileShown{visibility:visible;transform:translateX(0)}
  .mapShell{grid-column:1;grid-row:1;min-height:0}
- .mobileBackdrop{display:block;position:absolute;z-index:1050;inset:0;background:#0008}
+ .sidebar,.rightPanel{touch-action:pan-y}
+ .mobileBackdrop{display:block;position:fixed;z-index:1050;inset:56px 0 0;background:#0008}
  .mobileBottomNav{display:grid;grid-template-columns:repeat(3,1fr);background:#091e2c;border-top:1px solid #336780;position:relative;z-index:1200}
  .mobileBottomNav button{border:0;background:transparent;color:#c7e3f3;font-size:18px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:1px}
  .mobileBottomNav button span{font-size:10px}
@@ -200,6 +201,7 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
  .mapActions{right:7px;top:7px;gap:4px}
  .mapActions button{width:33px;height:33px}
  .mapLegend{display:none}
+ .mobileBackdrop{inset:54px 0 0}
  .mapStatus{left:6px;bottom:7px;max-width:calc(100% - 50px)}
  #preview3d{width:calc(100% - 65px);left:6px;transform:none;max-width:none;height:165px;bottom:51px}
  #preview3d.collapsed{width:calc(100% - 65px);height:34px}
@@ -929,7 +931,6 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
  // Mobile and tablet navigation: existing map and controls, never a second app.
  const mobileBp=window.matchMedia('(max-width:1100px)');
  let mobilePanel='';
- const mobileDrawerNames={tools:'imperialTools',data:'imperialData'};
  function mobileSetPanel(next){
   mobilePanel=mobileBp.matches?next:'';
   const showTools=mobilePanel==='tools',showData=mobilePanel==='data';
@@ -954,6 +955,13 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
  mobileBp.addEventListener('change',()=>mobileSetPanel(''));
  window.addEventListener('resize',()=>{requestAnimationFrame(()=>map.invalidateSize({pan:false}));if(typeof resizeThree==='function')requestAnimationFrame(resizeThree)});
  mobileSetPanel('');
+ // Close the side panel after choosing a point-placement action.
+ const mobileMapActions=new Set(['geoGo','geoMeasure','geoRadius','geoArea','terrainPickAB','planButton','placeAntenna','addPoiPanel','geoMgrsGo']);
+ document.addEventListener('click',event=>{
+  if(!mobileBp.matches||!mobilePanel)return;
+  const button=event.target.closest('button');if(!button||!mobileMapActions.has(button.id))return;
+  requestAnimationFrame(()=>mobileSetPanel(''));
+ });
  function showClock(){$('clock').textContent=new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}
  showClock();setInterval(showClock,30000);
  resetDemo();
