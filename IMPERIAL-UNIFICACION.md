@@ -134,3 +134,11 @@ Fecha de auditoría: 2026-10-11
 - El indicador superior de temperatura se conserva como referencia compacta y no como segundo panel.
 - Ajustada la función `loadWeather` para actualizar exclusivamente los controles del panel consolidado, sin referencias a IDs eliminados.
 - Verificada sintaxis JavaScript y comprobadas las referencias a elementos DOM. Pendiente validación visual en navegadores reales.
+
+## Cuadrículas editables de zona (2026-10-11)
+
+- Además de la cuadrícula general de visualización, el escritorio incorpora **cuadrícula de zona editable** en el panel Coordenadas y medición.
+- Controles: anchura y altura de zona (50–20000 m), tamaño de celda (50, 100, 250 o 500 m), nombre, crear/actualizar, mover centro, ver zona y borrar.
+- La posición puede modificarse pulsando un nuevo centro en el mapa o arrastrando el marcador; también se redibuja al editar las dimensiones, nombre o tamaño de celda.
+- **Limitaciones:** retícula rectangular construida mediante aproximación métrica local lat/lon, **no** cuadrícula UTM geodésica oficial, sin rotación ni exportación individual de celdas. Límite 2500 celdas para evitar bloquear el navegador. La nueva cuadrícula no se guarda todavía dentro de los proyectos locales.
+- Comprobación de sintaxis JavaScript y referencias a elementos HTML superada. Pendiente revisión visual funcional en navegadores reales.
