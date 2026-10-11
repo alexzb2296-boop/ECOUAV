@@ -84,3 +84,11 @@ Fecha de auditoría: 2026-10-11
 - Se limita el número de niveles y se invalida el cálculo anterior al ocultar/limpiar o cambiar la configuración; se mantiene separado el resto de capas y controles.
 - Lanzador `escritorio.html` actualizado para cargar la nueva versión.
 - **Verificación realizada:** compilación de la sintaxis JavaScript con `new Function` y comprobación de presencia de controles. **Pendiente:** validación funcional real en navegador, tratamiento de más proyecciones y bandas, precisión geográfica/estadística de las curvas, nodata y compatibilidad de archivos comprimidos. No se afirma certificación cartográfica. La incidencia IGN antigua permanece pendiente.
+
+## Progreso — meteorología horaria y proyectos locales (2026-10-11)
+
+- Meteorología de escritorio: se conserva el resumen actual de **Open-Meteo** y se añade una previsión para las próximas **seis horas** (temperatura, velocidad y dirección del viento, rachas y probabilidad de precipitación). Se distingue previsión de observaciones reales.
+- Proyectos de escritorio: guardar, seleccionar, recuperar y eliminar sesiones **localmente** mediante `localStorage` del navegador, sin nube. Se guardan nombre, fecha, puntos de ruta, POI, antena, mapa base, centro, zoom y estado de demostración; límite de 15 proyectos. Se validan las coordenadas y el tamaño de los datos antes de restaurarlos.
+- No se incluyen DEM locales ni pronósticos meteorológicos en los proyectos; la biblioteca DEM usa almacenamiento separado en IndexedDB. Los proyectos de la versión antigua no se convierten automáticamente todavía.
+- Actualizado el lanzador `escritorio.html` y verificada la sintaxis JavaScript.
+- **Pendiente:** pruebas manuales reales en el navegador (guardar/recargar, cuota de almacenamiento, respuesta horaria de Open-Meteo), compatibilidad import/export de proyectos con la versión antigua y adaptación móvil/tablet desde la misma aplicación.
