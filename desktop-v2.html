@@ -141,6 +141,8 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
 .terrainProfileGraph{width:100%;height:112px;display:block;margin:8px 0;border:1px solid #2d5065;border-radius:7px;background:#071b28}.terrainProfileGraph[hidden]{display:none}.terrainProfileGraph text{fill:#b8d9ec;font-size:12px}.terrainProfileGraph .profileLine{fill:none;stroke:#42cfff;stroke-width:3;vector-effect:non-scaling-stroke}.terrainProfileGraph .profileGrid{stroke:#476478;stroke-width:1;opacity:.65}.terrainProfileGraph .profileFill{fill:#238db9;opacity:.17}
 
 #demPanel input[type=range]{width:85px;accent-color:#3ad0ff}#demPanel .sideMessage{overflow-wrap:anywhere}
+
+.localProjectInput,.localProjectSelect{display:block;width:100%;min-width:0;background:#122d40;color:#f1faff;border:1px solid #3b657e;padding:7px;border-radius:6px;font-size:11px;margin:6px 0 7px}#weatherHours{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}#weatherHours>div{padding:5px 3px;background:#122d40;border-radius:4px;text-align:center;font-size:10px;color:#d4edf9}#weatherHours small{display:block;color:#9fbbcb;margin-bottom:3px}
 </style>
 <link rel="stylesheet" href="./imperial-brand.css?v=6bfc8b7">
 </head>
@@ -218,8 +220,14 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
    <button type="button" class="smallAction" id="loadWeather">↻ Consultar previsión</button>
    <div class="sideWeather"><div>♧ Temperatura<strong id="sideTemp">—</strong></div><div>≋ Viento<strong id="sideWind">—</strong></div><div>≋ Rachas<strong id="sideGust">—</strong></div><div>☁ Nubosidad<strong id="sideCloud">—</strong></div></div>
    <p id="weatherNote" class="sideMessage">Sin previsión cargada. Fuente: Open-Meteo.</p>
+   <div id="weatherHours" class="miniNote" role="status">Pronóstico por horas pendiente.</div>
   </div></section>
   <section class="sideSection"><div class="sectionTitle">☷ &nbsp;Proyecto <b>⌃</b></div><div class="sideContent">
+   <label class="selectRow" for="localProjectName">Nombre de proyecto</label><input id="localProjectName" class="localProjectInput" maxlength="70" value="Mi proyecto IMPERIAL" aria-label="Nombre del proyecto">
+   <button type="button" class="smallAction" id="localProjectSave">💾 Guardar en navegador</button>
+   <label class="selectRow" for="localProjectSelect">Proyectos guardados</label><select class="localProjectSelect" id="localProjectSelect" aria-label="Seleccionar proyecto guardado"><option value="">Sin proyectos</option></select>
+   <div class="geoTools"><button type="button" class="smallAction" id="localProjectLoad">↻ Recuperar</button><button type="button" class="smallAction" id="localProjectDelete">✕ Eliminar</button></div>
+   <p id="localProjectStatus" class="sideMessage" role="status">Las sesiones se guardan solo en este navegador (máximo 15).</p>
    <button type="button" class="smallAction" id="resetDemo">↻ Restablecer demostración</button>
    <button type="button" class="smallAction" id="saveProject">↓ Exportar proyecto GeoJSON</button>
    <button type="button" class="smallAction" id="importProject">↑ Importar proyecto GeoJSON</button>
@@ -409,7 +417,7 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
  function loadWeather(){
   const ll=$('weatherTarget').value==='center'?map.getCenter():(selected||map.getCenter());
   const button=$('loadWeather');button.disabled=true;$('weatherNote').textContent='Consultando modelo…';
-  const params=new URLSearchParams({latitude:ll.lat.toFixed(5),longitude:ll.lng.toFixed(5),timezone:'auto',current:'temperature_2m,wind_speed_10m,wind_gusts_10m,wind_direction_10m,cloud_cover',wind_speed_unit:'kmh'});
+  const params=new URLSearchParams({latitude:ll.lat.toFixed(5),longitude:ll.lng.toFixed(5),timezone:'auto',current:'temperature_2m,wind_speed_10m,wind_gusts_10m,wind_direction_10m,cloud_cover',hourly:'temperature_2m,wind_speed_10m,wind_gusts_10m,wind_direction_10m,precipitation_probability',forecast_days:'2',wind_speed_unit:'kmh'});
   fetch('https://api.open-meteo.com/v1/forecast?'+params,{signal:AbortSignal.timeout(12000)})
    .then(r=>{if(!r.ok)throw Error('HTTP '+r.status);return r.json()}).then(d=>{
     const w=d.current;if(!w)throw Error('Sin datos');weather=w;weatherDate=w.time;
@@ -419,6 +427,17 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
     }
     $('weatherNote').textContent='Open-Meteo · '+w.time+' · coordenadas '+ll.lat.toFixed(3)+', '+ll.lng.toFixed(3);
     $('wxTime').textContent='Open-Meteo · '+w.time+' · viento '+w.wind_direction_10m+'° · previsión, no medición local';
+    const hours=$('weatherHours');hours.replaceChildren();
+    const hourly=d.hourly||{},times=hourly.time||[];
+    const now=d.current?.time||'';
+    let start=times.findIndex(t=>t>=now);if(start<0)start=0;
+    for(let j=start;j<Math.min(times.length,start+6);j++){
+     const div=document.createElement('div'),date=times[j]?.slice(11,16)||'—';
+     const temp=Number(hourly.temperature_2m?.[j]),wind=Number(hourly.wind_speed_10m?.[j]),gust=Number(hourly.wind_gusts_10m?.[j]),prob=Number(hourly.precipitation_probability?.[j]),dir=Number(hourly.wind_direction_10m?.[j]);
+     div.innerHTML='<small>'+date+'</small>'+ (Number.isFinite(temp)?temp.toFixed(0)+' °C':'—')+'<br>'+ (Number.isFinite(wind)?wind.toFixed(0)+' km/h':'—')+'<br>R '+(Number.isFinite(gust)?gust.toFixed(0):'—')+' · '+(Number.isFinite(dir)?dir.toFixed(0)+'°':'—')+'<br>L '+(Number.isFinite(prob)?prob.toFixed(0)+'%':'—');
+     hours.appendChild(div);
+    }
+    if(!hours.children.length)hours.textContent='Sin pronóstico horario.';
     $('topWx').textContent=values.Temp;
     toast('Previsión meteorológica actualizada');
    }).catch(e=>{$('weatherNote').textContent='Error Open-Meteo: '+e.message;toast('No se pudo consultar meteorología')}).finally(()=>button.disabled=false);
@@ -770,6 +789,66 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
   }catch(err){status.textContent='Error al importar: '+err.message;toast('No se pudo abrir el proyecto')}
   finally{e.target.value=''}
  });
+
+ // Named local projects: map state, route, antenna, POI and camera position.
+ // Separate from imported DEM blobs: does not copy DEMs or transmit project data.
+ const projectStorageKey='imperial-desktop-projects-v1';
+ function projectRead(){
+  let data;try{data=JSON.parse(localStorage.getItem(projectStorageKey)||'[]')}catch(err){throw Error('Almacenamiento de proyectos corrupto')}
+  if(!Array.isArray(data))throw Error('Proyectos guardados inválidos');
+  return data;
+ }
+ function projectWrite(items){localStorage.setItem(projectStorageKey,JSON.stringify(items))}
+ function projectPoint(p){
+  if(!p||typeof p!=='object')return null;
+  const lat=Number(p.lat),lng=Number(p.lng);
+  return Number.isFinite(lat)&&Number.isFinite(lng)&&Math.abs(lat)<=90&&Math.abs(lng)<=180?{lat,lng}:null;
+ }
+ function projectRefresh(){
+  const sel=$('localProjectSelect'),old=sel.value;sel.replaceChildren();
+  try{const all=projectRead();if(!all.length){const el=document.createElement('option');el.value='';el.textContent='Sin proyectos';sel.appendChild(el);return}
+   for(const item of all){const opt=document.createElement('option');opt.value=item.id;opt.textContent=item.name+' · '+new Date(item.savedAt).toLocaleDateString('es-ES');sel.appendChild(opt)}
+   if(all.some(item=>item.id===old))sel.value=old;
+  }catch(err){$('localProjectStatus').textContent=err.message}
+ }
+ $('localProjectSave').onclick=()=>{
+  try{
+   const name=$('localProjectName').value.trim().slice(0,70);if(!name)throw Error('Introduce un nombre');
+   const items=projectRead();if(items.length>=15)throw Error('Máximo 15 proyectos: elimina uno antes de guardar');
+   if(route.length>1000||pois.length>200)throw Error('Demasiados elementos para guardar');
+   const center=map.getCenter(),checked=document.querySelector('input[name="basemap"]:checked');
+   const record={id:Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8),name,savedAt:new Date().toISOString(),version:1,
+    route:route.map(p=>({lat:p.lat,lng:p.lng})),pois:pois.map(p=>({lat:p.lat,lng:p.lng,name:String(p.name).slice(0,80)})),
+    antenna:antenna?{lat:antenna.lat,lng:antenna.lng}:null,demo,view:{center:{lat:center.lat,lng:center.lng},zoom:map.getZoom(),base:checked?.value||'esri'}};
+   items.unshift(record);projectWrite(items);projectRefresh();$('localProjectSelect').value=record.id;
+   $('localProjectStatus').textContent='Guardado: '+name+' ('+route.length+' WP y '+pois.length+' POI).';toast('Proyecto guardado localmente');
+  }catch(err){$('localProjectStatus').textContent='No guardado: '+err.message}
+ };
+ $('localProjectLoad').onclick=()=>{
+  try{
+   const entry=projectRead().find(p=>p.id===$('localProjectSelect').value);if(!entry)throw Error('Selecciona un proyecto');
+   if(entry.version!==1||!Array.isArray(entry.route)||entry.route.length>1000||!Array.isArray(entry.pois)||entry.pois.length>200)throw Error('Formato de proyecto incompatible');
+   const newRoute=entry.route.map(projectPoint),newPois=entry.pois.map(p=>{const v=projectPoint(p);if(!v||typeof p.name!=='string')return null;return {...v,name:p.name.slice(0,80)}});
+   if(newRoute.some(p=>!p)||newPois.some(p=>!p))throw Error('Coordenadas inválidas');
+   const ant=entry.antenna?projectPoint(entry.antenna):null;if(entry.antenna&&!ant)throw Error('Antena inválida');
+   const center=projectPoint(entry.view?.center);if(!center)throw Error('Centro inválido');
+   const zoom=Number(entry.view.zoom);if(!Number.isFinite(zoom)||zoom<1||zoom>19)throw Error('Zoom inválido');
+   route=newRoute;pois=newPois;antenna=ant;demo=entry.demo===true;
+   setMode('inspect');redraw();if(typeof terrainInvalidateRoute==='function')terrainInvalidateRoute();
+   const base=entry.view.base==='pnoa'?'pnoa':'esri';
+   const radio=document.querySelector('input[name="basemap"][value="'+base+'"]');if(radio)radio.checked=true;
+   setBase(base);map.setView([center.lat,center.lng],zoom);
+   $('localProjectName').value=entry.name;
+   $('localProjectStatus').textContent='Recuperado: '+entry.name+'. DEM y meteorología no incluidos.';toast('Proyecto recuperado');
+  }catch(err){$('localProjectStatus').textContent='No recuperado: '+err.message}
+ };
+ $('localProjectDelete').onclick=()=>{
+  try{const id=$('localProjectSelect').value;const items=projectRead();const entry=items.find(p=>p.id===id);if(!entry)throw Error('Selecciona un proyecto');
+   if(!window.confirm('¿Eliminar el proyecto "'+entry.name+'"?'))return;
+   projectWrite(items.filter(p=>p.id!==id));projectRefresh();$('localProjectStatus').textContent='Proyecto eliminado: '+entry.name;
+  }catch(err){$('localProjectStatus').textContent=err.message}
+ };
+ projectRefresh();
  function switchSection(section){
   document.querySelectorAll('[data-section]').forEach(b=>b.classList.toggle('selected',b.dataset.section===section));
   document.querySelectorAll('.headerNav button').forEach(b=>b.classList.toggle('active',b.dataset.section===section));
