@@ -295,6 +295,8 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
    <label class="selectRow" for="localProjectSelect">Proyectos guardados</label><select class="localProjectSelect" id="localProjectSelect" aria-label="Seleccionar proyecto guardado"><option value="">Sin proyectos</option></select>
    <div class="geoTools"><button type="button" class="smallAction" id="localProjectLoad">↻ Recuperar</button><button type="button" class="smallAction" id="localProjectDelete">✕ Eliminar</button></div>
    <p id="localProjectStatus" class="sideMessage" role="status">Las sesiones se guardan solo en este navegador (máximo 15).</p>
+   <div class="geoTools"><button type="button" class="smallAction" id="projectExportJson">↓ Exportar sesión JSON</button><button type="button" class="smallAction" id="projectImportJson">↑ Importar sesión JSON</button></div>
+   <input id="projectImportJsonFile" type="file" accept=".json,application/json" hidden>
    <button type="button" class="smallAction" id="resetDemo">↻ Restablecer demostración</button>
    <button type="button" class="smallAction" id="saveProject">↓ Exportar proyecto GeoJSON</button>
    <button type="button" class="smallAction" id="importProject">↑ Importar proyecto GeoJSON</button>
@@ -918,6 +920,41 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
   }catch(err){$('localProjectStatus').textContent=err.message}
  };
  projectRefresh();
+
+ // Portable IMPERIAL project sessions (JSON); explicitly separate from GeoJSON.
+ $('projectExportJson').onclick=()=>{
+  try{
+   const entry=projectRead().find(p=>p.id===$('localProjectSelect').value);
+   if(!entry)throw Error('Guarda o selecciona un proyecto primero');
+   const data=JSON.stringify({format:'IMPERIAL-project',formatVersion:1,project:entry},null,2);
+   const url=URL.createObjectURL(new Blob([data],{type:'application/json'}));
+   const a=document.createElement('a');a.href=url;a.download='imperial-proyecto-'+entry.name.toLowerCase().replace(/[^a-z0-9-]/g,'-').slice(0,45)+'.json';
+   document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),3000);
+   $('localProjectStatus').textContent='Sesión JSON exportada: '+entry.name;
+  }catch(err){$('localProjectStatus').textContent='Exportación: '+err.message}
+ };
+ $('projectImportJson').onclick=()=>$('projectImportJsonFile').click();
+ $('projectImportJsonFile').onchange=async event=>{
+  const file=event.target.files?.[0];if(!file)return;
+  try{
+   if(file.size>512*1024)throw Error('JSON demasiado grande (máximo 512 KB)');
+   const parsed=JSON.parse(await file.text());
+   if(parsed?.format!=='IMPERIAL-project'||parsed.formatVersion!==1)throw Error('No es una sesión IMPERIAL compatible');
+   const p=parsed.project;
+   if(!p||p.version!==1||typeof p.name!=='string'||!p.name.trim()||!Array.isArray(p.route)||p.route.length>1000||!Array.isArray(p.pois)||p.pois.length>200)throw Error('Estructura de sesión inválida');
+   if(p.route.some(x=>!projectPoint(x))||p.pois.some(x=>!projectPoint(x)||typeof x.name!=='string')||(p.antenna&&!projectPoint(p.antenna))||!projectPoint(p.view?.center)||!Number.isFinite(p.view?.zoom)||p.view.zoom<1||p.view.zoom>19)throw Error('Coordenadas o zoom inválidos');
+   const all=projectRead();if(all.length>=15)throw Error('Máximo de 15 proyectos');
+   const name=p.name.trim().slice(0,70),newId=Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8);
+   const clean={id:newId,name,savedAt:new Date().toISOString(),version:1,
+    route:p.route.map(projectPoint),pois:p.pois.map(x=>({...projectPoint(x),name:x.name.slice(0,80)})),
+    antenna:p.antenna?projectPoint(p.antenna):null,demo:p.demo===true,
+    view:{center:projectPoint(p.view.center),zoom:p.view.zoom,base:p.view.base==='pnoa'?'pnoa':'esri'}};
+   all.unshift(clean);projectWrite(all);projectRefresh();$('localProjectSelect').value=newId;
+   $('localProjectStatus').textContent='Sesión importada: '+name+'. Pulsa Recuperar para abrirla.';
+   toast('Proyecto importado correctamente');
+  }catch(err){$('localProjectStatus').textContent='Importación: '+err.message}
+  finally{event.target.value=''}
+ };
  function switchSection(section){
   document.querySelectorAll('[data-section]').forEach(b=>b.classList.toggle('selected',b.dataset.section===section));
   document.querySelectorAll('.headerNav button').forEach(b=>b.classList.toggle('active',b.dataset.section===section));
