@@ -287,6 +287,7 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
    <button type="button" class="smallAction" id="loadWeather">↻ Consultar previsión</button>
    <div class="sideWeather"><div>♧ Temperatura<strong id="sideTemp">—</strong></div><div>≋ Viento<strong id="sideWind">—</strong></div><div>≋ Rachas<strong id="sideGust">—</strong></div><div>☁ Nubosidad<strong id="sideCloud">—</strong></div></div>
    <p id="weatherNote" class="sideMessage">Sin previsión cargada. Fuente: Open-Meteo.</p>
+   <p id="weatherDetail" class="sideMessage">La meteorología se consulta desde este panel único.</p>
    <div id="weatherHours" class="miniNote" role="status">Pronóstico por horas pendiente.</div>
   </div></section>
   <section class="sideSection"><div class="sectionTitle">☷ &nbsp;Proyecto <b>⌃</b></div><div class="sideContent">
@@ -335,10 +336,6 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
    <div class="detailRow"><span>Altitud del terreno</span><strong id="selectedHeight">—</strong></div>
    <div class="detailRow"><span>Fuente elevación</span><strong id="selectedElevSource">Sin consulta</strong></div>
   </div></section>
-  <section class="infoCard"><div class="infoTitle">☁ &nbsp;Condiciones en el punto (modelo)</div><div class="infoBody">
-   <div class="weatherGrid"><div><i>≋</i><label>Viento 10 m</label><strong id="wxWind">—</strong></div><div><i>≋</i><label>Rachas</label><strong id="wxGust">—</strong></div><div><i>♧</i><label>Temperatura</label><strong id="wxTemp">—</strong></div><div><i>☁</i><label>Nubosidad</label><strong id="wxCloud">—</strong></div></div>
-   <p id="wxTime" class="miniNote">Consulta Open-Meteo para obtener datos reales del modelo.</p>
-  </div></section>
   <section class="infoCard"><div class="infoTitle">📍 &nbsp;Puntos de interés</div><div class="infoBody">
    <button id="addPoiPanel" type="button" class="smallAction">+ Colocar POI en el mapa</button>
    <div id="poiDesktopList" class="miniNote" role="region" aria-label="Lista desplazable de puntos de interés" tabindex="0" aria-live="polite">No hay POI creados.</div>
@@ -354,7 +351,6 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
    <button type="button" id="placeAntenna" class="smallAction">⌖ Colocar antena en mapa</button>
    <p class="miniNote">El sector representado es ilustrativo. No predice alcance, calidad del enlace ni zonas seguras.</p>
   </div></section>
-  <section class="infoCard"><div class="infoTitle">◉ &nbsp;Meteorología · Open-Meteo</div><div class="infoBody"><div class="weatherTiles"><div><i>☀</i><strong id="tileTemp">—</strong><small>Temp.</small></div><div><i>≋</i><strong id="tileWind">—</strong><small>Viento</small></div><div><i>⇝</i><strong id="tileGust">—</strong><small>Rachas</small></div><div><i>☁</i><strong id="tileCloud">—</strong><small>Nubes</small></div></div></div></section>
  </aside>
 </main>
 <div id="mobileBackdrop" class="mobileBackdrop" hidden></div>
@@ -496,10 +492,10 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
     const w=d.current;if(!w)throw Error('Sin datos');weather=w;weatherDate=w.time;
     const values={Temp:w.temperature_2m+' °C',Wind:w.wind_speed_10m+' km/h',Gust:w.wind_gusts_10m+' km/h',Cloud:w.cloud_cover+' %'};
     for(const [key,value] of Object.entries(values)){
-     $('side'+key).textContent=value;$('wx'+key).textContent=value;$('tile'+key).textContent=value;
+     $('side'+key).textContent=value;
     }
     $('weatherNote').textContent='Open-Meteo · '+w.time+' · coordenadas '+ll.lat.toFixed(3)+', '+ll.lng.toFixed(3);
-    $('wxTime').textContent='Open-Meteo · '+w.time+' · viento '+w.wind_direction_10m+'° · previsión, no medición local';
+    $('weatherDetail').textContent='Viento '+w.wind_direction_10m+'° · previsión, no medición local';
     const hours=$('weatherHours');hours.replaceChildren();
     const hourly=d.hourly||{},times=hourly.time||[];
     const now=d.current?.time||'';
