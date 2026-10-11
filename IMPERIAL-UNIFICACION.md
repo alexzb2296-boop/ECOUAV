@@ -92,3 +92,12 @@ Fecha de auditoría: 2026-10-11
 - No se incluyen DEM locales ni pronósticos meteorológicos en los proyectos; la biblioteca DEM usa almacenamiento separado en IndexedDB. Los proyectos de la versión antigua no se convierten automáticamente todavía.
 - Actualizado el lanzador `escritorio.html` y verificada la sintaxis JavaScript.
 - **Pendiente:** pruebas manuales reales en el navegador (guardar/recargar, cuota de almacenamiento, respuesta horaria de Open-Meteo), compatibilidad import/export de proyectos con la versión antigua y adaptación móvil/tablet desde la misma aplicación.
+
+## Progreso — interfaz única adaptable (2026-10-11)
+
+- El núcleo funcional **`desktop-v2.html`**, previamente diseñado para tres columnas, ahora utiliza `width=device-width` y puntos de ruptura para escritorio (>1100 px), tablet (721–1100 px) y móvil (≤720 px).
+- En tablet y móvil, las columnas de herramientas y datos se transforman en paneles laterales accesibles desde una barra inferior de tres acciones: **Herramientas, Mapa y Datos**; se añaden cierre por fondo y tecla Escape, y actualización del tamaño de Leaflet ante cambios de ventana o panel.
+- Se compactan buscador, cabecera, visor 3D, leyendas y controles de mapa para teléfonos sin duplicar el código cartográfico.
+- Nueva URL de entrada para la aplicación unificada: **`imperial.html`**, que abre el mismo motor `desktop-v2.html`. **`index.html` legado permanece operativo temporalmente** por seguridad de la migración; todavía no se ha redirigido el dominio raíz.
+- Actualizado el lanzador `escritorio.html` para refrescar el contenido del iframe en el ordenador.
+- Verificada sintaxis de JavaScript; **pendiente prueba de interacción en navegadores reales** (incluidas orientaciones móviles, Safari iOS, capas, flujos de importación y guardado) antes de retirar el legado o declarar equivalencia completa.
