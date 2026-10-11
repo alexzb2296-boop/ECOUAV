@@ -160,3 +160,13 @@ Fecha de auditoría: 2026-10-11
 - Visualización del contorno y las cuatro esquinas, zoom a zona y borrado separado del modo de cuadrícula por centro/ancho/alto preexistente.
 - **Limitación:** en cuadriláteros irregulares las celdas no son cuadrados métricos exactos; las dimensiones declaradas son aproximaciones según los lados. No es una retícula UTM certificada.
 - Validación estática de JavaScript e IDs HTML realizada; pendientes pruebas de uso reales en navegador.
+
+## Progreso — capa de relieve 3D del mapa (2026-10-11)
+
+- El visor Three.js existente se ha ampliado con **modo de capa 3D a pantalla de mapa completa** mediante el interruptor «Capa 3D sobre el mapa», con control de retorno a 2D.
+- Se puede generar una malla de elevaciones de 15 × 15 muestras centrada en el mapa o en la posición de antena existente, con extensiones de **800 × 800 m**, **2 × 2 km** y **5 × 5 km**.
+- La exageración vertical se elige entre **1× (escala real relativa)**, **2×** y **4×**. La geometría usa cotas en metros y el escalado horizontal correspondiente a la extensión solicitada.
+- Se priorizan las alturas del **GeoTIFF local previamente importado**, siempre que cubra todas las muestras y contenga valores válidos. En otro caso, la fuente es **Open-Meteo Elevation**.
+- Se elimina de este relieve el lóbulo ilustrativo superpuesto, para que el visor sea exclusivamente cartográfico. La representación 3D sigue siendo simplificada, no fotogramétrica ni una predicción de vuelo.
+- El lanzador `escritorio.html` actualiza el parámetro de caché para esta revisión.
+- **Comprobaciones:** sintaxis JS correcta, controles presentes, sin IDs duplicados ni referencias de IDs ausentes. **Pendiente:** prueba visual/WebGL en ordenador y móviles; rendimiento de consultas remotas y verificación cartográfica contra DEM de referencia.
