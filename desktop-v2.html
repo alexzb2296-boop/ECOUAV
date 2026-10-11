@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=1440,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#071522">
 <title>IMPERIAL · Escritorio</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
@@ -143,12 +143,72 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
 #demPanel input[type=range]{width:85px;accent-color:#3ad0ff}#demPanel .sideMessage{overflow-wrap:anywhere}
 
 .localProjectInput,.localProjectSelect{display:block;width:100%;min-width:0;background:#122d40;color:#f1faff;border:1px solid #3b657e;padding:7px;border-radius:6px;font-size:11px;margin:6px 0 7px}#weatherHours{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}#weatherHours>div{padding:5px 3px;background:#122d40;border-radius:4px;text-align:center;font-size:10px;color:#d4edf9}#weatherHours small{display:block;color:#9fbbcb;margin-bottom:3px}
+
+/* IMPERIAL: a single responsive application with the desktop engine. */
+.mobileDrawerButton,.mobileBottomNav{display:none}
+.mobileBackdrop[hidden]{display:none!important}
+@media(max-width:1100px){
+ html,body{overflow:hidden}
+ #app{height:100dvh;min-height:0;min-width:0;grid-template-rows:56px minmax(0,1fr) 31px}
+ main{grid-template-columns:minmax(0,1fr);position:relative;min-width:0}
+ header{gap:9px;padding:0 9px}
+ .brand{font-size:18px;flex-shrink:0}
+ .brand .imperialBrandLogo{width:30px!important;height:30px!important}
+ .headerNav{display:none}
+ .headerSearch{width:auto;min-width:120px;flex:1;margin-left:0}
+ .liveStatus{gap:5px}
+ .liveStatus>span:first-child,.liveStatus>span:last-child{display:none}
+ #desktopLink{display:none}
+ #planButton{white-space:nowrap;padding:8px;font-size:11px}
+ .mobileDrawerButton{display:block;flex:0 0 auto;background:#102e44;color:#e6f8ff;border:1px solid #39718e;border-radius:7px;height:34px;width:36px}
+ .sidebar,.rightPanel{position:absolute;z-index:1100;top:0;bottom:0;width:min(370px,88vw);box-shadow:0 8px 28px #0009;transform:translateX(-110%);transition:transform .2s ease;visibility:hidden;overflow-y:auto;overscroll-behavior:contain}
+ .sidebar.mobileShown{visibility:visible;transform:translateX(0)}
+ .rightPanel{right:0;left:auto;transform:translateX(110%);border-left:1px solid #315870}
+ .rightPanel.mobileShown{visibility:visible;transform:translateX(0)}
+ .mapShell{grid-column:1;grid-row:1;min-height:0}
+ .mobileBackdrop{display:block;position:absolute;z-index:1050;inset:0;background:#0008}
+ .mobileBottomNav{display:none}
+ .mapStatus{max-width:calc(100% - 16px);gap:5px;flex-wrap:wrap;font-size:9px}
+ #preview3d{width:min(650px,75%);height:205px;bottom:48px}
+}
+@media(max-width:720px){
+ #app{grid-template-rows:54px minmax(0,1fr) 58px}
+ header{gap:6px;padding:0 7px}
+ .brand{font-size:15px;letter-spacing:0;gap:4px}
+ .brand .imperialBrandLogo{width:26px!important;height:26px!important}
+ .headerSearch{min-width:0;height:34px;padding:0 5px}
+ .headerSearch input{font-size:11px}
+ .liveStatus{display:none}
+ #planButton{padding:7px;font-size:10px;max-width:99px;overflow:hidden;text-overflow:ellipsis}
+ .mobileBottomNav{display:grid;grid-template-columns:repeat(3,1fr);position:relative;z-index:1200;background:#091e2c;border-top:1px solid #336780;padding-bottom:env(safe-area-inset-bottom,0px);height:calc(58px + env(safe-area-inset-bottom,0px));margin-bottom:calc(-1*env(safe-area-inset-bottom,0px))}
+ .mobileBottomNav button{border:0;background:transparent;color:#c7e3f3;font-size:19px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:1px}
+ .mobileBottomNav button span{font-size:10px}
+ .mobileBottomNav button.mobileSelected{background:#19445a;color:#65d7ff}
+ .sidebar,.rightPanel{width:min(390px,94vw)}
+ footer{display:none}
+ #app{grid-template-rows:54px minmax(0,1fr);padding-bottom:calc(58px + env(safe-area-inset-bottom,0px))}
+ .mobileBottomNav{position:absolute;bottom:0;left:0;right:0}
+ .mapTopLabel{top:8px;left:8px;gap:5px}
+ .compass{width:40px;height:40px}
+ .compass span{font-size:21px;line-height:21px}
+ .mapHint{max-width:190px;padding:5px;font-size:9px}
+ .mapActions{right:7px;top:7px;gap:4px}
+ .mapActions button{width:33px;height:33px}
+ .mapLegend{display:none}
+ .mapStatus{left:6px;bottom:7px;max-width:calc(100% - 50px)}
+ #preview3d{width:calc(100% - 65px);left:6px;transform:none;max-width:none;height:165px;bottom:51px}
+ #preview3d.collapsed{width:calc(100% - 65px);height:34px}
+ #threeLegend{display:none}
+}
+@media(prefers-reduced-motion:reduce){.sidebar,.rightPanel{transition:none}}
+
 </style>
 <link rel="stylesheet" href="./imperial-brand.css?v=6bfc8b7">
 </head>
 <body>
 <div id="app">
 <header>
+ <button type="button" id="mobileOpenTools" class="mobileDrawerButton" aria-label="Abrir herramientas" aria-controls="imperialTools" aria-expanded="false">☰</button>
  <div class="brand" aria-label="IMPERIAL"><span class="imperialBrandLogo" aria-hidden="true"></span>IMPERIAL</div>
  <nav class="headerNav" aria-label="Secciones principales"><button data-section="planning" class="active">PLANIFICACIÓN</button><button data-section="terrain">TERRENO</button><button data-section="antenna">ANTENAS</button><button data-section="flights">VUELOS</button><button data-section="projects">PROYECTOS</button></nav>
  <form id="searchForm" class="headerSearch" autocomplete="off"><span aria-hidden="true">⌕</span><input id="searchCoords" aria-label="Coordenadas de destino" placeholder="Coordenadas: latitud, longitud"><button aria-label="Ir" title="Ir a coordenadas" type="submit">↵</button></form>
@@ -157,7 +217,7 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
  <a id="desktopLink" href="./index.html" title="Abrir herramientas clásicas">Clásico ↗</a>
 </header>
 <main>
- <aside class="sidebar" aria-label="Herramientas y capas">
+ <aside class="sidebar" id="imperialTools" aria-label="Herramientas y capas">
   <nav class="sidebarNav">
    <button type="button" class="selected" data-section="terrain"><span class="navIcon">⛰</span>Terreno</button>
    <button type="button" data-section="weather"><span class="navIcon">☁</span>Meteo</button>
@@ -256,7 +316,7 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
   </section>
   <div class="mapStatus"><span id="mapCoords">WGS84 —</span><span id="mapZoom">Zoom —</span><span id="mapSource">Satélite Esri</span></div>
  </section>
- <aside class="rightPanel" aria-label="Datos del punto y la ruta">
+ <aside class="rightPanel" id="imperialData" aria-label="Datos del punto y la ruta">
   <section class="infoCard"><div class="infoTitle">⌖ &nbsp;Punto seleccionado</div><div class="infoBody">
    <div class="selectedName"><span id="selectedTitle">Selecciona un punto</span><span class="smallTag" id="selectedType">SIN DATOS</span></div>
    <img id="selectedThumb" alt="Vista satelital aproximada del entorno seleccionado">
@@ -286,6 +346,8 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
   <section class="infoCard"><div class="infoTitle">◉ &nbsp;Meteorología · Open-Meteo</div><div class="infoBody"><div class="weatherTiles"><div><i>☀</i><strong id="tileTemp">—</strong><small>Temp.</small></div><div><i>≋</i><strong id="tileWind">—</strong><small>Viento</small></div><div><i>⇝</i><strong id="tileGust">—</strong><small>Rachas</small></div><div><i>☁</i><strong id="tileCloud">—</strong><small>Nubes</small></div></div></div></section>
  </aside>
 </main>
+<div id="mobileBackdrop" class="mobileBackdrop" hidden></div>
+<nav class="mobileBottomNav" aria-label="Navegación móvil"><button type="button" id="mobileTabTools" aria-controls="imperialTools" aria-expanded="false">☰ <span>Herramientas</span></button><button type="button" id="mobileTabMap" aria-current="page">▧ <span>Mapa</span></button><button type="button" id="mobileTabData" aria-controls="imperialData" aria-expanded="false">◉ <span>Datos</span></button></nav>
 <footer><span id="footerCoords">⌖ WGS84 · Centro del mapa</span><span>ESCALA APROX. · <strong id="footerScale">—</strong> &nbsp;|&nbsp; PROYECCIÓN WGS84</span><span id="footerSource">Ortofoto/MDT según fuente seleccionada · GNSS no conectado</span></footer>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -858,6 +920,35 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
   if(section==='planning'||section==='flights')toast('Pulsa «Planificar vuelo» para empezar una ruta manual.');
  }
  document.querySelectorAll('[data-section]').forEach(b=>b.onclick=()=>switchSection(b.dataset.section));
+
+ // Mobile and tablet navigation: existing map and controls, never a second app.
+ const mobileBp=window.matchMedia('(max-width:1100px)');
+ let mobilePanel='';
+ const mobileDrawerNames={tools:'imperialTools',data:'imperialData'};
+ function mobileSetPanel(next){
+  mobilePanel=mobileBp.matches?next:'';
+  const showTools=mobilePanel==='tools',showData=mobilePanel==='data';
+  $('imperialTools').classList.toggle('mobileShown',showTools);
+  $('imperialData').classList.toggle('mobileShown',showData);
+  $('mobileBackdrop').hidden=!mobilePanel;
+  $('mobileOpenTools').setAttribute('aria-expanded',String(showTools));
+  $('mobileTabTools').setAttribute('aria-expanded',String(showTools));
+  $('mobileTabData').setAttribute('aria-expanded',String(showData));
+  for(const [name,id] of [['tools','mobileTabTools'],['data','mobileTabData'],['map','mobileTabMap']]){
+   const active=mobilePanel===name||(!mobilePanel&&name==='map');$(id).classList.toggle('mobileSelected',active);
+   if(name==='map')$(id).setAttribute('aria-current',active?'page':'false');
+  }
+  if(!mobilePanel)requestAnimationFrame(()=>map.invalidateSize({pan:false}));
+ }
+ $('mobileOpenTools').onclick=()=>mobileSetPanel(mobilePanel==='tools'?'':'tools');
+ $('mobileTabTools').onclick=()=>mobileSetPanel(mobilePanel==='tools'?'':'tools');
+ $('mobileTabData').onclick=()=>mobileSetPanel(mobilePanel==='data'?'':'data');
+ $('mobileTabMap').onclick=()=>mobileSetPanel('');
+ $('mobileBackdrop').onclick=()=>mobileSetPanel('');
+ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&mobilePanel)mobileSetPanel('')});
+ mobileBp.addEventListener('change',()=>mobileSetPanel(''));
+ window.addEventListener('resize',()=>{requestAnimationFrame(()=>map.invalidateSize({pan:false}));if(typeof resizeThree==='function')requestAnimationFrame(resizeThree)});
+ mobileSetPanel('');
  function showClock(){$('clock').textContent=new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}
  showClock();setInterval(showClock,30000);
  resetDemo();
