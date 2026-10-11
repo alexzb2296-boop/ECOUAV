@@ -118,3 +118,11 @@ Fecha de auditoría: 2026-10-11
 - Se ha integrado **importación y exportación de sesiones de proyectos IMPERIAL en JSON**, con comprobación de versión, límites de archivo y validación de coordenadas. No equivale al formato GeoJSON que permanece disponible por separado.
 - Controles existentes y CSS adaptable preservados. Revisión estática: sintaxis JS correcta, ningún ID HTML duplicado, ninguna referencia `$('id')` sin nodo correspondiente.
 - **Pendiente:** publicación GitHub Pages de los últimos commits y prueba completa en navegador y dispositivos. Se mantiene el respaldo accesible para regresar al sistema anterior si hiciera falta.
+
+## Copias de seguridad de proyectos (2026-10-11)
+
+- El panel Proyectos de `desktop-v2.html` incluye ahora **«Copia de todos»** y **«Importar copia»** para trasladar el catálogo completo de sesiones locales entre navegadores o dispositivos, sin usar servidor.
+- La exportación descarga un JSON con `format: "IMPERIAL-backup"`, `formatVersion: 1` y un máximo de 15 proyectos. La restauración acepta archivos de hasta 1 MB, valida **todos** los proyectos, comprueba la capacidad local disponible y solo después guarda el conjunto; así evita importaciones parciales y reemplazos silenciosos.
+- Los proyectos importados adquieren IDs nuevos; los ya guardados se conservan. La copia **no incluye DEM almacenados en IndexedDB**.
+- Revisión estática: JavaScript válido, 139 IDs únicos en HTML, y ninguna referencia `$('id')` sin elemento correspondiente.
+- Falta ejecutar pruebas manuales de descargas y carga de archivos en Safari iOS y navegadores de escritorio.
