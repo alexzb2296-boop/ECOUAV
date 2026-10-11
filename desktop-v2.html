@@ -139,6 +139,8 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
 
 /* Terrain profile graphs */
 .terrainProfileGraph{width:100%;height:112px;display:block;margin:8px 0;border:1px solid #2d5065;border-radius:7px;background:#071b28}.terrainProfileGraph[hidden]{display:none}.terrainProfileGraph text{fill:#b8d9ec;font-size:12px}.terrainProfileGraph .profileLine{fill:none;stroke:#42cfff;stroke-width:3;vector-effect:non-scaling-stroke}.terrainProfileGraph .profileGrid{stroke:#476478;stroke-width:1;opacity:.65}.terrainProfileGraph .profileFill{fill:#238db9;opacity:.17}
+
+#demPanel input[type=range]{width:85px;accent-color:#3ad0ff}#demPanel .sideMessage{overflow-wrap:anywhere}
 </style>
 <link rel="stylesheet" href="./imperial-brand.css?v=6bfc8b7">
 </head>
@@ -201,6 +203,15 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
    <div class="geoMeasures" id="terrainRouteStats">Sin perfil de ruta.</div>
    <svg id="terrainRouteGraph" class="terrainProfileGraph" viewBox="0 0 600 160" role="img" aria-label="Gráfico de elevaciones de ruta" hidden></svg>
    <p class="sideMessage">Cotas aproximadas: Open-Meteo Elevation. No son datos topográficos certificados ni sustituyen una comprobación sobre el terreno.</p>
+  </div></section>
+  <section class="sideSection" id="demPanel"><div class="sectionTitle">▤ &nbsp;DEM GeoTIFF y curvas <b>⌃</b></div><div class="sideContent">
+  <div class="geoTools"><button class="smallAction" id="demImport" type="button">↑ Importar GeoTIFF</button><button class="smallAction" id="demRestore" type="button">↻ Recuperar DEM</button><button class="smallAction" id="demToggle" type="button">◉ Mostrar / ocultar</button><button class="smallAction" id="demDelete" type="button">✕ Eliminar DEM</button></div>
+  <input id="demFile" type="file" accept=".tif,.tiff,image/tiff" hidden>
+  <div class="selectRow"><label for="demOpacity">Opacidad DEM</label><input id="demOpacity" type="range" min="0" max="100" value="55"></div>
+  <div class="selectRow"><label for="demContourInterval">Intervalo de curvas</label><select id="demContourInterval"><option value="10">10 m</option><option value="20" selected>20 m</option><option value="50">50 m</option><option value="100">100 m</option></select></div>
+  <div class="geoTools"><button class="smallAction" id="demDrawContours" type="button">≋ Calcular curvas</button><button class="smallAction" id="demClearContours" type="button">✕ Quitar curvas</button></div>
+  <p class="sideMessage" id="demStatus" role="status">Solo GeoTIFF EPSG:4326 · máximo 60 MB.</p><p class="sideMessage" id="demContourStatus" role="status">Sin curvas calculadas.</p>
+  <p class="sideMessage">El DEM se conserva localmente en este navegador. Las curvas son aproximadas y no sustituyen datos topográficos certificados.</p>
   </div></section>
   <section class="sideSection"><div class="sectionTitle">◉ &nbsp;Meteorología <b>⌃</b></div><div class="sideContent">
    <div class="selectRow"><label for="weatherTarget">Ubicación</label><select id="weatherTarget"><option value="selected">Punto seleccionado</option><option value="center">Centro del mapa</option></select></div>
@@ -556,6 +567,118 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
   }catch(err){if(req!==terrainRouteRequest)return;$('terrainRouteStatus').textContent='No se pudo consultar el perfil de ruta: '+err.message}
  }
  $('terrainAnalyzeRoute').onclick=terrainRunRoute;
+
+ // DEM GeoTIFF EPSG:4326 and approximate marching-squares contours.
+ let demOverlay=null,demRaster=null,demVisible=true,demEpoch=0,contourEpoch=0;
+ const demContoursLayer=L.layerGroup().addTo(map);
+ const demStatus=$('demStatus'),contourStatus=$('demContourStatus');
+ const clearContours=()=>{contourEpoch++;demContoursLayer.clearLayers();contourStatus.textContent='Curvas eliminadas.'};
+ let demLibraryPromise=null;
+ function getGeoTIFF(){
+  if(window.GeoTIFF)return Promise.resolve(window.GeoTIFF);
+  if(demLibraryPromise)return demLibraryPromise;
+  demLibraryPromise=new Promise((resolve,reject)=>{
+   const t=document.createElement('script');t.src='https://cdn.jsdelivr.net/npm/geotiff@2.1.3/dist-browser/geotiff.js';
+   t.onload=()=>window.GeoTIFF?resolve(window.GeoTIFF):reject(Error('Biblioteca GeoTIFF no disponible'));
+   t.onerror=()=>reject(Error('No se pudo cargar el lector GeoTIFF'));document.head.appendChild(t);
+  }).catch(err=>{demLibraryPromise=null;throw err});
+  return demLibraryPromise;
+ }
+ function demSample(lat,lng){
+  const r=demRaster;if(!r)return null;const b=r.bbox;
+  if(lat<b[1]||lat>b[3]||lng<b[0]||lng>b[2])return null;
+  const x=Math.min(r.w-1,Math.max(0,Math.round((lng-b[0])/(b[2]-b[0])*(r.w-1))));
+  const y=Math.min(r.h-1,Math.max(0,Math.round((b[3]-lat)/(b[3]-b[1])*(r.h-1))));
+  const v=Number(r.raster[y*r.w+x]);return Number.isFinite(v)&&(r.nodata===null||r.nodata!==v)?v:null;
+ }
+ async function showDem(blob,name){
+  if(blob.size>60*1024*1024)throw Error('Archivo demasiado grande (máximo 60 MB)');
+  const id=++demEpoch;demStatus.textContent='Procesando GeoTIFF...';
+  const lib=await getGeoTIFF();
+  const tiff=await lib.fromArrayBuffer(await blob.arrayBuffer());
+  const img=await tiff.getImage(),keys=img.getGeoKeys(),b=img.getBoundingBox();
+  if(Number(keys.GeographicTypeGeoKey)!==4326||keys.ProjectedCSTypeGeoKey)throw Error('Solo GeoTIFF EPSG:4326 (WGS84)');
+  if(!b||b.length!==4||b.some(x=>!Number.isFinite(x))||b[0]<-180||b[2]>180||b[1]<-90||b[3]>90||b[2]<=b[0]||b[3]<=b[1])throw Error('Georreferencia inválida');
+  const origW=img.getWidth(),origH=img.getHeight();
+  if(origW<2||origH<2||origW*origH>150000000)throw Error('Raster no admitido');
+  const scale=Math.min(1,640/Math.max(origW,origH)),w=Math.max(2,Math.round(origW*scale)),h=Math.max(2,Math.round(origH*scale));
+  const raster=await img.readRasters({samples:[0],width:w,height:h,interleave:true,resampleMethod:'bilinear'});
+  if(id!==demEpoch)return;
+  const rawNoData=img.getGDALNoData(),nodata=rawNoData===null?null:Number(rawNoData);
+  let min=Infinity,max=-Infinity;
+  for(const v of raster){if(Number.isFinite(v)&&(nodata===null||v!==nodata)){min=Math.min(min,v);max=Math.max(max,v)}}
+  if(!Number.isFinite(min))throw Error('Sin cotas válidas');
+  const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
+  const ctx=canvas.getContext('2d');if(!ctx)throw Error('Canvas no disponible');
+  const pixel=ctx.createImageData(w,h);
+  for(let i=0;i<raster.length;i++){
+   const value=Number(raster[i]);if(!Number.isFinite(value)||(nodata!==null&&value===nodata))continue;
+   const t=Math.max(0,Math.min(1,(value-min)/Math.max(1,max-min))),j=i*4;
+   pixel.data[j]=Math.round(36+179*t);pixel.data[j+1]=Math.round(85+120*t);pixel.data[j+2]=Math.round(60+109*t);pixel.data[j+3]=210;
+  }
+  ctx.putImageData(pixel,0,0);
+  const layer=L.imageOverlay(canvas.toDataURL('image/png'),[[b[1],b[0]],[b[3],b[2]]],{opacity:Number($('demOpacity').value)/100,interactive:false});
+  if(demOverlay)map.removeLayer(demOverlay);demOverlay=layer;
+  demRaster={bbox:b,w,h,raster,nodata};
+  if(demVisible)layer.addTo(map);
+  clearContours();map.fitBounds(layer.getBounds(),{maxZoom:13});
+  demStatus.textContent=name+' · '+origW+'×'+origH+' · cotas '+Math.round(min)+'–'+Math.round(max)+' m · '+(demVisible?'visible':'oculto');
+ }
+ async function demStorage(op,data){
+  const db=await new Promise((resolve,reject)=>{
+   const req=indexedDB.open('imperial-dem-v1',1);
+   req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains('store'))req.result.createObjectStore('store')};
+   req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);
+  });
+  return new Promise((resolve,reject)=>{
+   const tx=db.transaction('store',op==='get'?'readonly':'readwrite'),store=tx.objectStore('store');
+   const req=op==='get'?store.get('local'):op==='put'?store.put(data,'local'):store.delete('local');
+   req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);
+   tx.oncomplete=()=>db.close();tx.onerror=()=>{db.close();reject(tx.error)};
+  });
+ }
+ $('demImport').onclick=()=>$('demFile').click();
+ $('demFile').onchange=async event=>{
+  const file=event.target.files?.[0];if(!file)return;
+  try{await showDem(file,file.name);await demStorage('put',{name:file.name,blob:file});demStatus.textContent+=' · guardado localmente'}
+  catch(err){demStatus.textContent='Importación: '+err.message}finally{event.target.value=''}
+ };
+ $('demRestore').onclick=async()=>{try{const item=await demStorage('get');if(!item?.blob)throw Error('No hay DEM almacenado');await showDem(item.blob,item.name||'DEM local')}catch(err){demStatus.textContent='Recuperación: '+err.message}};
+ $('demToggle').onclick=()=>{demVisible=!demVisible;if(demOverlay){if(demVisible)demOverlay.addTo(map);else map.removeLayer(demOverlay)}demStatus.textContent='DEM '+(demVisible?'visible':'oculto')};
+ $('demOpacity').oninput=()=>{if(demOverlay)demOverlay.setOpacity(Number($('demOpacity').value)/100)};
+ $('demDelete').onclick=async()=>{demEpoch++;demRaster=null;if(demOverlay)map.removeLayer(demOverlay);demOverlay=null;clearContours();try{await demStorage('delete');demStatus.textContent='DEM eliminado'}catch(err){demStatus.textContent='DEM retirado del mapa; error de almacenamiento: '+err.message}};
+ function edgeAt(z,p,q,a,b){const t=(z-a)/(b-a);return [p[0]+(q[0]-p[0])*t,p[1]+(q[1]-p[1])*t]}
+ function makeContours(vals,rows,cols,b,z){
+  let count=0;const point=(r,c)=>[b[1]+(b[3]-b[1])*r/(rows-1),b[0]+(b[2]-b[0])*c/(cols-1)];
+  for(let r=0;r<rows-1;r++)for(let c=0;c<cols-1;c++){
+   const v=[vals[r*cols+c],vals[r*cols+c+1],vals[(r+1)*cols+c+1],vals[(r+1)*cols+c]];
+   if(v.some(n=>!Number.isFinite(n)))continue;
+   const p=[point(r,c),point(r,c+1),point(r+1,c+1),point(r+1,c)],hits=[];
+   for(let k=0;k<4;k++){const next=(k+1)%4;if((v[k]<z)!==(v[next]<z))hits.push(edgeAt(z,p[k],p[next],v[k],v[next]))}
+   if(hits.length===2){L.polyline(hits,{weight:1.5,color:'#f2f8ff',opacity:.75,interactive:false}).addTo(demContoursLayer);count++}
+   if(hits.length===4){for(let k=0;k<4;k+=2){L.polyline([hits[k],hits[k+1]],{weight:1.5,color:'#f2f8ff',opacity:.75,interactive:false}).addTo(demContoursLayer);count++}}
+   if(count>=1800)return count;
+  }return count;
+ }
+ $('demDrawContours').onclick=async()=>{
+  const id=++contourEpoch,interval=Number($('demContourInterval').value),bounds=map.getBounds(),b=[bounds.getWest(),bounds.getSouth(),bounds.getEast(),bounds.getNorth()];
+  const rows=18,cols=18,points=[];for(let r=0;r<rows;r++)for(let c=0;c<cols;c++)points.push({lat:b[1]+(b[3]-b[1])*r/(rows-1),lng:b[0]+(b[2]-b[0])*c/(cols-1)});
+  contourStatus.textContent='Calculando curvas...';
+  try{
+   const vals=demRaster?points.map(p=>demSample(p.lat,p.lng)):await fetchElevations(points);
+   if(id!==contourEpoch)return;
+   if(vals.length!==points.length)throw Error('Muestras incompletas');
+   const valid=vals.filter(Number.isFinite);
+   if(valid.length<6)throw Error('No hay cotas suficientes');
+   const start=Math.ceil(Math.min(...valid)/interval)*interval,end=Math.floor(Math.max(...valid)/interval)*interval;
+   if((end-start)/interval>60)throw Error('Demasiados niveles: aumenta el intervalo');
+   demContoursLayer.clearLayers();let n=0;
+   for(let level=start;level<=end;level+=interval)n+=makeContours(vals,rows,cols,b,level);
+   contourStatus.textContent='Curvas '+(demRaster?'DEM local':'Open-Meteo')+' · '+interval+' m · '+n+' segmentos · aproximadas';
+  }catch(err){if(id===contourEpoch)contourStatus.textContent='Curvas: '+err.message}
+ };
+ $('demClearContours').onclick=clearContours;
+ $('demContourInterval').onchange=clearContours;
  map.on('click',ev=>{
   if(terrainPick){terrainChoose({lat:ev.latlng.lat,lng:ev.latlng.lng});return;}
   if(geoShapeMode==='geoRadius'||geoShapeMode==='geoArea'){geoShapeClick({lat:ev.latlng.lat,lng:ev.latlng.lng});return;}
