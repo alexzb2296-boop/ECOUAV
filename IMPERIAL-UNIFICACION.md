@@ -56,3 +56,12 @@ Fecha de auditoría: 2026-10-11
 - Integrada medición de dos puntos A/B con distancia geodésica Leaflet y azimut inicial respecto al norte verdadero; trazado y botón de limpieza.
 - Actualizado el iframe de `escritorio.html` para cargar el nuevo código.
 - **Verificado:** sintaxis de JavaScript tras el cambio. **Pendiente:** validación visual y funcional en navegador, comprobación numérica de la transformación UTM frente a muestras de referencia; MGRS, radio, área y cuadrículas siguen pendientes.
+
+## Progreso — bloque cartografía 2 (2026-10-11)
+
+- Escritorio: conversión WGS84 → MGRS mediante `mgrs@2.1.0` y búsqueda/centrado desde una cadena MGRS.
+- Medición de radio con círculo cartográfico Leaflet y cálculo de superficie circular aproximado; límite configurable 1–100000 m.
+- Delimitación de polígonos por vértices (máximo 150), cierre explícito y superficie esférica aproximada.
+- Cuadrícula de referencia visual con pasos de 100, 250, 500, 1000 y 5000 m; supresión de mallas densas y actualización al mover el mapa. **Nota:** cuadrícula visual aproximada en latitud/longitud, no una malla UTM reglamentaria ni cuadrícula de zona con celdas geodésicas exactas.
+- Se mantuvieron las capas de ruta/POI/antena y se aislaron las figuras en capas propias; actualizado `escritorio.html`.
+- Verificada sintaxis JavaScript; sin pruebas integrales de ejecución y sin validación numérica contra datos de control. Quedan pendientes cuadrícula UTM de zona real, test de librería externa y controles móviles.
