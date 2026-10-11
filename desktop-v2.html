@@ -253,6 +253,11 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
    <div class="geoTools"><button id="geoRadius" class="smallAction" type="button" aria-pressed="false">◯ Radio</button><button id="geoArea" class="smallAction" type="button" aria-pressed="false">▱ Área</button><button id="geoFinishArea" class="smallAction" type="button">✓ Terminar área</button><button id="geoClearShapes" class="smallAction" type="button">✕ Limpiar figuras</button></div>
    <div class="geoFields"><input id="geoRadiusMeters" type="number" min="1" max="100000" step="1" value="500" aria-label="Radio en metros"><select id="geoGridStep" aria-label="Tamaño de cuadrícula"><option value="100">Cuadrícula 100 m</option><option value="250">Cuadrícula 250 m</option><option value="500" selected>Cuadrícula 500 m</option><option value="1000">Cuadrícula 1 km</option><option value="5000">Cuadrícula 5 km</option></select></div>
    <label class="setting"><span># Cuadrícula visual del mapa</span><input type="checkbox" class="toggle" id="geoGridToggle"></label>
+   <div class="sectionTitle" style="margin:11px -11px 8px">▦ &nbsp;Cuadrícula de zona</div>
+   <div class="geoFields"><input type="number" id="zoneGridWidth" min="50" max="20000" value="1000" step="50" aria-label="Anchura de zona en metros" placeholder="Ancho (m)"><input type="number" id="zoneGridHeight" min="50" max="20000" value="1000" step="50" aria-label="Altura de zona en metros" placeholder="Alto (m)"></div>
+   <div class="geoFields"><select id="zoneGridCell" aria-label="Tamaño de celda de zona"><option value="50">Celda 50 m</option><option value="100" selected>Celda 100 m</option><option value="250">Celda 250 m</option><option value="500">Celda 500 m</option></select><input id="zoneGridName" type="text" maxlength="45" value="Zona 1" aria-label="Nombre de cuadrícula"></div>
+   <div class="geoTools"><button class="smallAction" type="button" id="zoneGridCreate">▦ Crear / actualizar</button><button class="smallAction" type="button" id="zoneGridMove" aria-pressed="false">⌖ Cambiar centro</button><button class="smallAction" type="button" id="zoneGridZoom">◎ Ver zona</button><button class="smallAction" type="button" id="zoneGridDelete">✕ Borrar zona</button></div>
+   <p id="zoneGridStatus" class="sideMessage" role="status">Define dimensiones y pulsa «Crear». Arrastra el marcador central para desplazarla.</p>
    <p id="geoShapeOutput" class="geoMeasures">Figuras: sin geometrías. El radio usa metros; el área se cierra con «Terminar área».</p>
   </div></section>
   <section class="sideSection"><div class="sectionTitle">⛰ &nbsp;Terreno <b>⌃</b></div><div class="sideContent">
@@ -767,7 +772,49 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
  };
  $('demClearContours').onclick=clearContours;
  $('demContourInterval').onchange=clearContours;
+
+ // Editable local-zone grid. Coordinates are approximate metric conversions, not a certified UTM grid.
+ const zoneGridLayer=L.layerGroup().addTo(map);
+ let zoneGridCenter=null,zoneGridMoving=false,zoneGridBounds=null;
+ function zoneGridStatus(msg){$('zoneGridStatus').textContent=msg}
+ function zoneGridRead(){
+  const width=Number($('zoneGridWidth').value),height=Number($('zoneGridHeight').value),cell=Number($('zoneGridCell').value);
+  if(!Number.isFinite(width)||!Number.isFinite(height)||width<50||height<50||width>20000||height>20000)throw Error('Ancho y alto deben estar entre 50 y 20000 m');
+  if(![50,100,250,500].includes(cell))throw Error('Tamaño de celda no válido');
+  if(Math.ceil(width/cell)*Math.ceil(height/cell)>2500)throw Error('Demasiadas celdas. Aumenta el tamaño o reduce la zona');
+  return {width,height,cell};
+ }
+ function zoneGridDraw(){
+  if(!zoneGridCenter)return;
+  const {width,height,cell}=zoneGridRead(),c=zoneGridCenter;
+  const latPerM=1/111320,lngPerM=1/(111320*Math.max(.1,Math.cos(c.lat*Math.PI/180)));
+  const south=c.lat-height/2*latPerM,north=c.lat+height/2*latPerM,west=c.lng-width/2*lngPerM,east=c.lng+width/2*lngPerM;
+  if(south< -90||north>90||west< -180||east>180)throw Error('Zona fuera de los límites del mapa');
+  zoneGridLayer.clearLayers();zoneGridBounds=L.latLngBounds([[south,west],[north,east]]);
+  L.rectangle(zoneGridBounds,{color:'#ffcf74',weight:2,fillColor:'#f6c36b',fillOpacity:.06}).addTo(zoneGridLayer);
+  const countX=Math.ceil(width/cell),countY=Math.ceil(height/cell);
+  for(let i=1;i<countX;i++){const lng=west+Math.min(i*cell,width)*lngPerM;L.polyline([[south,lng],[north,lng]],{color:'#ffcf74',weight:1,opacity:.65,interactive:false}).addTo(zoneGridLayer)}
+  for(let j=1;j<countY;j++){const lat=south+Math.min(j*cell,height)*latPerM;L.polyline([[lat,west],[lat,east]],{color:'#ffcf74',weight:1,opacity:.65,interactive:false}).addTo(zoneGridLayer)}
+  L.marker([c.lat,c.lng],{draggable:true,title:'Arrastra para mover la cuadrícula',autoPan:true})
+   .bindTooltip($('zoneGridName').value.trim().slice(0,45)||'Cuadrícula editable',{direction:'top'})
+   .on('dragend',e=>{zoneGridCenter={lat:e.target.getLatLng().lat,lng:e.target.getLatLng().lng};try{zoneGridDraw()}catch(err){zoneGridStatus(err.message)}})
+   .addTo(zoneGridLayer);
+  zoneGridStatus(($('zoneGridName').value.trim()||'Cuadrícula')+' · '+width+' × '+height+' m · '+cell+' m/celda · '+countX+' × '+countY+' celdas · centro '+c.lat.toFixed(5)+', '+c.lng.toFixed(5));
+ }
+ $('zoneGridCreate').onclick=()=>{try{zoneGridRead();if(!zoneGridCenter){const c=selected||map.getCenter();zoneGridCenter={lat:c.lat,lng:c.lng}}zoneGridDraw();toast('Cuadrícula de zona creada / actualizada')}catch(err){zoneGridStatus(err.message)}};
+ $('zoneGridMove').onclick=()=>{
+  zoneGridMoving=!zoneGridMoving;$('zoneGridMove').classList.toggle('geoActive',zoneGridMoving);$('zoneGridMove').setAttribute('aria-pressed',String(zoneGridMoving));
+  if(zoneGridMoving){setMode('inspect');if(typeof terrainStop==='function')terrainStop();if(typeof geoShapeMode!=='undefined')geoShapeMode='';for(const k of ['geoMeasure','geoRadius','geoArea']){$(k).classList.remove('geoActive');$(k).setAttribute('aria-pressed','false')}zoneGridStatus('Pulsa en el mapa para establecer el nuevo centro.')}
+  else zoneGridStatus('Cambio de centro desactivado.');
+ };
+ $('zoneGridZoom').onclick=()=>{if(zoneGridBounds)map.fitBounds(zoneGridBounds.pad(.2));else toast('Crea primero una cuadrícula de zona')};
+ $('zoneGridDelete').onclick=()=>{zoneGridCenter=null;zoneGridBounds=null;zoneGridMoving=false;zoneGridLayer.clearLayers();$('zoneGridMove').classList.remove('geoActive');$('zoneGridMove').setAttribute('aria-pressed','false');zoneGridStatus('Cuadrícula de zona eliminada.')};
+ $('zoneGridWidth').addEventListener('change',()=>{if(zoneGridCenter)try{zoneGridDraw()}catch(err){zoneGridStatus(err.message)}});
+ $('zoneGridHeight').addEventListener('change',()=>{if(zoneGridCenter)try{zoneGridDraw()}catch(err){zoneGridStatus(err.message)}});
+ $('zoneGridCell').addEventListener('change',()=>{if(zoneGridCenter)try{zoneGridDraw()}catch(err){zoneGridStatus(err.message)}});
+ $('zoneGridName').addEventListener('change',()=>{if(zoneGridCenter)try{zoneGridDraw()}catch(err){zoneGridStatus(err.message)}});
  map.on('click',ev=>{
+  if(zoneGridMoving){zoneGridCenter={lat:ev.latlng.lat,lng:ev.latlng.lng};zoneGridMoving=false;$('zoneGridMove').classList.remove('geoActive');$('zoneGridMove').setAttribute('aria-pressed','false');try{zoneGridDraw()}catch(err){zoneGridStatus(err.message)}return;}
   if(terrainPick){terrainChoose({lat:ev.latlng.lat,lng:ev.latlng.lng});return;}
   if(geoShapeMode==='geoRadius'||geoShapeMode==='geoArea'){geoShapeClick({lat:ev.latlng.lat,lng:ev.latlng.lng});return;}
   if(geoShapeMode==='geoMeasure'){geoMeasureClick({lat:ev.latlng.lat,lng:ev.latlng.lng});return;}
@@ -1038,7 +1085,7 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
  window.addEventListener('resize',()=>{requestAnimationFrame(()=>map.invalidateSize({pan:false}));if(typeof resizeThree==='function')requestAnimationFrame(resizeThree)});
  mobileSetPanel('');
  // Close the side panel after choosing a point-placement action.
- const mobileMapActions=new Set(['geoGo','geoMeasure','geoRadius','geoArea','terrainPickAB','planButton','placeAntenna','addPoiPanel','geoMgrsGo']);
+ const mobileMapActions=new Set(['geoGo','geoMeasure','geoRadius','geoArea','terrainPickAB','planButton','placeAntenna','addPoiPanel','geoMgrsGo','zoneGridMove']);
  document.addEventListener('click',event=>{
   if(!mobileBp.matches||!mobilePanel)return;
   const button=event.target.closest('button');if(!button||!mobileMapActions.has(button.id))return;
