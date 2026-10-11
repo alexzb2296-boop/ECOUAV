@@ -150,3 +150,13 @@ Fecha de auditoría: 2026-10-11
 - El marcador central permite mover la cuadrícula; las **cuatro esquinas arrastrables** permiten ampliarla o reducirla sin cambiar el centro. Los campos de anchura y altura se actualizan cuando se arrastra una esquina.
 - Límite de 26 columnas y 30 filas, tamaño de celda seleccionable 50/100/250/500 m. No representa cuadrícula UTM certificada; las distancias se estiman mediante aproximación geográfica local.
 - Verificada sintaxis JavaScript y referencias HTML (sin IDs duplicados ni referencias a elementos inexistentes). La prueba visual/táctil real en navegador sigue pendiente.
+
+## Progreso — zona delimitada por cuatro coordenadas (2026-10-11)
+
+- Añadido un modo independiente de **cuadrícula de cuatro esquinas** al panel cartográfico del motor unificado `desktop-v2.html`.
+- Entrada de ocho campos WGS84 decimales para esquinas NO, NE, SE y SO; botón para rellenar a partir de la vista actual y luego editar.
+- Validación de coordenadas, extensión local y convexidad del cuadrilátero en proyección Web Mercator. Se rechazan esquinas cruzadas y zonas excesivamente extensas.
+- Tamaño de celda orientativo seleccionable (50, 100, 200, 250, 500, 1000 m). Cuadrícula ajustada por interpolación bilineal con un máximo de 26 columnas × 30 filas y etiquetas A1–Z30.
+- Visualización del contorno y las cuatro esquinas, zoom a zona y borrado separado del modo de cuadrícula por centro/ancho/alto preexistente.
+- **Limitación:** en cuadriláteros irregulares las celdas no son cuadrados métricos exactos; las dimensiones declaradas son aproximaciones según los lados. No es una retícula UTM certificada.
+- Validación estática de JavaScript e IDs HTML realizada; pendientes pruebas de uso reales en navegador.
