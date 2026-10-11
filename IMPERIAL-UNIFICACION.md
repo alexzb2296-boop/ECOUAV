@@ -101,3 +101,12 @@ Fecha de auditoría: 2026-10-11
 - Nueva URL de entrada para la aplicación unificada: **`imperial.html`**, que abre el mismo motor `desktop-v2.html`. **`index.html` legado permanece operativo temporalmente** por seguridad de la migración; todavía no se ha redirigido el dominio raíz.
 - Actualizado el lanzador `escritorio.html` para refrescar el contenido del iframe en el ordenador.
 - Verificada sintaxis de JavaScript; **pendiente prueba de interacción en navegadores reales** (incluidas orientaciones móviles, Safari iOS, capas, flujos de importación y guardado) antes de retirar el legado o declarar equivalencia completa.
+
+## Revisión de navegación adaptable (2026-10-11)
+
+- El despliegue **#117** (primera interfaz adaptable) terminó con resultado **success** en GitHub Actions.
+- Mejoras posteriores: al seleccionar una herramienta que requiere marcar puntos en el mapa desde un panel móvil, se cierra ese panel para poder interactuar con el mapa; el fondo de cierre usa posicionamiento fijo y los paneles admiten desplazamiento táctil.
+- El lanzador de zoom `escritorio.html` ahora muestra «Aplicación» con enlace a `imperial.html`, en lugar de remitir a la versión móvil heredada.
+- Revisión estática del último `desktop-v2.html`: **JavaScript sintácticamente válido**, **133 IDs HTML únicos**, **110 referencias `$('id')` comprobadas, ninguna ausente**, y presencia de controles de navegación móvil.
+- **Límite de esta revisión:** no se ha podido abrir la aplicación desplegada con un navegador de prueba desde este entorno, por lo que **no está verificado** el comportamiento visual y táctil real. El despliegue posterior (#119) estaba en curso en la última consulta.
+- Por este motivo **no se redirige `index.html` ni se elimina la interfaz legada**. Antes de fijar IMPERIAL como página inicial definitiva hay que pasar las pruebas manuales en móvil y tablet.
