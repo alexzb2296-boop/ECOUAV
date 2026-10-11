@@ -49,3 +49,10 @@ Fecha de auditoría: 2026-10-11
 - Validar sintaxis JS, interacción cartográfica y formatos importados/exportados.
 - No afirmar que la visualización de antenas es predicción RF real ni que las indicaciones sirven como autorización de vuelo.
 - Retirar la versión antigua solo después de verificar paridad funcional con casos de prueba.
+
+## Progreso — bloque cartografía 1 (2026-10-11)
+
+- Integrado en `desktop-v2.html`: consulta WGS84 decimal, presentación grados/minutos/segundos, conversión WGS84→UTM (incluidas zonas especiales de Noruega/Svalbard, ámbito 80°S–84°N), copiar coordenadas, ir a coordenadas.
+- Integrada medición de dos puntos A/B con distancia geodésica Leaflet y azimut inicial respecto al norte verdadero; trazado y botón de limpieza.
+- Actualizado el iframe de `escritorio.html` para cargar el nuevo código.
+- **Verificado:** sintaxis de JavaScript tras el cambio. **Pendiente:** validación visual y funcional en navegador, comprobación numérica de la transformación UTM frente a muestras de referencia; MGRS, radio, área y cuadrículas siguen pendientes.
