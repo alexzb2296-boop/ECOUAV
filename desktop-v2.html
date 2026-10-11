@@ -209,6 +209,9 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
 }
 @media(prefers-reduced-motion:reduce){.sidebar,.rightPanel{transition:none}}
 
+
+.zoneGridCellIcon{background:transparent;border:0!important;pointer-events:none!important}.zoneGridCellIcon span{display:block;text-align:center;font-size:11px;font-weight:800;letter-spacing:.02em;color:#fff8dc;text-shadow:0 1px 3px #000,0 0 5px #000;background:#091e2a88;border-radius:3px}
+.zoneGridHandle,.zoneGridResizeHandle{background:transparent!important;border:0!important}.zoneGridHandle span,.zoneGridResizeHandle span{display:grid;place-items:center;width:100%;height:100%;background:#122c3b;color:#ffdf85;border:2px solid #ffe0a1;border-radius:8px;box-shadow:0 0 9px #000b;font-weight:900;cursor:move;touch-action:none}.zoneGridResizeHandle span{background:#8a5923;color:white;cursor:nwse-resize}
 </style>
 <link rel="stylesheet" href="./imperial-brand.css?v=6bfc8b7">
 </head>
@@ -257,7 +260,7 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
    <div class="geoFields"><input type="number" id="zoneGridWidth" min="50" max="20000" value="1000" step="50" aria-label="Anchura de zona en metros" placeholder="Ancho (m)"><input type="number" id="zoneGridHeight" min="50" max="20000" value="1000" step="50" aria-label="Altura de zona en metros" placeholder="Alto (m)"></div>
    <div class="geoFields"><select id="zoneGridCell" aria-label="Tamaño de celda de zona"><option value="50">Celda 50 m</option><option value="100" selected>Celda 100 m</option><option value="250">Celda 250 m</option><option value="500">Celda 500 m</option></select><input id="zoneGridName" type="text" maxlength="45" value="Zona 1" aria-label="Nombre de cuadrícula"></div>
    <div class="geoTools"><button class="smallAction" type="button" id="zoneGridCreate">▦ Crear / actualizar</button><button class="smallAction" type="button" id="zoneGridMove" aria-pressed="false">⌖ Cambiar centro</button><button class="smallAction" type="button" id="zoneGridZoom">◎ Ver zona</button><button class="smallAction" type="button" id="zoneGridDelete">✕ Borrar zona</button></div>
-   <p id="zoneGridStatus" class="sideMessage" role="status">Define dimensiones y pulsa «Crear». Arrastra el marcador central para desplazarla.</p>
+   <p id="zoneGridStatus" class="sideMessage" role="status">Define dimensiones y pulsa «Crear». Arrastra el centro para mover; las esquinas para ampliar o reducir.</p>
    <p id="geoShapeOutput" class="geoMeasures">Figuras: sin geometrías. El radio usa metros; el área se cierra con «Terminar área».</p>
   </div></section>
   <section class="sideSection"><div class="sectionTitle">⛰ &nbsp;Terreno <b>⌃</b></div><div class="sideContent">
@@ -781,7 +784,7 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
   const width=Number($('zoneGridWidth').value),height=Number($('zoneGridHeight').value),cell=Number($('zoneGridCell').value);
   if(!Number.isFinite(width)||!Number.isFinite(height)||width<50||height<50||width>20000||height>20000)throw Error('Ancho y alto deben estar entre 50 y 20000 m');
   if(![50,100,250,500].includes(cell))throw Error('Tamaño de celda no válido');
-  if(Math.ceil(width/cell)*Math.ceil(height/cell)>2500)throw Error('Demasiadas celdas. Aumenta el tamaño o reduce la zona');
+  if(Math.ceil(width/cell)>26||Math.ceil(height/cell)>30)throw Error('Máximo 26 columnas (A–Z) y 30 filas (1–30). Aumenta el tamaño de celda o reduce la zona');
   return {width,height,cell};
  }
  function zoneGridDraw(){
@@ -790,16 +793,52 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
   const latPerM=1/111320,lngPerM=1/(111320*Math.max(.1,Math.cos(c.lat*Math.PI/180)));
   const south=c.lat-height/2*latPerM,north=c.lat+height/2*latPerM,west=c.lng-width/2*lngPerM,east=c.lng+width/2*lngPerM;
   if(south< -90||north>90||west< -180||east>180)throw Error('Zona fuera de los límites del mapa');
-  zoneGridLayer.clearLayers();zoneGridBounds=L.latLngBounds([[south,west],[north,east]]);
-  L.rectangle(zoneGridBounds,{color:'#ffcf74',weight:2,fillColor:'#f6c36b',fillOpacity:.06}).addTo(zoneGridLayer);
   const countX=Math.ceil(width/cell),countY=Math.ceil(height/cell);
-  for(let i=1;i<countX;i++){const lng=west+Math.min(i*cell,width)*lngPerM;L.polyline([[south,lng],[north,lng]],{color:'#ffcf74',weight:1,opacity:.65,interactive:false}).addTo(zoneGridLayer)}
-  for(let j=1;j<countY;j++){const lat=south+Math.min(j*cell,height)*latPerM;L.polyline([[lat,west],[lat,east]],{color:'#ffcf74',weight:1,opacity:.65,interactive:false}).addTo(zoneGridLayer)}
-  L.marker([c.lat,c.lng],{draggable:true,title:'Arrastra para mover la cuadrícula',autoPan:true})
-   .bindTooltip($('zoneGridName').value.trim().slice(0,45)||'Cuadrícula editable',{direction:'top'})
-   .on('dragend',e=>{zoneGridCenter={lat:e.target.getLatLng().lat,lng:e.target.getLatLng().lng};try{zoneGridDraw()}catch(err){zoneGridStatus(err.message)}})
+  if(countX>26||countY>30)throw Error('Etiquetas disponibles: máximo 26 columnas (A–Z) y 30 filas (1–30). Aumenta la celda o reduce la zona.');
+  zoneGridLayer.clearLayers();zoneGridBounds=L.latLngBounds([[south,west],[north,east]]);
+  L.rectangle(zoneGridBounds,{color:'#ffcf74',weight:2,fillColor:'#f6c36b',fillOpacity:.055,interactive:false}).addTo(zoneGridLayer);
+  for(let i=1;i<countX;i++){
+   const lng=west+Math.min(i*cell,width)*lngPerM;
+   L.polyline([[south,lng],[north,lng]],{color:'#ffcf74',weight:1,opacity:.75,interactive:false}).addTo(zoneGridLayer);
+  }
+  for(let j=1;j<countY;j++){
+   const lat=north-Math.min(j*cell,height)*latPerM;
+   L.polyline([[lat,west],[lat,east]],{color:'#ffcf74',weight:1,opacity:.75,interactive:false}).addTo(zoneGridLayer);
+  }
+  // Columns A..Z run west to east; rows 1..30 run north to south.
+  for(let row=0;row<countY;row++)for(let col=0;col<countX;col++){
+   const westEdge=Math.min(col*cell,width),eastEdge=Math.min((col+1)*cell,width);
+   const northEdge=Math.min(row*cell,height),southEdge=Math.min((row+1)*cell,height);
+   const lat=north-(northEdge+southEdge)/2*latPerM;
+   const lng=west+(westEdge+eastEdge)/2*lngPerM;
+   const label=String.fromCharCode(65+col)+(row+1);
+   L.marker([lat,lng],{interactive:false,keyboard:false,zIndexOffset:550,
+    icon:L.divIcon({className:'zoneGridCellIcon',html:'<span>'+label+'</span>',iconSize:[44,20],iconAnchor:[22,10]})
+   }).addTo(zoneGridLayer);
+  }
+  const centerIcon=L.divIcon({className:'zoneGridHandle',html:'<span title="Arrastrar zona">✥</span>',iconSize:[30,30],iconAnchor:[15,15]});
+  L.marker([c.lat,c.lng],{draggable:true,autoPan:true,icon:centerIcon,title:'Arrastra para mover toda la cuadrícula'})
+   .bindTooltip('Mover cuadrícula',{direction:'top'})
+   .on('dragend',e=>{const p=e.target.getLatLng();zoneGridCenter={lat:p.lat,lng:p.lng};try{zoneGridDraw()}catch(err){zoneGridStatus(err.message)}})
    .addTo(zoneGridLayer);
-  zoneGridStatus(($('zoneGridName').value.trim()||'Cuadrícula')+' · '+width+' × '+height+' m · '+cell+' m/celda · '+countX+' × '+countY+' celdas · centro '+c.lat.toFixed(5)+', '+c.lng.toFixed(5));
+  // Dragging any corner adjusts width and height while keeping the centre fixed.
+  const corners=[['NO',north,west],['NE',north,east],['SO',south,west],['SE',south,east]];
+  for(const [name,lat,lng] of corners){
+   const handle=L.divIcon({className:'zoneGridResizeHandle',html:'<span title="Arrastrar para redimensionar">↘</span>',iconSize:[24,24],iconAnchor:[12,12]});
+   L.marker([lat,lng],{draggable:true,autoPan:true,icon:handle,title:'Redimensionar esquina '+name})
+    .on('dragend',e=>{
+     const p=e.target.getLatLng();
+     const newW=Math.round(Math.abs(p.lng-c.lng)/lngPerM*2);
+     const newH=Math.round(Math.abs(p.lat-c.lat)/latPerM*2);
+     const clampedW=Math.max(50,Math.min(20000,newW)),clampedH=Math.max(50,Math.min(20000,newH));
+     if(Math.ceil(clampedW/cell)>26||Math.ceil(clampedH/cell)>30){
+      zoneGridStatus('Máximo A–Z y 1–30. Elige celdas más grandes antes de ampliar.');zoneGridDraw();return;
+     }
+     $('zoneGridWidth').value=clampedW;$('zoneGridHeight').value=clampedH;
+     try{zoneGridDraw()}catch(err){zoneGridStatus(err.message)}
+    }).addTo(zoneGridLayer);
+  }
+  zoneGridStatus(($('zoneGridName').value.trim()||'Cuadrícula')+' · '+countX+' columnas (A–'+String.fromCharCode(64+countX)+') × '+countY+' filas (1–'+countY+') · '+width+' × '+height+' m · centro '+c.lat.toFixed(5)+', '+c.lng.toFixed(5));
  }
  $('zoneGridCreate').onclick=()=>{try{zoneGridRead();if(!zoneGridCenter){const c=selected||map.getCenter();zoneGridCenter={lat:c.lat,lng:c.lng}}zoneGridDraw();toast('Cuadrícula de zona creada / actualizada')}catch(err){zoneGridStatus(err.message)}};
  $('zoneGridMove').onclick=()=>{
