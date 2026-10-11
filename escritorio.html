@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>ECOUAV · Versión escritorio</title>
+<title>IMPERIAL · Versión escritorio</title>
 <style>
 :root{color-scheme:dark;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
 *{box-sizing:border-box}
@@ -32,11 +32,13 @@ button:focus-visible,.back:focus-visible{outline:2px solid #64dfff}
  .controls{gap:3px}
  #note{font-size:10px}
 }
+.brand{display:flex;align-items:center;gap:9px}.brand .imperialBrandLogo{width:35px;height:35px}
 </style>
+<link rel="stylesheet" href="./imperial-brand.css?v=3720abd">
 </head>
 <body>
 <header>
- <div class="brand"><i>◈</i>ECOUAV <span>· Escritorio</span></div>
+ <div class="brand"><span class="imperialBrandLogo" aria-hidden="true"></span>IMPERIAL <span>· Escritorio</span></div>
  <div class="controls">
   <button id="fit" type="button" title="Mostrar las tres columnas">Ajustar</button>
   <button id="zoomOut" type="button" aria-label="Alejar">−</button>
@@ -47,7 +49,7 @@ button:focus-visible,.back:focus-visible{outline:2px solid #64dfff}
 </header>
 <div id="stage">
  <div id="surface">
-  <iframe id="desktopApp" src="./desktop-v2.html?v=desktop-v2-bdb22b3" title="ECOUAV Desktop v2: interfaz de tres columnas rediseñada" allowfullscreen></iframe>
+  <iframe id="desktopApp" src="./desktop-v2.html?v=desktop-v2-bdb22b3" title="IMPERIAL Desktop: interfaz de tres columnas" allowfullscreen></iframe>
  </div>
  <div id="note">Vista de escritorio real · usa + para ampliar y desplázate horizontalmente</div>
 </div>
