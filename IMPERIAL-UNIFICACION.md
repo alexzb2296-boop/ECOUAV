@@ -74,3 +74,13 @@ Fecha de auditoría: 2026-10-11
 - Protección frente a respuestas asíncronas obsoletas cuando se modifican los puntos o las rutas. Los cálculos no tienen exactitud certificada y se muestran como aproximados.
 - Modo de marcado A/B excluyente con otras herramientas activas y actualización de `escritorio.html` para cargar la versión revisada.
 - **Comprobación realizada:** sintaxis JavaScript. **Pendiente:** prueba funcional de interfaz real y validación numérica de datos; migración de DEM GeoTIFF local, contornos y demás funciones avanzadas de terreno.
+
+## Progreso — DEM GeoTIFF y curvas de nivel (2026-10-11)
+
+- Añadido panel de **DEM GeoTIFF y curvas** a `desktop-v2.html` sin retirar funciones del mapa.
+- Importación de GeoTIFF georreferenciado **EPSG:4326** (hasta 60 MB). Se toma la primera banda, se remuestrea para mostrarla (máximo aproximado 640 px en su mayor dimensión), se representa como imagen superpuesta con opacidad configurable y se encuadra el mapa.
+- Soporte para mostrar/ocultar el DEM, eliminarlo y conservar/restaurar el archivo mediante **IndexedDB** en el propio navegador.
+- Curvas aproximadas por *marching squares* sobre cuadrícula limitada de 18 × 18 puntos en la vista actual. Se utilizan muestras del **DEM local** cuando está cargado y, en caso contrario, el servicio **Open-Meteo Elevation**. Intervalos configurables: 10, 20, 50 y 100 m.
+- Se limita el número de niveles y se invalida el cálculo anterior al ocultar/limpiar o cambiar la configuración; se mantiene separado el resto de capas y controles.
+- Lanzador `escritorio.html` actualizado para cargar la nueva versión.
+- **Verificación realizada:** compilación de la sintaxis JavaScript con `new Function` y comprobación de presencia de controles. **Pendiente:** validación funcional real en navegador, tratamiento de más proyecciones y bandas, precisión geográfica/estadística de las curvas, nodata y compatibilidad de archivos comprimidos. No se afirma certificación cartográfica. La incidencia IGN antigua permanece pendiente.
