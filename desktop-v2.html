@@ -136,6 +136,9 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
 
 /* IMPERIAL unified cartography tools */
 .geoFields{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}.geoFields input{min-width:0;width:100%;background:#122d40;color:#e9f8ff;border:1px solid #3a6076;border-radius:5px;padding:7px;font-size:11px}.geoTools{display:grid;grid-template-columns:1fr 1fr;gap:6px}.geoTools button{padding:7px 4px}.geoResult{font-size:11px;color:#c8e8f6;overflow-wrap:anywhere;line-height:1.65;margin:8px 0}.geoResult strong{color:#f4d18a}.geoMeasures{font-size:11px;color:#bbdbe9;line-height:1.6}.geoActive{border-color:#46dbff!important;background:#125372!important}
+
+/* Terrain profile graphs */
+.terrainProfileGraph{width:100%;height:112px;display:block;margin:8px 0;border:1px solid #2d5065;border-radius:7px;background:#071b28}.terrainProfileGraph[hidden]{display:none}.terrainProfileGraph text{fill:#b8d9ec;font-size:12px}.terrainProfileGraph .profileLine{fill:none;stroke:#42cfff;stroke-width:3;vector-effect:non-scaling-stroke}.terrainProfileGraph .profileGrid{stroke:#476478;stroke-width:1;opacity:.65}.terrainProfileGraph .profileFill{fill:#238db9;opacity:.17}
 </style>
 <link rel="stylesheet" href="./imperial-brand.css?v=6bfc8b7">
 </head>
@@ -188,6 +191,16 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
    <div class="selectRow"><label for="terrainCenter">Terreno 3D</label><select id="terrainCenter"><option value="center">Centro del mapa</option><option value="antenna">Antena demo</option></select></div>
    <button type="button" id="reload3d" class="smallAction">⛰ Cargar elevaciones 3D</button>
    <p id="terrainSideStatus" class="sideMessage">Open-Meteo · se indicará la fuente realmente cargada.</p>
+  </div></section>
+  <section class="sideSection" id="terrainProfilesPanel"><div class="sectionTitle">▥ &nbsp;Perfiles y desniveles <b>⌃</b></div><div class="sideContent">
+   <div class="geoTools"><button type="button" id="terrainPickAB" class="smallAction" aria-pressed="false">⌖ Marcar A/B</button><button type="button" id="terrainClearAB" class="smallAction">✕ Limpiar A/B</button><button type="button" id="terrainAnalyzeRoute" class="smallAction">⛰ Perfil de ruta</button><button type="button" id="terrainClearRoute" class="smallAction">✕ Limpiar ruta</button></div>
+   <p id="terrainProfileStatus" role="status" class="sideMessage">Marca A y B sobre el mapa para consultar el desnivel.</p>
+   <div class="geoMeasures" id="terrainABStats">Sin perfil A/B.</div>
+   <svg id="terrainABGraph" class="terrainProfileGraph" viewBox="0 0 600 160" role="img" aria-label="Gráfico de elevaciones A/B" hidden></svg>
+   <p id="terrainRouteStatus" class="sideMessage">Puedes analizar una ruta dibujada o importada.</p>
+   <div class="geoMeasures" id="terrainRouteStats">Sin perfil de ruta.</div>
+   <svg id="terrainRouteGraph" class="terrainProfileGraph" viewBox="0 0 600 160" role="img" aria-label="Gráfico de elevaciones de ruta" hidden></svg>
+   <p class="sideMessage">Cotas aproximadas: Open-Meteo Elevation. No son datos topográficos certificados ni sustituyen una comprobación sobre el terreno.</p>
   </div></section>
   <section class="sideSection"><div class="sectionTitle">◉ &nbsp;Meteorología <b>⌃</b></div><div class="sideContent">
    <div class="selectRow"><label for="weatherTarget">Ubicación</label><select id="weatherTarget"><option value="selected">Punto seleccionado</option><option value="center">Centro del mapa</option></select></div>
@@ -331,6 +344,7 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
   }
   pois.forEach(p=>mark(p,p.name,'pin','#ffc46c').addTo(poiLayer));
   updateRouteInfo();updatePoiList();
+  if(typeof terrainMarkRouteChange==='function')terrainMarkRouteChange();
  }
  function updateRouteInfo(){
   $('distanceInfo').textContent=route.length>1?(distance()/1000).toFixed(2)+' km':'—';
@@ -458,7 +472,92 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
  function geoShapeClick(ll){if(geoShapeMode==='geoRadius'){const meters=Number($('geoRadiusMeters').value);if(!Number.isFinite(meters)||meters<1||meters>100000){toast('Radio válido: 1–100000 m');return}geoShapes.clearLayers();L.circle([ll.lat,ll.lng],{radius:meters,color:'#ffca69',fillOpacity:.08,weight:2}).addTo(geoShapes);$('geoShapeOutput').textContent='Centro: '+ll.lat.toFixed(5)+', '+ll.lng.toFixed(5)+' · radio '+meters+' m · superficie ≈ '+(Math.PI*meters*meters/1000000).toFixed(3)+' km²';return}if(geoShapeMode==='geoArea'){if(geoAreaClosed){geoShapes.clearLayers();geoAreaPoints.length=0;geoAreaClosed=false}if(geoAreaPoints.length>=150){toast('Máximo de 150 vértices');return}geoAreaPoints.push(ll);geoShapes.clearLayers();geoAreaPoints.forEach((p,i)=>L.circleMarker([p.lat,p.lng],{radius:4,color:'#ffb47b'}).bindTooltip(String(i+1)).addTo(geoShapes));if(geoAreaPoints.length>1)L.polyline(geoAreaPoints.map(p=>[p.lat,p.lng]),{color:'#ffb47b',weight:2}).addTo(geoShapes);$('geoShapeOutput').textContent='Área: '+geoAreaPoints.length+' vértices. Pulsa «Terminar área».'}}
  function geoDrawGrid(){geoGrid.clearLayers();if(!$('geoGridToggle').checked)return;const b=map.getBounds(),south=b.getSouth(),north=b.getNorth(),west=b.getWest(),east=b.getEast(),step=Number($('geoGridStep').value);if(!Number.isFinite(step)||step<=0)return;const center=(south+north)/2,latStep=step/111320,lonStep=step/(111320*Math.max(.1,Math.cos(center*Math.PI/180)));if((north-south)/latStep+(east-west)/lonStep>160){$('geoShapeOutput').textContent='Cuadrícula demasiado densa: amplía el zoom o aumenta el tamaño de celda.';return}let count=0;for(let lat=Math.ceil(south/latStep)*latStep;lat<north&&count<160;lat+=latStep,count++)L.polyline([[lat,west],[lat,east]],{color:'#81c9ea',weight:1,opacity:.45,interactive:false}).addTo(geoGrid);for(let lng=Math.ceil(west/lonStep)*lonStep;lng<east&&count<160;lng+=lonStep,count++)L.polyline([[south,lng],[north,lng]],{color:'#81c9ea',weight:1,opacity:.45,interactive:false}).addTo(geoGrid)}
  $('geoGridToggle').onchange=()=>{$('geoGridToggle').checked?geoGrid.addTo(map):map.removeLayer(geoGrid);geoDrawGrid()};$('geoGridStep').onchange=geoDrawGrid;map.on('moveend zoomend',geoDrawGrid);
+
+ // Terrain profiles migrated from original ECOUAV. Elevation samples are not certified.
+ const terrainABLayer=L.layerGroup().addTo(map);
+ let terrainAB=[],terrainPick=false,terrainABRequest=0,terrainRouteRequest=0,terrainRouteSignature='';
+ function terrainMode(on){
+  terrainPick=!!on;$('terrainPickAB').setAttribute('aria-pressed',String(terrainPick));
+  $('terrainPickAB').classList.toggle('geoActive',terrainPick);
+  if(terrainPick){setMode('inspect');for(const k of ['geoMeasure','geoRadius','geoArea']){$(k).classList.remove('geoActive');$(k).setAttribute('aria-pressed','false')}geoShapeMode='';$('terrainProfileStatus').textContent='Haz clic para situar A y B; después podrás arrastrar los marcadores.'}
+ }
+ function terrainStop(){terrainMode(false)}
+ $('terrainPickAB').onclick=()=>terrainMode(!terrainPick);
+ function terrainInvalidateAB(){terrainABRequest++;$('terrainABGraph').hidden=true;$('terrainABStats').textContent='Sin perfil A/B.'}
+ $('terrainClearAB').onclick=()=>{terrainAB=[];terrainABLayer.clearLayers();terrainInvalidateAB();terrainStop();$('terrainProfileStatus').textContent='Perfil A/B eliminado.'};
+ function terrainInvalidateRoute(){terrainRouteRequest++;terrainRouteSignature='';$('terrainRouteGraph').hidden=true;$('terrainRouteStats').textContent='Sin perfil de ruta.';$('terrainRouteStatus').textContent='Analiza la ruta actual para obtener cotas y desnivel.'}
+ $('terrainClearRoute').onclick=terrainInvalidateRoute;
+ const terrainSignature=()=>JSON.stringify(route.map(p=>[Number(p.lat.toFixed(6)),Number(p.lng.toFixed(6))]));
+ function terrainMarkRouteChange(){const sig=terrainSignature();if(terrainRouteSignature&&sig!==terrainRouteSignature){terrainInvalidateRoute();$('terrainRouteStatus').textContent='Ruta modificada: vuelve a analizar el perfil.'}}
+ function terrainDrawAB(){
+  terrainABLayer.clearLayers();
+  terrainAB.forEach((p,i)=>{
+   const marker=L.marker([p.lat,p.lng],{draggable:true,title:'Perfil '+(i?'B':'A')}).addTo(terrainABLayer);
+   marker.bindTooltip(i?'B':'A',{permanent:true,direction:'top'});
+   marker.on('dragend',e=>{terrainAB[i]={lat:e.target.getLatLng().lat,lng:e.target.getLatLng().lng};terrainDrawAB();terrainRunAB()});
+  });
+  if(terrainAB.length===2)L.polyline(terrainAB.map(p=>[p.lat,p.lng]),{color:'#f7bc68',weight:3,dashArray:'7 5'}).addTo(terrainABLayer);
+ }
+ function terrainChoose(ll){if(terrainAB.length===2){terrainAB=[];terrainInvalidateAB()}terrainAB.push({lat:ll.lat,lng:ll.lng});terrainDrawAB();if(terrainAB.length===2){terrainStop();terrainRunAB()}else $('terrainProfileStatus').textContent='Punto A seleccionado. Ahora selecciona B.'}
+ function terrainSamples(path,budget=72){
+  const legs=[];let total=0;
+  for(let i=1;i<path.length;i++){const meters=map.distance([path[i-1].lat,path[i-1].lng],[path[i].lat,path[i].lng]);if(meters>0){legs.push({a:path[i-1],b:path[i],meters});total+=meters}}
+  if(!legs.length||total<.01)throw Error('Selecciona puntos distintos');
+  const list=[{...legs[0].a}],step=total/(budget-1);
+  for(let t=step;t<total;t+=step){
+   let remain=t,leg=legs[0];
+   for(const candidate of legs){if(remain<=candidate.meters){leg=candidate;break}remain-=candidate.meters}
+   const frac=Math.max(0,Math.min(1,remain/leg.meters));
+   list.push({lat:leg.a.lat+(leg.b.lat-leg.a.lat)*frac,lng:leg.a.lng+(leg.b.lng-leg.a.lng)*frac});
+  }
+  list.push({...legs[legs.length-1].b});return {list,total};
+ }
+ function terrainDrawGraph(el,heights){
+  const W=600,H=160,L=38,R=10,T=23,B=24,min=Math.min(...heights),max=Math.max(...heights),spread=Math.max(1,max-min);
+  const coords=heights.map((h,i)=>[L+(W-L-R)*i/(heights.length-1),T+(H-T-B)*(1-(h-min)/spread)]);
+  const poly=coords.map(p=>p.map(x=>x.toFixed(1)).join(',')).join(' ');
+  const bottom=H-B;
+  el.innerHTML='<line class="profileGrid" x1="'+L+'" y1="'+bottom+'" x2="'+(W-R)+'" y2="'+bottom+'"/><line class="profileGrid" x1="'+L+'" y1="'+T+'" x2="'+(W-R)+'" y2="'+T+'"/><polygon class="profileFill" points="'+L+','+bottom+' '+poly+' '+(W-R)+','+bottom+'"/><polyline class="profileLine" points="'+poly+'"/><text x="6" y="15">'+Math.round(max)+' m</text><text x="6" y="'+(bottom-4)+'">'+Math.round(min)+' m</text><text x="'+(W-40)+'" y="'+(H-5)+'">FIN</text>';
+  el.hidden=false;
+ }
+ function terrainStats(path,heights,total){
+  let rise=0,fall=0,maxSlope=0;
+  for(let i=1;i<heights.length;i++){
+   const dz=heights[i]-heights[i-1];if(dz>0)rise+=dz;else fall-=dz;
+   const delta=map.distance([path[i-1].lat,path[i-1].lng],[path[i].lat,path[i].lng]);if(delta>0)maxSlope=Math.max(maxSlope,Math.abs(100*dz/delta));
+  }
+  const min=Math.min(...heights),max=Math.max(...heights),mean=total?100*(heights[heights.length-1]-heights[0])/total:0;
+  return {rise,fall,maxSlope,min,max,mean,description:(total>=1000?(total/1000).toFixed(2)+' km':total.toFixed(0)+' m')+' · Cotas '+Math.round(min)+'–'+Math.round(max)+' m · ↑ '+Math.round(rise)+' m · ↓ '+Math.round(fall)+' m · pendiente neta '+mean.toFixed(1)+' % · máxima muestreada '+maxSlope.toFixed(1)+' %'};
+ }
+ async function terrainFetch(path){
+  if(path.length>100)throw Error('Demasiadas muestras');
+  const values=await fetchElevations(path);if(values.length!==path.length||values.some(x=>!Number.isFinite(x)))throw Error('Servicio sin cotas completas');
+  return values;
+ }
+ async function terrainRunAB(){
+  if(terrainAB.length!==2)return;
+  const req=++terrainABRequest;const original=terrainAB.map(p=>({...p}));
+  $('terrainProfileStatus').textContent='Consultando cotas A/B…';$('terrainABGraph').hidden=true;
+  try{const samples=terrainSamples(original,64),heights=await terrainFetch(samples.list);if(req!==terrainABRequest)return;
+   const stats=terrainStats(samples.list,heights,samples.total);
+   $('terrainABStats').textContent=stats.description;terrainDrawGraph($('terrainABGraph'),heights);
+   $('terrainProfileStatus').textContent='Perfil A/B · '+heights.length+' cotas · Open-Meteo Elevation';
+  }catch(err){if(req!==terrainABRequest)return;$('terrainProfileStatus').textContent='No se pudo consultar el perfil A/B: '+err.message}
+ }
+ async function terrainRunRoute(){
+  if(route.length<2){toast('Dibuja una ruta de dos o más puntos');return}
+  if(route.length>1000){toast('Ruta demasiado larga para analizar');return}
+  const signature=terrainSignature(),req=++terrainRouteRequest;terrainRouteSignature=signature;const path=route.map(p=>({...p}));
+  $('terrainRouteStatus').textContent='Consultando cotas de la ruta…';$('terrainRouteGraph').hidden=true;
+  try{const samples=terrainSamples(path,72),heights=await terrainFetch(samples.list);if(req!==terrainRouteRequest||terrainSignature()!==signature)return;
+   const stats=terrainStats(samples.list,heights,samples.total);
+   $('terrainRouteStats').textContent=stats.description;terrainDrawGraph($('terrainRouteGraph'),heights);
+   $('terrainRouteStatus').textContent='Perfil de ruta · '+route.length+' puntos originales · '+heights.length+' muestras · Open-Meteo Elevation';
+  }catch(err){if(req!==terrainRouteRequest)return;$('terrainRouteStatus').textContent='No se pudo consultar el perfil de ruta: '+err.message}
+ }
+ $('terrainAnalyzeRoute').onclick=terrainRunRoute;
  map.on('click',ev=>{
+  if(terrainPick){terrainChoose({lat:ev.latlng.lat,lng:ev.latlng.lng});return;}
   if(geoShapeMode==='geoRadius'||geoShapeMode==='geoArea'){geoShapeClick({lat:ev.latlng.lat,lng:ev.latlng.lng});return;}
   if(geoShapeMode==='geoMeasure'){geoMeasureClick({lat:ev.latlng.lat,lng:ev.latlng.lng});return;}
   const ll={lat:ev.latlng.lat,lng:ev.latlng.lng};
