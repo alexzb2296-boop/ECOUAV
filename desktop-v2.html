@@ -132,6 +132,9 @@ footer strong{font-weight:500;color:#cae7f5}
 .poiDesktopLine span{flex:1;overflow-wrap:anywhere;font-size:11px;color:#bad8e6}
 .poiDesktopLine button{padding:4px 7px;background:#173d51;color:#e0f5ff;border:1px solid #457087;border-radius:5px}
 header .brand .imperialBrandLogo{width:36px;height:36px}
+
+/* IMPERIAL unified cartography tools */
+.geoFields{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}.geoFields input{min-width:0;width:100%;background:#122d40;color:#e9f8ff;border:1px solid #3a6076;border-radius:5px;padding:7px;font-size:11px}.geoTools{display:grid;grid-template-columns:1fr 1fr;gap:6px}.geoTools button{padding:7px 4px}.geoResult{font-size:11px;color:#c8e8f6;overflow-wrap:anywhere;line-height:1.65;margin:8px 0}.geoResult strong{color:#f4d18a}.geoMeasures{font-size:11px;color:#bbdbe9;line-height:1.6}.geoActive{border-color:#46dbff!important;background:#125372!important}
 </style>
 <link rel="stylesheet" href="./imperial-brand.css?v=6bfc8b7">
 </head>
@@ -162,6 +165,15 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
    <label class="setting"><span>♧ &nbsp;Antenas / lóbulo</span><input class="toggle" id="antennaToggle" type="checkbox" checked></label>
    <label class="setting"><span>⌖ &nbsp;Puntos de interés</span><input class="toggle" id="poiToggle" type="checkbox" checked></label>
    <p class="sideMessage">Las posiciones iniciales son una demostración, no datos de una misión real.</p>
+  </div></section>
+
+  <section class="sideSection" id="geoToolsPanel"><div class="sectionTitle">⌖ &nbsp;Coordenadas y medición <b>⌃</b></div><div class="sideContent">
+   <p class="sideMessage">WGS84 · coordenadas geográficas y proyección UTM. Herramientas de consulta, no navegación certificada.</p>
+   <div class="geoFields"><input id="geoLat" type="number" min="-90" max="90" step="any" placeholder="Latitud" aria-label="Latitud decimal"><input id="geoLon" type="number" min="-180" max="180" step="any" placeholder="Longitud" aria-label="Longitud decimal"></div>
+   <div class="geoTools"><button class="smallAction" id="geoGo" type="button">⌖ Ir a coordenadas</button><button class="smallAction" id="geoUseSelected" type="button">↳ Usar selección</button><button class="smallAction" id="geoCopy" type="button">⧉ Copiar WGS84</button><button class="smallAction" id="geoMeasure" type="button" aria-pressed="false">📏 Medir A/B</button></div>
+   <div id="geoOutput" class="geoResult" role="status">Selecciona un punto para consultar coordenadas y UTM.</div>
+   <div id="geoMeasureOutput" class="geoMeasures">Medición: sin puntos A/B.</div>
+   <button class="smallAction" id="geoClearMeasure" type="button">✕ Limpiar medición</button>
   </div></section>
   <section class="sideSection"><div class="sectionTitle">⛰ &nbsp;Terreno <b>⌃</b></div><div class="sideContent">
    <label class="setting"><span>Vista 3D</span><input class="toggle" id="view3dToggle" type="checkbox" checked></label>
@@ -345,6 +357,7 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
  }
  function selectAt(ll,name){
   selected={lat:ll.lat,lng:ll.lng};selectedName=name||'Punto seleccionado';
+  geoShow(selected);
   $('selectedTitle').textContent=selectedName;
   $('selectedType').textContent=demo?'EJEMPLO':'SELECCIÓN';
   $('selectedCoords').textContent=ll.lat.toFixed(5)+', '+ll.lng.toFixed(5);
@@ -384,7 +397,45 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
  map=L.map('map',{center:[startCenter.lat,startCenter.lng],zoom:12,zoomControl:false,preferCanvas:true});
  routeLayer.addTo(map);antennaLayer.addTo(map);poiLayer.addTo(map);setBase('esri');setTopo(true);
  map.on('moveend zoomend',updateMapStatus);
+
+ // Unified desktop coordinate and A/B measuring tools. WGS84 -> UTM (standard transverse Mercator series).
+ const geoLayer=L.layerGroup(),geoMeasurePoints=[];
+ geoLayer.addTo(map);
+ const fmtDms=(value,pos,neg)=>{const a=Math.abs(value),d=Math.floor(a),m=Math.floor((a-d)*60),sec=(((a-d)*60-m)*60).toFixed(2);return d+'° '+m+'′ '+sec+'″ '+(value<0?neg:pos)};
+ function toUTM(lat,lng){
+  if(!Number.isFinite(lat)||!Number.isFinite(lng)||Math.abs(lat)>84||lat< -80||Math.abs(lng)>180)return null;
+  let zone=Math.floor((lng+180)/6)+1;zone=Math.max(1,Math.min(60,zone));
+  if(lat>=56&&lat<64&&lng>=3&&lng<12)zone=32;
+  if(lat>=72&&lat<84){if(lng>=0&&lng<9)zone=31;else if(lng<21&&lng>=9)zone=33;else if(lng<33&&lng>=21)zone=35;else if(lng<42&&lng>=33)zone=37;}
+  const a=6378137,e2=0.0066943799901413165,ep2=e2/(1-e2),k0=.9996,phi=lat*Math.PI/180,lambda=lng*Math.PI/180;
+  const central=(zone*6-183)*Math.PI/180,sin=Math.sin(phi),cos=Math.cos(phi),tan=Math.tan(phi);
+  const N=a/Math.sqrt(1-e2*sin*sin),T=tan*tan,C=ep2*cos*cos,A=cos*(lambda-central);
+  const M=a*((1-e2/4-3*e2*e2/64-5*e2**3/256)*phi-(3*e2/8+3*e2**2/32+45*e2**3/1024)*Math.sin(2*phi)+(15*e2**2/256+45*e2**3/1024)*Math.sin(4*phi)-(35*e2**3/3072)*Math.sin(6*phi));
+  const E=500000+k0*N*(A+(1-T+C)*A**3/6+(5-18*T+T*T+72*C-58*ep2)*A**5/120);
+  let north=k0*(M+N*tan*(A*A/2+(5-T+9*C+4*C*C)*A**4/24+(61-58*T+T*T+600*C-330*ep2)*A**6/720));
+  if(lat<0)north+=10000000;
+  const letters='CDEFGHJKLMNPQRSTUVWX',band=letters[Math.min(19,Math.floor((lat+80)/8))];
+  return {zone,band,easting:Math.round(E),northing:Math.round(north),hemisphere:lat<0?'S':'N'};
+ }
+ function geoShow(ll){if(!ll)return;const {lat,lng}=ll;$('geoLat').value=lat.toFixed(6);$('geoLon').value=lng.toFixed(6);const u=toUTM(lat,lng);
+  $('geoOutput').innerHTML='<strong>WGS84</strong> '+lat.toFixed(6)+', '+lng.toFixed(6)+'<br><strong>GMS</strong> '+fmtDms(lat,'N','S')+' · '+fmtDms(lng,'E','O')+'<br><strong>UTM</strong> '+(u?u.zone+u.band+' · E '+u.easting+' m · N '+u.northing+' m':'No disponible fuera de 80°S–84°N');
+ }
+ function geoRead(){const lat=Number($('geoLat').value),lng=Number($('geoLon').value);if(!$('geoLat').value||!$('geoLon').value||!Number.isFinite(lat)||!Number.isFinite(lng)||Math.abs(lat)>90||Math.abs(lng)>180){toast('Latitud o longitud fuera de rango');return null}return {lat,lng}}
+ $('geoGo').onclick=()=>{const ll=geoRead();if(!ll)return;map.setView([ll.lat,ll.lng],Math.max(13,map.getZoom()));selectAt(ll,'Coordenadas introducidas')};
+ $('geoUseSelected').onclick=()=>{geoShow(selected||map.getCenter());toast('Coordenadas actualizadas')};
+ $('geoCopy').onclick=()=>{const ll=geoRead();if(!ll)return;if(!navigator.clipboard?.writeText){toast('Portapapeles no disponible');return}navigator.clipboard.writeText(ll.lat.toFixed(6)+', '+ll.lng.toFixed(6)).then(()=>toast('Coordenadas copiadas')).catch(()=>toast('Permiso de copia denegado'))};
+ function geoResetMeasure(){geoMeasurePoints.length=0;geoLayer.clearLayers();$('geoMeasureOutput').textContent='Medición: sin puntos A/B.'}
+ $('geoClearMeasure').onclick=geoResetMeasure;
+ $('geoMeasure').onclick=()=>{const on=!$('geoMeasure').classList.contains('geoActive');$('geoMeasure').classList.toggle('geoActive',on);$('geoMeasure').setAttribute('aria-pressed',String(on));if(on){setMode('inspect');geoResetMeasure();toast('Haz clic en dos puntos del mapa para medir distancia y azimut')}else toast('Medición desactivada')};
+ function geoMeasureClick(ll){if(geoMeasurePoints.length===2)geoResetMeasure();geoMeasurePoints.push(ll);L.circleMarker([ll.lat,ll.lng],{radius:6,color:'#ffd37b',weight:2,fillOpacity:.85}).addTo(geoLayer).bindTooltip(geoMeasurePoints.length===1?'A':'B',{permanent:true,direction:'top'});
+  if(geoMeasurePoints.length===1){$('geoMeasureOutput').textContent='Punto A establecido. Selecciona B.';return}
+  const a=geoMeasurePoints[0],b=geoMeasurePoints[1],distance=map.distance(a,b),p1=a.lat*Math.PI/180,p2=b.lat*Math.PI/180,dl=(b.lng-a.lng)*Math.PI/180;
+  const bearing=(Math.atan2(Math.sin(dl)*Math.cos(p2),Math.cos(p1)*Math.sin(p2)-Math.sin(p1)*Math.cos(p2)*Math.cos(dl))*180/Math.PI+360)%360;
+  L.polyline([[a.lat,a.lng],[b.lat,b.lng]],{color:'#ffd37b',weight:2,dashArray:'6 5'}).addTo(geoLayer);
+  $('geoMeasureOutput').textContent='A → B: '+(distance>=1000?(distance/1000).toFixed(3)+' km':distance.toFixed(1)+' m')+' · Azimut inicial '+bearing.toFixed(1)+'° (norte verdadero, aproximado)';
+ }
  map.on('click',ev=>{
+  if($('geoMeasure').classList.contains('geoActive')){geoMeasureClick({lat:ev.latlng.lat,lng:ev.latlng.lng});return;}
   const ll={lat:ev.latlng.lat,lng:ev.latlng.lng};
   if(mode==='route'){route.push(ll);redraw();selectAt(ll,'Punto '+route.length);return;}
   if(mode==='antenna'){antenna=ll;redraw();setMode('inspect');selectAt(ll,'Antena');$('antennaInfo').textContent='Antena colocada manualmente';return;}
