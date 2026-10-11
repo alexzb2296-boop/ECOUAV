@@ -461,7 +461,7 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
  const geoShapes=L.layerGroup().addTo(map),geoGrid=L.layerGroup(),geoAreaPoints=[];
  let geoShapeMode='',geoAreaClosed=false;
  const modes=['geoMeasure','geoRadius','geoArea'];
- function geoActivate(id){const active=id&&!$(id).classList.contains('geoActive');for(const k of modes){$(k).classList.toggle('geoActive',k===id&&active);$(k).setAttribute('aria-pressed',String(k===id&&active))}geoShapeMode=active?id:'';if(active){setMode('inspect');if(id==='geoMeasure')geoResetMeasure();if(id==='geoArea'){geoAreaPoints.length=0;geoAreaClosed=false;geoShapes.clearLayers()}toast(id==='geoArea'?'Marca vértices y pulsa Terminar área':id==='geoRadius'?'Pulsa el centro para dibujar el radio':'Marca los puntos A y B')}else toast('Herramienta desactivada')}
+ function geoActivate(id){if(typeof terrainStop==='function')terrainStop();const active=id&&!$(id).classList.contains('geoActive');for(const k of modes){$(k).classList.toggle('geoActive',k===id&&active);$(k).setAttribute('aria-pressed',String(k===id&&active))}geoShapeMode=active?id:'';if(active){setMode('inspect');if(id==='geoMeasure')geoResetMeasure();if(id==='geoArea'){geoAreaPoints.length=0;geoAreaClosed=false;geoShapes.clearLayers()}toast(id==='geoArea'?'Marca vértices y pulsa Terminar área':id==='geoRadius'?'Pulsa el centro para dibujar el radio':'Marca los puntos A y B')}else toast('Herramienta desactivada')}
  $('geoRadius').onclick=()=>geoActivate('geoRadius');$('geoArea').onclick=()=>geoActivate('geoArea');
  // Override the older A/B click handler with the shared tool manager.
  $('geoMeasure').onclick=()=>geoActivate('geoMeasure');
@@ -479,7 +479,7 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
  function terrainMode(on){
   terrainPick=!!on;$('terrainPickAB').setAttribute('aria-pressed',String(terrainPick));
   $('terrainPickAB').classList.toggle('geoActive',terrainPick);
-  if(terrainPick){setMode('inspect');for(const k of ['geoMeasure','geoRadius','geoArea']){$(k).classList.remove('geoActive');$(k).setAttribute('aria-pressed','false')}geoShapeMode='';$('terrainProfileStatus').textContent='Haz clic para situar A y B; después podrás arrastrar los marcadores.'}
+  if(terrainPick){setMode('inspect');geoResetMeasure();for(const k of ['geoMeasure','geoRadius','geoArea']){$(k).classList.remove('geoActive');$(k).setAttribute('aria-pressed','false')}geoShapeMode='';$('terrainProfileStatus').textContent='Haz clic para situar A y B; después podrás arrastrar los marcadores.'}
  }
  function terrainStop(){terrainMode(false)}
  $('terrainPickAB').onclick=()=>terrainMode(!terrainPick);
