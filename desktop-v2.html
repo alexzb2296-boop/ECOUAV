@@ -577,8 +577,47 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
  $('geoFinishArea').onclick=geoFinishPolygon;
  $('geoClearShapes').onclick=()=>{geoShapes.clearLayers();geoAreaPoints.length=0;geoAreaClosed=false;$('geoShapeOutput').textContent='Figuras: sin geometrías.'};
  function geoShapeClick(ll){if(geoShapeMode==='geoRadius'){const meters=Number($('geoRadiusMeters').value);if(!Number.isFinite(meters)||meters<1||meters>100000){toast('Radio válido: 1–100000 m');return}geoShapes.clearLayers();L.circle([ll.lat,ll.lng],{radius:meters,color:'#ffca69',fillOpacity:.08,weight:2}).addTo(geoShapes);$('geoShapeOutput').textContent='Centro: '+ll.lat.toFixed(5)+', '+ll.lng.toFixed(5)+' · radio '+meters+' m · superficie ≈ '+(Math.PI*meters*meters/1000000).toFixed(3)+' km²';return}if(geoShapeMode==='geoArea'){if(geoAreaClosed){geoShapes.clearLayers();geoAreaPoints.length=0;geoAreaClosed=false}if(geoAreaPoints.length>=150){toast('Máximo de 150 vértices');return}geoAreaPoints.push(ll);geoShapes.clearLayers();geoAreaPoints.forEach((p,i)=>L.circleMarker([p.lat,p.lng],{radius:4,color:'#ffb47b'}).bindTooltip(String(i+1)).addTo(geoShapes));if(geoAreaPoints.length>1)L.polyline(geoAreaPoints.map(p=>[p.lat,p.lng]),{color:'#ffb47b',weight:2}).addTo(geoShapes);$('geoShapeOutput').textContent='Área: '+geoAreaPoints.length+' vértices. Pulsa «Terminar área».'}}
- function geoDrawGrid(){geoGrid.clearLayers();if(!$('geoGridToggle').checked)return;const b=map.getBounds(),south=b.getSouth(),north=b.getNorth(),west=b.getWest(),east=b.getEast(),step=Number($('geoGridStep').value);if(!Number.isFinite(step)||step<=0)return;const center=(south+north)/2,latStep=step/111320,lonStep=step/(111320*Math.max(.1,Math.cos(center*Math.PI/180)));if((north-south)/latStep+(east-west)/lonStep>160){$('geoShapeOutput').textContent='Cuadrícula demasiado densa: amplía el zoom o aumenta el tamaño de celda.';return}let count=0;for(let lat=Math.ceil(south/latStep)*latStep;lat<north&&count<160;lat+=latStep,count++)L.polyline([[lat,west],[lat,east]],{color:'#81c9ea',weight:1,opacity:.45,interactive:false}).addTo(geoGrid);for(let lng=Math.ceil(west/lonStep)*lonStep;lng<east&&count<160;lng+=lonStep,count++)L.polyline([[south,lng],[north,lng]],{color:'#81c9ea',weight:1,opacity:.45,interactive:false}).addTo(geoGrid)}
- $('geoGridToggle').onchange=()=>{$('geoGridToggle').checked?geoGrid.addTo(map):map.removeLayer(geoGrid);geoDrawGrid()};$('geoGridStep').onchange=geoDrawGrid;map.on('moveend zoomend',geoDrawGrid);
+ // Fixed-grid origin and metric reference are retained while zooming and panning.
+// Web Mercator distances are adjusted at the initial latitude; do not recalculate on zoom.
+ let geoGridReference=null;
+ function geoGridResetReference(){
+  const center=map.getCenter();
+  geoGridReference={lat:center.lat,projectedMetersPerGroundMeter:1/Math.max(.15,Math.cos(center.lat*Math.PI/180))};
+ }
+ function geoDrawGrid(){
+  geoGrid.clearLayers();
+  if(!$('geoGridToggle').checked)return;
+  if(!geoGridReference)geoGridResetReference();
+  const requestedMeters=Number($('geoGridStep').value);
+  if(!Number.isFinite(requestedMeters)||requestedMeters<=0)return;
+  const pitch=requestedMeters*geoGridReference.projectedMetersPerGroundMeter;
+  const b=map.getBounds(),sw=L.CRS.EPSG3857.project(b.getSouthWest()),ne=L.CRS.EPSG3857.project(b.getNorthEast());
+  if(![sw.x,sw.y,ne.x,ne.y].every(Number.isFinite))return;
+  // Grid lines are anchored to the EPSG:3857 coordinate origin (0,0), never to the viewport.
+  const xMin=Math.min(sw.x,ne.x),xMax=Math.max(sw.x,ne.x),yMin=Math.min(sw.y,ne.y),yMax=Math.max(sw.y,ne.y);
+  const cols=Math.floor(xMax/pitch)-Math.ceil(xMin/pitch)+1,rows=Math.floor(yMax/pitch)-Math.ceil(yMin/pitch)+1;
+  if(rows+cols>180){
+   $('geoShapeOutput').textContent='Cuadrícula '+requestedMeters+' × '+requestedMeters+' m sin cambios de escala. Acércate para visualizarla (demasiadas líneas en esta vista).';
+   return;
+  }
+  const opts={color:'#81c9ea',weight:1,opacity:.45,interactive:false};
+  const unproject=(x,y)=>L.CRS.EPSG3857.unproject(L.point(x,y));
+  for(let xi=Math.ceil(xMin/pitch);xi*pitch<=xMax;xi++){
+   const x=xi*pitch;
+   L.polyline([unproject(x,yMin),unproject(x,yMax)],opts).addTo(geoGrid);
+  }
+  for(let yi=Math.ceil(yMin/pitch);yi*pitch<=yMax;yi++){
+   const y=yi*pitch;
+   L.polyline([unproject(xMin,y),unproject(xMax,y)],opts).addTo(geoGrid);
+  }
+ }
+ $('geoGridToggle').onchange=()=>{
+  if($('geoGridToggle').checked){geoGridResetReference();geoGrid.addTo(map)}
+  else map.removeLayer(geoGrid);
+  geoDrawGrid();
+ };
+ $('geoGridStep').onchange=geoDrawGrid;
+ map.on('moveend zoomend',geoDrawGrid);
 
  // Terrain profiles migrated from original ECOUAV. Elevation samples are not certified.
  const terrainABLayer=L.layerGroup().addTo(map);
