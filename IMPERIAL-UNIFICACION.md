@@ -1,0 +1,51 @@
+# IMPERIAL — Plan de unificación funcional
+
+Fecha de auditoría: 2026-10-11
+
+## Arquitectura acordada
+
+- **Base principal:** `desktop-v2.html` (diseño de tres columnas).
+- **Origen de funcionalidades maduras:** `index.html` (versión adaptable/antigua).
+- **Entrada de escritorio:** `escritorio.html` (visor que carga `desktop-v2.html`).
+- **Meta:** una única experiencia funcional y adaptable, sin bifurcar la lógica para móvil y escritorio.
+- **Migración gradual:** conservar `index.html` operativo hasta validar la paridad funcional. No sustituir ambos documentos por redirección todavía.
+
+## Inventario inicial observado en código
+
+| Área | Versión adaptable `index.html` | Escritorio `desktop-v2.html` | Próximo paso |
+|---|---|---|---|
+| Mapas satélite, relieve y capas | Sí | Sí, parcialmente | Contrastar opciones y fuentes |
+| Búsqueda de coordenadas | Sí | Sí, básica | Completar formatos |
+| Conversión UTM y MGRS | Sí | Sin implementación identificada | Migrar |
+| Medición de distancia, azimut, radio y área | Sí | Herramientas más limitadas | Migrar |
+| Cuadrículas del mapa y de zona | Sí | Sin controles equivalentes identificados | Migrar |
+| Perfil A/B y perfil de ruta | Sí | Sin implementación identificada | Migrar |
+| Análisis de desnivel de ruta | Sí | Sin implementación identificada | Migrar |
+| Importación DEM GeoTIFF y recuperación | Sí | Sin implementación identificada | Migrar con validación y límites |
+| Visor 3D | Sí | Sí, básico/demostrativo | Comparar y unificar |
+| Meteorología Open-Meteo | Sí | Sí | Consolidar |
+| Herramientas de antenas y LOS | Sí, más completas | Sí, parcialmente | Unificar con aviso de límites del modelo |
+| POI, rutas y deshacer | Sí | Sí | Comparar casos de uso |
+| GeoJSON | Sí | Sí | Verificar equivalencia de datos |
+| Exportación KML/GPX | Sí | Sin controles equivalentes identificados | Migrar |
+| Proyectos locales / misiones | Sí | Sí, parcialmente | Definir formato compartido y persistencia |
+
+> Los estados reflejan inspección del código y los controles disponibles, **no pruebas completas de funcionamiento en navegador**. El relieve IGN del archivo adaptable presenta una incidencia previamente identificada y se mantiene pendiente.
+
+## Fases de implementación
+
+1. **Fundamentos:** extraer módulos compartidos sin romper el diseño de escritorio; definir estado cartográfico común, persistencia y gestión de errores.
+2. **Cartografía:** coordenadas, conversiones, cuadrículas, mediciones y gestión de capas.
+3. **Terreno:** perfiles A/B, perfiles y desniveles de ruta, DEM importado y visor 3D.
+4. **Meteorología y antenas:** consolidar herramientas y sus limitaciones declaradas; diferenciar visualización ilustrativa de estimaciones verificables.
+5. **Misiones:** POI, rutas, proyectos, importación/exportación GeoJSON, KML y GPX.
+6. **Adaptabilidad y pruebas:** móvil/tablet desde el mismo núcleo, controles de navegación, rendimiento y pruebas de regresión.
+
+## Criterios de aceptación
+
+- No perder ningún control útil que esté operativo en la versión adaptable.
+- Preservar diseño principal de tres columnas en escritorio.
+- Mantener funcionalidad del mapa y proyectos en cada fase.
+- Validar sintaxis JS, interacción cartográfica y formatos importados/exportados.
+- No afirmar que la visualización de antenas es predicción RF real ni que las indicaciones sirven como autorización de vuelo.
+- Retirar la versión antigua solo después de verificar paridad funcional con casos de prueba.
