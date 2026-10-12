@@ -219,6 +219,8 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
 .zoneGridCellIcon{background:transparent;border:0!important;pointer-events:none!important}.zoneGridCellIcon span{display:block;text-align:center;font-size:11px;font-weight:800;letter-spacing:.02em;color:#fff8dc;text-shadow:0 1px 3px #000,0 0 5px #000;background:#091e2a88;border-radius:3px}
 .zoneGridHandle,.zoneGridResizeHandle{background:transparent!important;border:0!important}.zoneGridHandle span,.zoneGridResizeHandle span{display:grid;place-items:center;width:100%;height:100%;background:#122c3b;color:#ffdf85;border:2px solid #ffe0a1;border-radius:8px;box-shadow:0 0 9px #000b;font-weight:900;cursor:move;touch-action:none}.zoneGridResizeHandle span{background:#8a5923;color:white;cursor:nwse-resize}
 .zoneCornerLabels,.zoneCornerRow{display:grid;grid-template-columns:30px minmax(0,1fr) minmax(0,1fr);align-items:center;gap:5px;margin:5px 0}.zoneCornerLabels{font-size:10px;color:#9dc6dc}.zoneCornerRow label{font-size:11px;color:#ffe0a1;font-weight:700}.zoneCornerRow input{min-width:0;width:100%;border:1px solid #3a6076;border-radius:5px;background:#122d40;color:#e9f8ff;padding:7px 4px;font-size:11px}#zoneCornerCell{min-width:0}
+
+.imperialPositionPin{height:34px;width:34px;border:3px solid #062b43;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#ffcd67;color:#062b43;font-size:23px;font-weight:900;box-shadow:0 2px 13px #000b,0 0 0 3px #ffe2a255;cursor:grab}.leaflet-dragging .imperialPositionPin{cursor:grabbing}
 </style>
 <link rel="stylesheet" href="./imperial-brand.css?v=6bfc8b7">
 </head>
@@ -989,6 +991,30 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
  $('zoneGridHeight').addEventListener('change',()=>{if(zoneGridCenter)try{zoneGridDraw()}catch(err){zoneGridStatus(err.message)}});
  $('zoneGridCell').addEventListener('change',()=>{if(zoneGridCenter)try{zoneGridDraw()}catch(err){zoneGridStatus(err.message)}});
  $('zoneGridName').addEventListener('change',()=>{if(zoneGridCenter)try{zoneGridDraw()}catch(err){zoneGridStatus(err.message)}});
+
+ // Draggable reference position: clicking an idle map sets it; dragging adjusts it.
+ // A manually placed reference is not claimed to be verified GPS data.
+ const myPositionLayer=L.layerGroup().addTo(map);
+ let myPositionMarker=null,myPosition=null,myPositionSource='manual';
+ function putMyPosition(ll,source='manual'){
+  myPosition={lat:ll.lat,lng:ll.lng};myPositionSource=source;
+  if(!myPositionMarker){
+   const icon=L.divIcon({className:'demoPoint',html:'<div class="imperialPositionPin" aria-hidden="true">⌖</div>',iconSize:[34,34],iconAnchor:[17,17]});
+   myPositionMarker=L.marker([ll.lat,ll.lng],{draggable:true,autoPan:true,icon,title:'Mi ubicación (arrastrar para mover)'}).addTo(myPositionLayer);
+   myPositionMarker.bindTooltip('Mi ubicación · arrastrar para mover',{direction:'top',offset:[0,-15]});
+   myPositionMarker.on('click',e=>{L.DomEvent.stopPropagation(e.originalEvent);selectAt(myPosition,'Mi ubicación')});
+   myPositionMarker.on('dragend',()=>{
+    const p=myPositionMarker.getLatLng();
+    putMyPosition({lat:p.lat,lng:p.lng},'manual');
+    toast('Mi ubicación actualizada');
+   });
+  }else myPositionMarker.setLatLng([ll.lat,ll.lng]);
+  $('gpsInfo').textContent=source==='gps'?'Posición del dispositivo · movible':'Ubicación manual · movible';
+  $('gpsDot').style.background=source==='gps'?'#44d77c':'#ffcf75';
+  myPositionMarker.setTooltipContent(source==='gps'?'Mi ubicación GPS · arrastrar para ajustar':'Mi ubicación manual · arrastrar para mover');
+  selectAt(myPosition,'Mi ubicación');
+  $('selectedType').textContent=source==='gps'?'GPS':'MANUAL';
+ }
  map.on('click',ev=>{
   if(zoneGridMoving){zoneGridCenter={lat:ev.latlng.lat,lng:ev.latlng.lng};zoneGridMoving=false;$('zoneGridMove').classList.remove('geoActive');$('zoneGridMove').setAttribute('aria-pressed','false');try{zoneGridDraw()}catch(err){zoneGridStatus(err.message)}return;}
   if(terrainPick){terrainChoose({lat:ev.latlng.lat,lng:ev.latlng.lng});return;}
@@ -1000,7 +1026,7 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
   if(mode==='poi'){
    const name='POI '+(pois.length+1);pois.push({...ll,name});demo=false;redraw();setMode('inspect');selectAt(ll,name);toast('Punto de interés guardado. Puedes renombrarlo en el panel.');return;
   }
-  selectAt(ll,'Punto seleccionado');
+  putMyPosition(ll,'manual');
  });
  document.querySelectorAll('[name=basemap]').forEach(el=>el.addEventListener('change',()=>{if(el.checked)setBase(el.value)}));
  const visibility=[['routesToggle',routeLayer],['antennaToggle',antennaLayer],['poiToggle',poiLayer]];
@@ -1013,8 +1039,7 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
   if(!navigator.geolocation){toast('GPS del navegador no disponible');return}
   navigator.geolocation.getCurrentPosition(p=>{
    map.setView([p.coords.latitude,p.coords.longitude],15);
-   $('gpsInfo').textContent='Posición GPS del dispositivo';$('gpsDot').style.background='#44d77c';
-   selectAt({lat:p.coords.latitude,lng:p.coords.longitude},'Posición del dispositivo');
+   putMyPosition({lat:p.coords.latitude,lng:p.coords.longitude},'gps');
   },()=>toast('No se obtuvo permiso de ubicación'),{enableHighAccuracy:true,timeout:10000});
  };
  $('layersAction').onclick=()=>document.querySelector('.sidebar')?.scrollIntoView({behavior:'smooth'});
