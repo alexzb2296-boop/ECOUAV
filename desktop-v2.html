@@ -1057,7 +1057,7 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
   if(geoShapeMode==='geoMeasure'){geoMeasureClick({lat:ev.latlng.lat,lng:ev.latlng.lng});return;}
   const ll={lat:ev.latlng.lat,lng:ev.latlng.lng};
   if(mode==='route'){route.push(ll);redraw();selectAt(ll,'Punto '+route.length);return;}
-  if(mode==='antenna'){const id=$('antSelect').value;antennaABC[id]={...ll,azimuth:Number($('antAzimuth').value),beam:Number($('antBeam').value),range:Number($('antRange').value)};antenna=antennaABC.A;demo=false;redraw();setMode('inspect');selectAt(ll,'Antena '+id);$('antennaInfo').textContent='Antena '+id+' colocada';return;}
+  if(mode==='antenna'){const id=$('antSelect').value;antennaABC[id]={...ll,azimuth:Number($('antAzimuth').value),beam:Number($('antBeam').value),range:Number($('antRange').value)};antenna=antennaABC.A;demo=false;redraw();setMode('inspect');selectAt(ll,'Antena '+id);$('antennaInfo').textContent='Antena '+id+' colocada';if($('terrainCenter').value==='antenna')loadTerrain();return;}
   if(mode==='poi'){
    const name='POI '+(pois.length+1);pois.push({...ll,name});demo=false;redraw();setMode('inspect');selectAt(ll,name);toast('Punto de interés guardado. Puedes renombrarlo en el panel.');return;
   }
@@ -1087,9 +1087,9 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
  $('placeAntenna').onclick=()=>{setMode('antenna');toast('Haz clic en el mapa para colocar la antena')};
  function activeAntenna(){return antennaABC[$('antSelect').value]}
  function antReadInputs(){const az=Number($('antAzimuth').value),beam=Number($('antBeam').value),range=Number($('antRange').value);if(!Number.isFinite(az)||az<0||az>=360||!Number.isFinite(beam)||beam<1||beam>360||!Number.isFinite(range)||range<.1||range>50)throw Error('Azimut 0–359°, apertura 1–360°, radio 0,1–50 km');return {azimuth:az,beam,range}}
- $('antSelect').onchange=()=>{const p=activeAntenna();if(p){$('antAzimuth').value=p.azimuth??0;$('antBeam').value=p.beam??90;$('antRange').value=p.range??2}$('antABCStatus').textContent=p?'Antena '+$('antSelect').value+' · '+p.lat.toFixed(5)+', '+p.lng.toFixed(5):'Antena '+$('antSelect').value+' todavía no situada';};
+ $('antSelect').onchange=()=>{const p=activeAntenna();if(p){$('antAzimuth').value=p.azimuth??0;$('antBeam').value=p.beam??90;$('antRange').value=p.range??2}$('antABCStatus').textContent=p?'Antena '+$('antSelect').value+' · '+p.lat.toFixed(5)+', '+p.lng.toFixed(5):'Antena '+$('antSelect').value+' todavía no situada';if(p&&$('terrainCenter').value==='antenna')loadTerrain();};
  $('antPlace').onclick=()=>{try{antReadInputs();setMode('antenna');toast('Selecciona en el mapa la posición de la antena '+$('antSelect').value)}catch(e){toast(e.message)}};
- $('antRefresh').onclick=()=>{try{const p=activeAntenna();if(!p)throw Error('Primero coloca la antena');Object.assign(p,antReadInputs());antenna=antennaABC.A;redraw();$('antABCStatus').textContent='Lóbulo ovalado actualizado en mapa y visor 3D para antena '+$('antSelect').value}catch(e){toast(e.message)}};
+ $('antRefresh').onclick=()=>{try{const p=activeAntenna();if(!p)throw Error('Primero coloca la antena');Object.assign(p,antReadInputs());antenna=antennaABC.A;redraw();if($('terrainCenter').value==='antenna')loadTerrain();$('antABCStatus').textContent='Lóbulo ovalado actualizado en mapa y visor 3D para antena '+$('antSelect').value}catch(e){toast(e.message)}};
  $('antRemove').onclick=()=>{const id=$('antSelect').value;antennaABC[id]=null;antenna=antennaABC.A;demo=false;redraw();$('antABCStatus').textContent='Antena '+id+' eliminada'};
  $('antCompare').onclick=()=>{const items=Object.entries(antennaABC).filter(([id,p])=>p);$('antABCStatus').textContent=items.length?items.map(([id,p])=>id+': '+p.lat.toFixed(5)+', '+p.lng.toFixed(5)+' · '+p.azimuth+'° / '+p.beam+'°').join(' | '):'No hay antenas colocadas';};
 
@@ -1437,7 +1437,8 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
  function loadTerrain(){
   if(!renderer){$('threeStatus').textContent='Visor 3D no disponible (WebGL)';return}
   const id=++terrainRequest,n=15,meters=Number($('terrainExtent').value)||2000,half=meters/2;
-  const center=$('terrainCenter').value==='antenna'&&antenna?antenna:map.getCenter();
+  const activeFor3D=antennaABC[$('antSelect').value]||antenna;
+  const center=$('terrainCenter').value==='antenna'&&activeFor3D?activeFor3D:map.getCenter();
   const xMeters=meters/(n-1),yMeters=meters/(n-1),vertical=Number($('terrainExaggeration').value)||2;
   $('threeStatus').textContent='Preparando terreno 3D…';$('terrainSideStatus').textContent='Consultando datos de elevación…';
   const points=[];
