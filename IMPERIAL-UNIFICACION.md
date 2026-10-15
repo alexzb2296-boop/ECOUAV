@@ -170,3 +170,12 @@ Fecha de auditoría: 2026-10-11
 - Se elimina de este relieve el lóbulo ilustrativo superpuesto, para que el visor sea exclusivamente cartográfico. La representación 3D sigue siendo simplificada, no fotogramétrica ni una predicción de vuelo.
 - El lanzador `escritorio.html` actualiza el parámetro de caché para esta revisión.
 - **Comprobaciones:** sintaxis JS correcta, controles presentes, sin IDs duplicados ni referencias de IDs ausentes. **Pendiente:** prueba visual/WebGL en ordenador y móviles; rendimiento de consultas remotas y verificación cartográfica contra DEM de referencia.
+
+## Restauración parcial del módulo de antenas (2026-10-15)
+
+- Se detectó una regresión funcional: IMPERIAL solo permitía una antena con sector fijo; la versión `legacy-index.html` tenía antenas candidatas A/B/C y controles adicionales.
+- Restauradas en `desktop-v2.html` las **tres posiciones A/B/C independientes**, selección de antena activa, marcado y arrastre de posiciones, controles de azimut, apertura angular y radio visual, refresco, eliminación individual y comparación descriptiva.
+- Integrada persistencia de las tres antenas en proyectos locales y exportación/importación GeoJSON. Los proyectos antiguos de una sola antena siguen admitidos mediante conversión a posición A.
+- Los sectores son **esquemas geométricos**, no modelos de cobertura RF ni validaciones operativas.
+- **Pendiente de migrar/revisar:** comparación radioeléctrica avanzada, cálculos LOS/Fresnel y demás herramientas especializadas del módulo legado. No se afirma equivalencia total con la versión original.
+- Verificación: sintaxis JavaScript válida, referencias a IDs HTML existentes y sin IDs duplicados. Pendiente prueba manual en navegador.
