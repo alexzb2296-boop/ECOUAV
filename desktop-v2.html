@@ -1085,7 +1085,7 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
  $('saveProject').onclick=()=>{
   const features=[];
   if(route.length)features.push({type:'Feature',properties:{name:'Ruta ECOUAV',demo},geometry:{type:'LineString',coordinates:route.map(p=>[p.lng,p.lat])}});
-  if(antenna)features.push({type:'Feature',properties:{name:'Antena',kind:'antenna',note:'Sin predicción de cobertura'},geometry:{type:'Point',coordinates:[antenna.lng,antenna.lat]}});
+  for(const [id,p] of Object.entries(antennaABC)){if(p)features.push({type:'Feature',properties:{name:'Antena '+id,kind:'antenna',antennaId:id,azimuth:p.azimuth,beam:p.beam,range:p.range,note:'Sector visual sin predicción de cobertura'},geometry:{type:'Point',coordinates:[p.lng,p.lat]}})}
   for(const p of pois)features.push({type:'Feature',properties:{name:p.name,kind:'poi'},geometry:{type:'Point',coordinates:[p.lng,p.lat]}});
   const geo={type:'FeatureCollection',properties:{name:'ECOUAV Desktop v2',exportedAt:new Date().toISOString()},features};
   const url=URL.createObjectURL(new Blob([JSON.stringify(geo,null,2)],{type:'application/geo+json'}));
@@ -1099,7 +1099,7 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
    if(file.size>3*1024*1024)throw Error('Archivo demasiado grande (máximo 3 MB)');
    const data=JSON.parse(await file.text());
    if(data.type!=='FeatureCollection'||!Array.isArray(data.features)||data.features.length>1500)throw Error('GeoJSON no válido o demasiado extenso');
-   const parsedRoute=[],parsedPois=[];let parsedAntenna=null;
+   const parsedRoute=[],parsedPois=[];let parsedAntenna=null,parsedABC={A:null,B:null,C:null};
    const point=(c)=>{
     if(!Array.isArray(c)||c.length<2)return null;
     const lng=Number(c[0]),lat=Number(c[1]);
@@ -1113,15 +1113,15 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
      for(const c of g.coordinates){const v=point(c);if(!v)throw Error('Coordenada de ruta inválida');parsedRoute.push(v)}
     }else if(g.type==='Point'){
      const ll=point(g.coordinates);if(!ll)continue;
-     if(p.kind==='antenna'||p.name==='Antena')parsedAntenna=ll;
+     if(p.kind==='antenna'||p.name==='Antena'){const id=['A','B','C'].includes(p.antennaId)?p.antennaId:'A';const az=Number(p.azimuth),beam=Number(p.beam),range=Number(p.range);parsedABC[id]={...ll,azimuth:Number.isFinite(az)&&az>=0&&az<360?az:0,beam:Number.isFinite(beam)&&beam>=1&&beam<=360?beam:90,range:Number.isFinite(range)&&range>=.1&&range<=50?range:2};parsedAntenna=parsedABC.A;}
      else if(parsedPois.length<200){
       const name=typeof p.name==='string'&&p.name.trim()?p.name.trim().slice(0,80):'POI '+(parsedPois.length+1);
       parsedPois.push({...ll,name});
      }
     }
    }
-   route=parsedRoute;pois=parsedPois;antenna=parsedAntenna;demo=false;setMode('inspect');redraw();
-   const coords=[...route,...pois,...(antenna?[antenna]:[])];
+   route=parsedRoute;pois=parsedPois;antenna=parsedAntenna;antennaABC=parsedABC;demo=false;setMode('inspect');redraw();
+   const coords=[...route,...pois,...Object.values(antennaABC).filter(Boolean)];
    if(coords.length){const bounds=L.latLngBounds(coords.map(p=>[p.lat,p.lng]));map.fitBounds(bounds.pad(.15),{maxZoom:15});selectAt(coords[0],'Proyecto importado')}
    status.textContent='Importado: '+route.length+' puntos de ruta, '+pois.length+' POI'+(antenna?' y una antena':'')+'.';
    toast('Proyecto GeoJSON importado');
@@ -1158,7 +1158,7 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
    const center=map.getCenter(),checked=document.querySelector('input[name="basemap"]:checked');
    const record={id:Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8),name,savedAt:new Date().toISOString(),version:1,
     route:route.map(p=>({lat:p.lat,lng:p.lng})),pois:pois.map(p=>({lat:p.lat,lng:p.lng,name:String(p.name).slice(0,80)})),
-    antenna:antenna?{lat:antenna.lat,lng:antenna.lng}:null,demo,view:{center:{lat:center.lat,lng:center.lng},zoom:map.getZoom(),base:checked?.value||'esri'}};
+    antenna:antenna?{lat:antenna.lat,lng:antenna.lng}:null,antennaABC:JSON.parse(JSON.stringify(antennaABC)),demo,view:{center:{lat:center.lat,lng:center.lng},zoom:map.getZoom(),base:checked?.value||'esri'}};
    items.unshift(record);projectWrite(items);projectRefresh();$('localProjectSelect').value=record.id;
    $('localProjectStatus').textContent='Guardado: '+name+' ('+route.length+' WP y '+pois.length+' POI).';toast('Proyecto guardado localmente');
   }catch(err){$('localProjectStatus').textContent='No guardado: '+err.message}
@@ -1172,7 +1172,8 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
    const ant=entry.antenna?projectPoint(entry.antenna):null;if(entry.antenna&&!ant)throw Error('Antena inválida');
    const center=projectPoint(entry.view?.center);if(!center)throw Error('Centro inválido');
    const zoom=Number(entry.view.zoom);if(!Number.isFinite(zoom)||zoom<1||zoom>19)throw Error('Zoom inválido');
-   route=newRoute;pois=newPois;antenna=ant;demo=entry.demo===true;
+   const candidates={A:null,B:null,C:null};for(const id of ['A','B','C']){const candidate=entry.antennaABC?.[id];if(!candidate)continue;const v=projectPoint(candidate);if(!v)throw Error('Antena '+id+' inválida');const az=Number(candidate.azimuth),beam=Number(candidate.beam),range=Number(candidate.range);candidates[id]={...v,azimuth:Number.isFinite(az)&&az>=0&&az<360?az:0,beam:Number.isFinite(beam)&&beam>=1&&beam<=360?beam:90,range:Number.isFinite(range)&&range>=.1&&range<=50?range:2}}if(!entry.antennaABC&&ant)candidates.A={...ant,azimuth:0,beam:90,range:2};
+   route=newRoute;pois=newPois;antennaABC=candidates;antenna=candidates.A;demo=entry.demo===true;
    setMode('inspect');redraw();if(typeof terrainInvalidateRoute==='function')terrainInvalidateRoute();
    const base=entry.view.base==='pnoa'?'pnoa':'esri';
    const radio=document.querySelector('input[name="basemap"][value="'+base+'"]');if(radio)radio.checked=true;
