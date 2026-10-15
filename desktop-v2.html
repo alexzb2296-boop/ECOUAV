@@ -287,13 +287,13 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
 <div class="geoFields"><label>Azimut °<input id="antAzimuth" type="number" min="0" max="359" value="0" step="1"></label><label>Apertura °<input id="antBeam" type="number" min="1" max="360" value="90" step="1"></label></div>
 <div class="selectRow"><label for="antRange">Radio visual (km)</label><input id="antRange" type="number" min="0.1" max="50" step="0.1" value="2" style="width:92px"></div>
 <div class="geoTools"><button id="antPlace" class="smallAction" type="button">⌖ Colocar antena</button><button id="antRefresh" class="smallAction" type="button">↻ Actualizar sector</button><button id="antRemove" class="smallAction" type="button">✕ Quitar activa</button><button id="antCompare" class="smallAction" type="button">▤ Comparar A/B/C</button></div>
-<p class="sideMessage" id="antABCStatus" role="status">Tres posiciones independientes. Los sectores son representaciones geométricas, no cálculos de cobertura.</p>
+<p class="sideMessage" id="antABCStatus" role="status">Tres posiciones independientes. Óvalos orientados ilustrativos, sin predicción de cobertura.</p>
 </div></section>
   <section class="sideSection"><div class="sectionTitle">⛰ &nbsp;Terreno <b>⌃</b></div><div class="sideContent">
    <label class="setting"><span>Vista 3D</span><input class="toggle" id="view3dToggle" type="checkbox" checked></label>
    <label class="setting"><span>Curvas topográficas</span><input class="toggle" id="topo2Toggle" type="checkbox" checked></label>
    <div class="selectRow"><label for="basemapOpacity">Transparencia topo</label><select id="basemapOpacity"><option value=".3">30 %</option><option value=".5" selected>50 %</option><option value=".75">75 %</option></select></div>
-   <div class="selectRow"><label for="terrainCenter">Terreno 3D</label><select id="terrainCenter"><option value="center">Centro del mapa</option><option value="antenna">Antena demo</option></select></div>
+   <div class="selectRow"><label for="terrainCenter">Terreno 3D</label><select id="terrainCenter"><option value="center">Centro del mapa</option><option value="antenna" selected>Antena activa</option></select></div>
    <div class="selectRow"><label for="terrainExtent">Extensión 3D</label><select id="terrainExtent"><option value="800">800 × 800 m</option><option value="2000" selected>2 × 2 km</option><option value="5000">5 × 5 km</option></select></div>
    <div class="selectRow"><label for="terrainExaggeration">Exageración vertical</label><select id="terrainExaggeration"><option value="1">1× (real)</option><option value="2" selected>2×</option><option value="4">4×</option></select></div>
    <label class="setting"><span>Capa 3D sobre el mapa</span><input class="toggle" id="terrainOverlayToggle" type="checkbox"></label>
@@ -452,6 +452,25 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
   const lambda2=lambda1+Math.atan2(Math.sin(br)*Math.sin(delta)*Math.cos(phi1),Math.cos(delta)-Math.sin(phi1)*Math.sin(phi2));
   return [phi2*180/Math.PI,lambda2*180/Math.PI];
  }
+ // Lóbulo ovalado esquemático: semieje mayor a lo largo del azimut,
+ // antena en el extremo trasero; no representa intensidad ni cobertura RF.
+ function antennaOvalMeters(p){
+  const major=Math.max(100,Math.min(50000,(Number(p.range)||2)*1000));
+  const beam=Math.max(1,Math.min(360,Number(p.beam)||90));
+  const minor=major*Math.max(.12,Math.min(.72,Math.sin(Math.min(179,beam)/2*Math.PI/180)*.68));
+  const az=(Number(p.azimuth)||0)*Math.PI/180;
+  return {major,minor,az};
+ }
+ function antennaOvalCoordinates(p){
+  const {major,minor,az}=antennaOvalMeters(p),points=[];
+  for(let i=0;i<=72;i++){
+   const a=2*Math.PI*i/72;
+   const ahead=major*.5*(1+Math.cos(a)),side=minor*Math.sin(a);
+   const north=ahead*Math.cos(az)-side*Math.sin(az),east=ahead*Math.sin(az)+side*Math.cos(az);
+   points.push([p.lat+north/111320,p.lng+east/(111320*Math.max(.15,Math.cos(p.lat*Math.PI/180)))]);
+  }
+  return points;
+ }
  function redraw(){
   routeLayer.clearLayers();antennaLayer.clearLayers();poiLayer.clearLayers();
   if(route.length){
@@ -464,8 +483,10 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
    if(!p)continue;
    const colors={A:'#41d2f4',B:'#ffc46c',C:'#76e4a4'};
    const az=Number.isFinite(p.azimuth)?p.azimuth:0,beam=Number.isFinite(p.beam)?p.beam:90,range=Number.isFinite(p.range)?p.range:2;
-   const pts=[[p.lat,p.lng]];for(let j=0;j<=36;j++)pts.push(destination(p.lat,p.lng,az-beam/2+beam*j/36,range*1000));
-   L.polygon(pts,{color:colors[id],weight:1.5,fillOpacity:.09,interactive:false}).addTo(antennaLayer);
+   // Elipse orientada: antena junto al extremo posterior, alcance solo visual.
+   const pts=antennaOvalCoordinates(p);
+   L.polygon(pts,{color:colors[id],weight:2,opacity:.9,fillColor:colors[id],fillOpacity:.16,interactive:false}).addTo(antennaLayer);
+   L.polyline([[p.lat,p.lng],destination(p.lat,p.lng,az,range*1000)],{color:colors[id],weight:1,dashArray:'5 7',opacity:.7,interactive:false}).addTo(antennaLayer);
    const m=mark(p,'Antena '+id,'antenna');m.options.draggable=true;m.dragging?.enable();
    m.on('dragend',ev=>{const ll=ev.target.getLatLng();antennaABC[id]={...antennaABC[id],lat:ll.lat,lng:ll.lng};antenna=antennaABC.A;redraw();});
    m.addTo(antennaLayer);
@@ -476,6 +497,7 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
   pois.forEach(p=>mark(p,p.name,'pin','#ffc46c').addTo(poiLayer));
   updateRouteInfo();updatePoiList();
   if(typeof terrainMarkRouteChange==='function')terrainMarkRouteChange();
+  if(typeof refreshAntenna3D==='function')refreshAntenna3D();
  }
  function updateRouteInfo(){
   $('distanceInfo').textContent=route.length>1?(distance()/1000).toFixed(2)+' km':'—';
@@ -1067,7 +1089,7 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
  function antReadInputs(){const az=Number($('antAzimuth').value),beam=Number($('antBeam').value),range=Number($('antRange').value);if(!Number.isFinite(az)||az<0||az>=360||!Number.isFinite(beam)||beam<1||beam>360||!Number.isFinite(range)||range<.1||range>50)throw Error('Azimut 0–359°, apertura 1–360°, radio 0,1–50 km');return {azimuth:az,beam,range}}
  $('antSelect').onchange=()=>{const p=activeAntenna();if(p){$('antAzimuth').value=p.azimuth??0;$('antBeam').value=p.beam??90;$('antRange').value=p.range??2}$('antABCStatus').textContent=p?'Antena '+$('antSelect').value+' · '+p.lat.toFixed(5)+', '+p.lng.toFixed(5):'Antena '+$('antSelect').value+' todavía no situada';};
  $('antPlace').onclick=()=>{try{antReadInputs();setMode('antenna');toast('Selecciona en el mapa la posición de la antena '+$('antSelect').value)}catch(e){toast(e.message)}};
- $('antRefresh').onclick=()=>{try{const p=activeAntenna();if(!p)throw Error('Primero coloca la antena');Object.assign(p,antReadInputs());antenna=antennaABC.A;redraw();$('antABCStatus').textContent='Sector visual actualizado para antena '+$('antSelect').value}catch(e){toast(e.message)}};
+ $('antRefresh').onclick=()=>{try{const p=activeAntenna();if(!p)throw Error('Primero coloca la antena');Object.assign(p,antReadInputs());antenna=antennaABC.A;redraw();$('antABCStatus').textContent='Lóbulo ovalado actualizado en mapa y visor 3D para antena '+$('antSelect').value}catch(e){toast(e.message)}};
  $('antRemove').onclick=()=>{const id=$('antSelect').value;antennaABC[id]=null;antenna=antennaABC.A;demo=false;redraw();$('antABCStatus').textContent='Antena '+id+' eliminada'};
  $('antCompare').onclick=()=>{const items=Object.entries(antennaABC).filter(([id,p])=>p);$('antABCStatus').textContent=items.length?items.map(([id,p])=>id+': '+p.lat.toFixed(5)+', '+p.lng.toFixed(5)+' · '+p.azimuth+'° / '+p.beam+'°').join(' | '):'No hay antenas colocadas';};
 
@@ -1337,7 +1359,7 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
  $('collapse3d').onclick=()=>{preview.classList.toggle('collapsed');$('collapse3d').textContent=preview.classList.contains('collapsed')?'+':'−';requestAnimationFrame(resizeThree)};
  $('fullscreen3d').onclick=()=>{if(document.fullscreenElement)document.exitFullscreen();else preview.requestFullscreen?.()};
  document.addEventListener('fullscreenchange',()=>setTimeout(resizeThree,80));
- let renderer=null,scene=null,camera=null,terrainMesh=null,gridLines=null,threeHost=$('threeStage'),THREE=null,orbitAz=1.15,orbitEl=.45,zoom=1,focus=null,radius=3,drag=null;
+ let renderer=null,scene=null,camera=null,terrainMesh=null,sectorMesh3D=null,terrain3DRegion=null,gridLines=null,threeHost=$('threeStage'),THREE=null,orbitAz=1.15,orbitEl=.45,zoom=1,focus=null,radius=3,drag=null;
  function renderThree(){
   if(!renderer||!camera)return;
   const w=Math.max(2,threeHost.clientWidth),h=Math.max(2,threeHost.clientHeight);
@@ -1373,6 +1395,44 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
    return fetch('https://api.open-meteo.com/v1/elevation?'+params,{signal:AbortSignal.timeout(16000)})
    .then(r=>{if(!r.ok)throw Error('Elevation HTTP '+r.status);return r.json()}).then(j=>j.elevation||[]);
   })).then(x=>x.flat());
+ }
+ // Los mismos contornos ovalados se dibujan sobre el visor de relieve.
+ function refreshAntenna3D(){
+  if(!scene||!THREE||!terrain3DRegion)return;
+  if(sectorMesh3D){scene.remove(sectorMesh3D);sectorMesh3D.traverse(o=>{o.geometry?.dispose();o.material?.dispose?.()});sectorMesh3D=null}
+  const group=new THREE.Group(),{center,meters,base,scaleY,vertical,highest}=terrain3DRegion;
+  const colors={A:0x41d2f4,B:0xffc46c,C:0x76e4a4};
+  for(const [id,p] of Object.entries(antennaABC)){
+   if(!p)continue;
+   const {major,minor,az}=antennaOvalMeters(p);
+   // X al este, Z al sur, mismos ejes que el terreno Three.js.
+   const x0=(p.lng-center.lng)*111320*Math.cos(center.lat*Math.PI/180)/meters*8;
+   const z0=-(p.lat-center.lat)*111320/meters*8;
+   const y=highest+.12;
+   // Omite antenas completamente fuera del terreno visualizado.
+   if(Math.abs(x0)>5||Math.abs(z0)>5)continue;
+   const positions=[x0,y,z0],perimeter=[],triangles=[];
+   for(let i=0;i<=72;i++){
+    const t=2*Math.PI*i/72;
+    const ahead=major*.5*(1+Math.cos(t)),side=minor*Math.sin(t);
+    const north=ahead*Math.cos(az)-side*Math.sin(az),east=ahead*Math.sin(az)+side*Math.cos(az);
+    perimeter.push([x0+east/meters*8,y,z0-north/meters*8]);
+   }
+   // Centro geométrico del óvalo para la superficie translúcida.
+   const cx=x0+major*.5*Math.sin(az)/meters*8,cz=z0-major*.5*Math.cos(az)/meters*8;
+   const verts=[cx,y,cz],indexes=[];
+   for(const pt of perimeter)verts.push(...pt);
+   for(let i=1;i<perimeter.length;i++)indexes.push(0,i,i+1);
+   const g=new THREE.BufferGeometry();
+   g.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));g.setIndex(indexes);g.computeVertexNormals();
+   const color=colors[id];
+   group.add(new THREE.Mesh(g,new THREE.MeshBasicMaterial({color,transparent:true,opacity:.25,side:THREE.DoubleSide,depthWrite:false})));
+   const boundary=new THREE.BufferGeometry().setFromPoints(perimeter.map(pt=>new THREE.Vector3(...pt)));
+   group.add(new THREE.Line(boundary,new THREE.LineBasicMaterial({color,transparent:true,opacity:.95})));
+   const mast=new THREE.Mesh(new THREE.CylinderGeometry(.018,.018,.25,9),new THREE.MeshBasicMaterial({color}));
+   mast.position.set(x0,y+.125,z0);group.add(mast);
+  }
+  scene.add(group);sectorMesh3D=group;renderThree();
  }
  function loadTerrain(){
   if(!renderer){$('threeStatus').textContent='Visor 3D no disponible (WebGL)';return}
@@ -1412,6 +1472,8 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
    group.add(new THREE.LineSegments(new THREE.EdgesGeometry(geometry,22),new THREE.LineBasicMaterial({color:0xd1e9d4,transparent:true,opacity:.12})));
    if(terrainMesh){scene.remove(terrainMesh);terrainMesh.traverse(o=>{o.geometry?.dispose();if(Array.isArray(o.material))o.material.forEach(m=>m.dispose());else o.material?.dispose?.()})}
    scene.add(group);terrainMesh=group;
+   terrain3DRegion={center:{lat:center.lat,lng:center.lng},meters,base,scaleY,vertical,highest:(max-base)*scaleY*vertical};
+   refreshAntenna3D();
    const box=new THREE.Box3().setFromObject(group);
    focus=box.getCenter(new THREE.Vector3());radius=Math.max(2,box.getBoundingSphere(new THREE.Sphere()).radius);
    renderThree();
@@ -1422,6 +1484,7 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
  $('terrainExtent').onchange=loadTerrain;
  $('terrainExaggeration').onchange=loadTerrain;
  $('resetCamera').onclick=()=>{orbitAz=1.15;orbitEl=.45;zoom=1;renderThree()};
+ $('terrainCenter').onchange=loadTerrain;
  $('reload3d').onclick=loadTerrain;
  const threeScript=document.createElement('script');
  threeScript.src='https://cdnjs.cloudflare.com/ajax/libs/three.js/0.152.2/three.min.js';
