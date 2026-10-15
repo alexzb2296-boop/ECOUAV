@@ -1361,7 +1361,7 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
  document.addEventListener('fullscreenchange',()=>setTimeout(resizeThree,80));
  let renderer=null,scene=null,camera=null,terrainMesh=null,sectorMesh3D=null,terrain3DRegion=null,gridLines=null,threeHost=$('threeStage'),THREE=null,orbitAz=1.15,orbitEl=.45,zoom=1,focus=null,radius=3,drag=null;
  function renderThree(){
-  if(!renderer||!camera)return;
+  if(!renderer||!camera||!focus)return;
   const w=Math.max(2,threeHost.clientWidth),h=Math.max(2,threeHost.clientHeight);
   renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();
   const fov=camera.fov*Math.PI/180;
@@ -1435,8 +1435,8 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
   scene.add(group);sectorMesh3D=group;renderThree();
  }
  function loadTerrain(){
-  if(!renderer){$('threeStatus').textContent='Visor 3D no disponible (WebGL)';return}
-  const id=++terrainRequest,n=15,meters=Number($('terrainExtent').value)||2000,half=meters/2;
+  if(!renderer){$('threeStatus').textContent='Iniciando motor gráfico 3D…';if(typeof loadThreeSource==='function'&&!window.THREE)loadThreeSource();return}
+  const id=++terrainRequest,n=11,meters=Number($('terrainExtent').value)||2000,half=meters/2;
   const activeFor3D=antennaABC[$('antSelect').value]||antenna;
   const center=$('terrainCenter').value==='antenna'&&activeFor3D?activeFor3D:map.getCenter();
   const xMeters=meters/(n-1),yMeters=meters/(n-1),vertical=Number($('terrainExaggeration').value)||2;
@@ -1487,11 +1487,32 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
  $('resetCamera').onclick=()=>{orbitAz=1.15;orbitEl=.45;zoom=1;renderThree()};
  $('terrainCenter').onchange=loadTerrain;
  $('reload3d').onclick=loadTerrain;
- const threeScript=document.createElement('script');
- threeScript.src='https://cdnjs.cloudflare.com/ajax/libs/three.js/0.152.2/three.min.js';
- threeScript.onload=()=>{if(initThree())loadTerrain();else $('threeStatus').textContent='WebGL no disponible'};
- threeScript.onerror=()=>$('threeStatus').textContent='No se pudo descargar el visor WebGL (revisa la conexión)';
- document.head.append(threeScript);
+ // Use a release that still ships the global THREE build; r152 no longer provides this legacy URL.
+ // Try independent CDNs for networks that block one provider.
+ const threeSources=[
+  'https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.149.0/three.min.js',
+  'https://unpkg.com/three@0.149.0/build/three.min.js'
+ ];
+ let threeSourceIndex=0,threeReady=false;
+ function threeMessage(message){$('threeStatus').textContent=message;$('terrainSideStatus').textContent=message}
+ function bootThree(){
+  if(threeReady)return;
+  try{
+   if(!window.THREE)throw Error('Biblioteca Three.js no disponible');
+   if(!window.WebGLRenderingContext)throw Error('WebGL no está disponible en este navegador');
+   if(!initThree())throw Error('No se pudo crear el visor WebGL');
+   threeReady=true;loadTerrain();
+  }catch(error){threeMessage('Visor 3D: '+error.message+'. Comprueba la aceleración gráfica.')}
+ }
+ function loadThreeSource(){
+  if(window.THREE){bootThree();return}
+  if(threeSourceIndex>=threeSources.length){threeMessage('No se pudo cargar Three.js desde los proveedores disponibles. Comprueba la conexión.');return}
+  const url=threeSources[threeSourceIndex++],script=document.createElement('script');
+  script.src=url;script.async=true;script.onload=()=>{if(window.THREE)bootThree();else loadThreeSource()};
+  script.onerror=()=>loadThreeSource();document.head.appendChild(script);
+ }
+ loadThreeSource();
 })();
 </script>
 </body>
