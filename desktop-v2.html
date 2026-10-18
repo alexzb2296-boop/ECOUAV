@@ -1375,9 +1375,10 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
  function resizeThree(){if(renderer&&threeHost.clientWidth>0&&threeHost.clientHeight>0)renderThree()}
  function initThree(){
   THREE=window.THREE;if(!THREE)return false;
+  if(renderer)return true;
   scene=new THREE.Scene();scene.background=new THREE.Color('#112638');
   camera=new THREE.PerspectiveCamera(42,1,.05,300);
-  renderer=new THREE.WebGLRenderer({antialias:true});
+  renderer=new THREE.WebGLRenderer({antialias:true,alpha:false,powerPreference:'default'});
   renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));
   renderer.domElement.style.cssText='width:100%;height:100%;display:block;touch-action:none';
   threeHost.append(renderer.domElement);
@@ -1391,13 +1392,24 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
   new ResizeObserver(resizeThree).observe(threeHost);
   return true;
  }
- function fetchElevations(points){
-  return Promise.all(Array.from({length:Math.ceil(points.length/12)},(_,k)=>{
-   const group=points.slice(k*12,k*12+12);
-   const params='latitude='+encodeURIComponent(group.map(p=>p.lat.toFixed(6)).join(','))+'&longitude='+encodeURIComponent(group.map(p=>p.lng.toFixed(6)).join(','));
-   return fetch('https://api.open-meteo.com/v1/elevation?'+params,{signal:AbortSignal.timeout(16000)})
-   .then(r=>{if(!r.ok)throw Error('Elevation HTTP '+r.status);return r.json()}).then(j=>j.elevation||[]);
-  })).then(x=>x.flat());
+ async function fetchElevations(points){
+  // Limit simultaneous external requests to avoid bursts that can break 3D and profiles.
+  const groups=Array.from({length:Math.ceil(points.length/25)},(_,k)=>points.slice(k*25,k*25+25));
+  const out=new Array(groups.length);
+  let next=0;
+  async function worker(){
+   while(next<groups.length){
+    const index=next++,group=groups[index];
+    const params='latitude='+encodeURIComponent(group.map(p=>p.lat.toFixed(6)).join(','))+'&longitude='+encodeURIComponent(group.map(p=>p.lng.toFixed(6)).join(','));
+    const res=await fetch('https://api.open-meteo.com/v1/elevation?'+params,{signal:AbortSignal.timeout(18000)});
+    if(!res.ok)throw Error('Open-Meteo Elevation HTTP '+res.status);
+    const data=await res.json(),values=Array.isArray(data.elevation)?data.elevation:[data.elevation];
+    if(values.length!==group.length||values.some(x=>!Number.isFinite(Number(x))))throw Error('Cotas de elevación incompletas');
+    out[index]=values.map(Number);
+   }
+  }
+  await Promise.all(Array.from({length:Math.min(3,groups.length)},worker));
+  return out.flat();
  }
  // Los mismos contornos ovalados se dibujan sobre el visor de relieve.
  function refreshAntenna3D(){
@@ -1489,7 +1501,7 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
  $('terrainExaggeration').onchange=loadTerrain;
  $('resetCamera').onclick=()=>{orbitAz=1.15;orbitEl=.45;zoom=1;renderThree()};
  $('terrainCenter').onchange=loadTerrain;
- $('reload3d').onclick=loadTerrain;
+ $('reload3d').onclick=()=>{if(!threeReady){threeSourceIndex=0;loadThreeSource()}else loadTerrain()};
  // Use a release that still ships the global THREE build; r152 no longer provides this legacy URL.
  // Try independent CDNs for networks that block one provider.
  const threeSources=[
@@ -1503,17 +1515,29 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
   if(threeReady)return;
   try{
    if(!window.THREE)throw Error('Biblioteca Three.js no disponible');
-   if(!window.WebGLRenderingContext)throw Error('WebGL no está disponible en este navegador');
-   if(!initThree())throw Error('No se pudo crear el visor WebGL');
-   threeReady=true;loadTerrain();
-  }catch(error){threeMessage('Visor 3D: '+error.message+'. Comprueba la aceleración gráfica.')}
+   const test=document.createElement('canvas');
+   const ctx=test.getContext('webgl2')||test.getContext('webgl')||test.getContext('experimental-webgl');
+   if(!ctx)throw Error('WebGL no está disponible o la aceleración gráfica está desactivada');
+   ctx.getExtension('WEBGL_lose_context')?.loseContext();
+   if(!initThree())throw Error('No se pudo iniciar el motor WebGL');
+   threeReady=true;
+   threeMessage('Motor 3D listo. Consultando cotas del relieve…');
+   // Show a usable canvas immediately; elevation download is asynchronous.
+   requestAnimationFrame(()=>{resizeThree();loadTerrain()});
+  }catch(error){threeMessage('Error del visor 3D: '+error.message+'. Usa «Reintentar 3D» tras comprobar los ajustes del navegador.')}
  }
+ let threeLoading=false;
  function loadThreeSource(){
   if(window.THREE){bootThree();return}
-  if(threeSourceIndex>=threeSources.length){threeMessage('No se pudo cargar Three.js desde los proveedores disponibles. Comprueba la conexión.');return}
+  if(threeLoading)return;
+  if(threeSourceIndex>=threeSources.length){threeMessage('No se pudo descargar el motor Three.js. Pulsa «Reintentar 3D» con conexión a Internet.');return}
+  threeLoading=true;
   const url=threeSources[threeSourceIndex++],script=document.createElement('script');
-  script.src=url;script.async=true;script.onload=()=>{if(window.THREE)bootThree();else loadThreeSource()};
-  script.onerror=()=>loadThreeSource();document.head.appendChild(script);
+  script.src=url;script.async=true;
+  const watchdog=setTimeout(()=>{threeLoading=false;script.remove();loadThreeSource()},10000);
+  script.onload=()=>{if(!threeLoading)return;clearTimeout(watchdog);threeLoading=false;if(window.THREE)bootThree();else loadThreeSource()};
+  script.onerror=()=>{if(!threeLoading)return;clearTimeout(watchdog);threeLoading=false;script.remove();loadThreeSource()};
+  document.head.appendChild(script);
  }
  loadThreeSource();
 })();
