@@ -195,3 +195,12 @@ Fecha de auditoría: 2026-10-11
 - Se evita inicializar dos veces el renderizador y se actualiza el estado con la causa de error del motor 3D o de las elevaciones.
 - Se actualiza el caché del lanzador `escritorio.html`.
 - **Comprobado:** sintaxis JavaScript. **No comprobado aún:** visualización WebGL en el navegador del usuario ni si el error original venía de Three.js, WebGL o la API de elevación.
+
+## Integración de la columna derecha en el panel izquierdo (2026-10-18)
+
+- Se fusionaron las cuatro fichas de la antigua columna derecha (punto seleccionado, puntos de interés, información de ruta y antena/representación 3D) con el panel izquierdo, ubicándolas junto a las herramientas correspondientes.
+- Se eliminó el contenedor de la columna derecha y la estructura principal pasó a **dos columnas: panel de herramientas y mapa**, manteniendo los IDs existentes para que los cálculos y las acciones siguieran enlazados.
+- La meteorología continúa unificada en una sola sección izquierda; **no** se añadió un segundo bloque meteorológico.
+- En móvil y tablet la navegación se simplificó a **Herramientas / Mapa** y se eliminaron las dependencias del antiguo panel Datos.
+- Actualizado `escritorio.html` para recargar el nuevo código.
+- Verificaciones estáticas: sintaxis JavaScript válida, sin IDs duplicados y sin referencias `$('id')` ausentes. Aún falta comprobar visualmente el diseño en un navegador real y probar todos los botones antes de retirar el respaldo.
