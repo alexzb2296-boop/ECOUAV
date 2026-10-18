@@ -10,12 +10,16 @@ async function loadRealTerrain(){
   const east=(ix/(gridSize-1)-.5)*span,north=(iz/(gridSize-1)-.5)*span;
   coords.push([lat+north/111320,lng+east/(111320*Math.cos(lat*Math.PI/180))]);
  }
- const heights=[];for(let start=0;start<coords.length;start+=75){
-  const group=coords.slice(start,start+75),u='https://api.open-meteo.com/v1/elevation?latitude='+group.map(v=>v[0].toFixed(6)).join(',')+'&longitude='+group.map(v=>v[1].toFixed(6)).join(',');
+ const chunks=[];for(let offset=0;offset<coords.length;offset+=75)chunks.push(coords.slice(offset,offset+75));
+ const heights=new Array(coords.length);let cursor=0;
+ async function worker(){while(cursor<chunks.length){const idx=cursor++,group=chunks[idx],u='https://api.open-meteo.com/v1/elevation?latitude='+group.map(v=>v[0].toFixed(6)).join(',')+'&longitude='+group.map(v=>v[1].toFixed(6)).join(',');
   const response=await fetch(u);if(!response.ok)throw Error('HTTP '+response.status);
-  const data=await response.json(),values=data.elevation;if(!Array.isArray(values)||values.length!==group.length||values.some(v=>!Number.isFinite(Number(v))))throw Error('Datos de elevación incompletos');
-  heights.push(...values.map(Number));
- }
+  const data=await response.json(),values=data.elevation;
+  if(!Array.isArray(values)||values.length!==group.length||values.some(v=>!Number.isFinite(Number(v))))throw Error('Datos de elevación incompletos');
+  for(let j=0;j<values.length;j++)heights[idx*75+j]=Number(values[j]);
+  $('terrainStatus').textContent='Cargando elevaciones reales: '+Math.round(100*(idx+1)/chunks.length)+'% (último bloque recibido)…';
+ }}
+ await Promise.all(Array.from({length:Math.min(5,chunks.length)},()=>worker()));
  grid=heights;const min=Math.min(...heights);
  E=(x,z)=>{const u=Math.max(0,Math.min(gridSize-1,(x/span+.5)*(gridSize-1))),v=Math.max(0,Math.min(gridSize-1,(z/span+.5)*(gridSize-1))),i=Math.min(gridSize-2,Math.floor(u)),j=Math.min(gridSize-2,Math.floor(v)),fx=u-i,fz=v-j;
  const at=(a,b)=>grid[b*gridSize+a]-min;return at(i,j)*(1-fx)*(1-fz)+at(i+1,j)*fx*(1-fz)+at(i,j+1)*(1-fx)*fz+at(i+1,j+1)*fx*fz;};
