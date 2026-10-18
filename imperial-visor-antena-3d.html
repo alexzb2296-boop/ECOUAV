@@ -11,13 +11,13 @@ async function loadSatellite(){
   texture.colorSpace=T.SRGBColorSpace;texture.anisotropy=Math.min(8,r.capabilities.getMaxAnisotropy());
   ground.userData.texture=texture;ground.material.map=texture;ground.material.color.set(0xffffff);ground.material.needsUpdate=true;
   ground.material.map.colorSpace=T.SRGBColorSpace;
-  if(!$('satellite').checked){ground.material.map=null;ground.material.needsUpdate=true}
+  if(!$('satellite').checked){ground.material.map=null;ground.material.color.set(0x678465);ground.material.needsUpdate=true}
   satelliteStatus.textContent='Imagen satelital Esri cargada. Puede no coincidir temporalmente con los edificios OSM.';
  },undefined,()=>{satelliteStatus.textContent='No se pudo cargar la imagen satelital: terreno visible con color básico.'});
 }
 $('satellite').addEventListener('change',()=>{
  if(!ground.material.map&&$('satellite').checked)loadSatellite();
- else {ground.material.map=$('satellite').checked?ground.userData.texture:null;ground.material.needsUpdate=true}
+ else {ground.material.map=$('satellite').checked?ground.userData.texture:null;ground.material.color.set($('satellite').checked?0xffffff:0x678465);ground.material.needsUpdate=true}
 });
 
 function paintTerrain(){const p=geo.attributes.position;for(let i=0;i<p.count;i++)p.setY(i,E(p.getX(i),p.getZ(i)));p.needsUpdate=true;geo.computeVertexNormals();update();}
@@ -61,11 +61,11 @@ async function loadOsmDetails(){
   shape.closePath();
   if(item.tags?.building){
    const parsed=parseFloat(item.tags.height),levels=parseFloat(item.tags['building:levels']);
-   const height=Number.isFinite(parsed)&&parsed>1&&parsed<400?parsed:Number.isFinite(levels)&&levels>0?levels*3:8;
+   const known=Number.isFinite(parsed)&&parsed>1&&parsed<400;const inferred=!known&&Number.isFinite(levels)&&levels>0;const height=known?parsed:inferred?levels*3:8;
    const g=new T.ExtrudeGeometry(shape,{depth:height,bevelEnabled:false,steps:1});
    g.rotateX(-Math.PI/2);
    let avg=coordinates.reduce((v,p)=>v+E(p.x,p.y),0)/coordinates.length;
-   const m=new T.Mesh(g,new T.MeshStandardMaterial({color:0x9da69d,roughness:1,side:T.DoubleSide}));
+   const m=new T.Mesh(g,new T.MeshStandardMaterial({color:known?0x9da69d:0xbd915a,roughness:1,side:T.DoubleSide}));
    m.position.y=avg;build.add(m);countB++;
   }else{
    // Forest outline is geolocated; detailed tree heights are not available.
@@ -75,6 +75,6 @@ async function loadOsmDetails(){
   }
  }
  trees.visible=$('forest').checked;build.visible=$('buildings').checked;
- osmStatus.textContent='OSM: '+countB+' edificios y '+countF+' áreas forestales delineadas en un entorno de ±1,55 km. Alturas sin etiqueta estimadas.';
+ osmStatus.textContent='OSM: '+countB+' edificios y '+countF+' áreas forestales delineadas en un entorno de ±1,55 km. Edificios con alturas no documentadas en ocre (estimadas). Los bosques se muestran como contornos, sin alturas de árboles.';
 }
 let ax=0,az=0,mast=new T.Mesh(new T.CylinderGeometry(2,3,1,8),new T.MeshStandardMaterial({color:0xf5cf8d}));s.add(mast);let drone=new T.Mesh(new T.BoxGeometry(27,7,27),new T.MeshStandardMaterial({color:0xe8bd78}));s.add(drone);let beam=new T.Line(new T.BufferGeometry(),new T.LineBasicMaterial({color:0x76ffd0}));s.add(beam);let zone=new T.Mesh(new T.BufferGeometry(),new T.MeshBasicMaterial({color:0x5fe2ae,transparent:true,opacity:.3,side:T.DoubleSide,depthWrite:false}));s.add(zone);let ring=new T.Line(new T.BufferGeometry(),new T.LineBasicMaterial({color:0xefcc86}));s.add(ring);let $=x=>document.getElementById(x);function update(){let mh=+$('mast').value,dh=+$('alt').value,d=+$('dist').value,hd=(+$('az').value-90)*Math.PI/180,ty=$('type').value;$('mastval').textContent=mh+' m';$('azval').textContent=$('az').value+'°';$('altval').textContent=dh+' m';$('distval').textContent=(d/1000).toFixed(2)+' km';mast.scale.y=mh;mast.position.set(ax,E(ax,az)+mh/2,az);let dx=ax+d,dz=az;drone.position.set(dx,E(dx,dz)+dh,dz);let from=new T.Vector3(ax,E(ax,az)+mh,az),to=drone.position.clone(),blocked=false;for(let i=1;i<180;i++){let q=from.clone().lerp(to,i/180);if(q.y<E(q.x,q.z)+3){blocked=true;break}}beam.material.color.set(blocked?0xff7265:0x68ecc0);beam.geometry.dispose();beam.geometry=new T.BufferGeometry().setFromPoints([from,to]);trees.visible=$('forest').checked;build.visible=$('buildings').checked;zone.visible=$('cover').checked;$('state').textContent=blocked?'Obstáculo de relieve en la línea visual (estimación geométrica).':'Línea visual despejada respecto al relieve (no garantiza señal).';let radius=ty==='omni'?1800:ty==='sector'?3100:4300,width=ty==='omni'?1800:ty==='sector'?1500:850,pts=[];for(let i=0;i<=96;i++){let t=i/96*Math.PI*2,x0=ty==='omni'?radius*Math.cos(t):radius/2*(1+Math.cos(t)),z0=width*Math.sin(t),x=ax+x0*Math.cos(hd)-z0*Math.sin(hd),z=az+x0*Math.sin(hd)+z0*Math.cos(hd);pts.push(new T.Vector3(x,E(x,z)+10,z))}let v=[];for(let i=1;i<pts.length-1;i++)v.push(...pts[0].toArray(),...pts[i].toArray(),...pts[i+1].toArray());zone.geometry.dispose();zone.geometry=new T.BufferGeometry();zone.geometry.setAttribute('position',new T.Float32BufferAttribute(v,3));zone.geometry.computeVertexNormals()}for(let x of ['mast','az','alt','dist','type','forest','buildings','cover'])$(x).addEventListener('input',update);function reset(){c.position.set(1700,3100,4900);ctl.target.set(0,140,0);ctl.update()}$('reset').onclick=reset;$('top').onclick=()=>{c.position.set(0,9800,.01);ctl.target.set(0,100,0);ctl.update()};reset();update();loadRealTerrain().catch(err=>{$('terrainStatus').textContent='No se pudieron cargar cotas reales: '+err.message+'. No se muestra relieve ficticio.'});onresize=()=>{c.aspect=innerWidth/innerHeight;c.updateProjectionMatrix();r.setSize(innerWidth,innerHeight)};r.setAnimationLoop(()=>{ctl.update();r.render(s,c)})</script></html>
