@@ -21,6 +21,34 @@ $('satellite').addEventListener('change',()=>{
 });
 
 function paintTerrain(){const p=geo.attributes.position;for(let i=0;i<p.count;i++)p.setY(i,E(p.getX(i),p.getZ(i)));p.needsUpdate=true;geo.computeVertexNormals();update();}
+
+async function tryIGNWcs(){
+ if(typeof window.proj4!=='function')throw Error('Transformación UTM no disponible');
+ const zone=lng<-12?28:Math.min(31,Math.max(29,Math.floor((lng+180)/6)+1));
+ const epsg=zone===28?32628:25800+zone;
+ const crs='+proj=utm +zone='+zone+' +datum=WGS84 +units=m +no_defs';
+ const transform=window.proj4('WGS84',crs),center=transform.forward([lng,lat]);
+ const half=span/2,extent=[Math.floor(center[0]-half),Math.floor(center[1]-half),Math.ceil(center[0]+half),Math.ceil(center[1]+half)];
+ // MDT25, an official LiDAR-derived terrain product when supported by this coverage.
+ const coverage='Elevacion'+epsg+'_25';
+ const params=new URLSearchParams({SERVICE:'WCS',VERSION:'2.0.1',REQUEST:'GetCoverage',COVERAGEID:coverage,FORMAT:'application/asc',CRS:'EPSG:'+epsg});
+ const url='https://servicios.idee.es/wcs-inspire/mdt?'+params.toString()+'&SUBSET=x('+extent[0]+','+extent[2]+')&SUBSET=y('+extent[1]+','+extent[3]+')';
+ const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),17000);
+ let raw;try{const response=await fetch(url,{signal:controller.signal});if(!response.ok)throw Error('IGN HTTP '+response.status);raw=await response.text()}finally{clearTimeout(timer)}
+ const lines=raw.trim().split(/\r?\n/),header={},data=[];
+ for(const line of lines){const match=line.trim().match(/^(ncols|nrows|xllcorner|yllcorner|xllcenter|yllcenter|cellsize|nodata_value)\s+([-+\d.eE]+)/i);if(match)header[match[1].toLowerCase()]=Number(match[2]);else if(line.trim())data.push(line.trim())}
+ if(!Number.isInteger(header.ncols)||!Number.isInteger(header.nrows)||header.ncols<2||header.nrows<2||header.ncols*header.nrows>2000000||data.length!==header.nrows)throw Error('IGN devolvió un formato de cobertura no compatible');
+ const cols=header.ncols,rows=header.nrows,arr=new Float32Array(cols*rows);
+ for(let j=0;j<rows;j++){const vals=data[j].split(/\s+/);if(vals.length!==cols)throw Error('Cobertura IGN incompleta');for(let i=0;i<cols;i++)arr[j*cols+i]=Number(vals[i])}
+ const bx=header.xllcorner??(header.xllcenter-header.cellsize/2),by=header.yllcorner??(header.yllcenter-header.cellsize/2),cell=header.cellsize;
+ if(!Number.isFinite(bx)||!Number.isFinite(by)||!(cell>0))throw Error('IGN sin coordenadas de malla válidas');
+ const sample=(x,y)=>{const u=(x-bx)/cell-.5,v=(by+rows*cell-y)/cell-.5,i=Math.floor(u),j=Math.floor(v);if(i<0||j<0||i>=cols-1||j>=rows-1)return null;const fx=u-i,fz=v-j,a=[arr[j*cols+i],arr[j*cols+i+1],arr[(j+1)*cols+i],arr[(j+1)*cols+i+1]];if(a.some(n=>!Number.isFinite(n)||n===header.nodata_value))return null;return a[0]*(1-fx)*(1-fz)+a[1]*fx*(1-fz)+a[2]*(1-fx)*fz+a[3]*fx*fz};
+ const values=[],size=gridSize;
+ for(let j=0;j<size;j++)for(let i=0;i<size;i++){const x=(i/(size-1)-.5)*span,z=(j/(size-1)-.5)*span,xy=transform.forward([lng+x/(111320*Math.cos(lat*Math.PI/180)),lat-z/111320]);values.push(sample(xy[0],xy[1]))}
+ if(values.some(v=>v===null))throw Error('Cobertura IGN incompleta sobre los 11 km');
+ return {values,source:'IGN WCS MDT25'};
+}
+
 async function loadRealTerrain(){
  if(!query.has('lat')||!query.has('lng')||!Number.isFinite(lat)||!Number.isFinite(lng)||Math.abs(lat)>85||Math.abs(lng)>180){$('terrainStatus').textContent='No hay coordenadas válidas de antena. Vuelve al mapa y coloca una antena.';return}
  $('terrainStatus').textContent='Cargando cotas reales de '+lat.toFixed(5)+', '+lng.toFixed(5)+'…';
@@ -28,8 +56,9 @@ async function loadRealTerrain(){
   const east=(ix/(gridSize-1)-.5)*span,north=(.5-iz/(gridSize-1))*span;
   coords.push([lat+north/111320,lng+east/(111320*Math.cos(lat*Math.PI/180))]);
  }
- const chunks=[];for(let offset=0;offset<coords.length;offset+=75)chunks.push(coords.slice(offset,offset+75));
- const heights=new Array(coords.length);let cursor=0;
+ let official=null;try{$('terrainStatus').textContent='Solicitando MDT oficial al IGN…';official=await tryIGNWcs()}catch(error){$('terrainStatus').textContent='IGN no disponible ('+error.message+'). Probando respaldo…'}
+ const chunks=[];if(!official)for(let offset=0;offset<coords.length;offset+=75)chunks.push(coords.slice(offset,offset+75));
+ const heights=official?official.values:new Array(coords.length);let cursor=0;
  async function worker(){while(cursor<chunks.length){const idx=cursor++,group=chunks[idx],u='https://api.open-meteo.com/v1/elevation?latitude='+group.map(v=>v[0].toFixed(6)).join(',')+'&longitude='+group.map(v=>v[1].toFixed(6)).join(',');
   const response=await fetch(u);if(!response.ok)throw Error(response.status===429?'429: límite de peticiones del servicio de elevación':'HTTP '+response.status);
   const data=await response.json(),values=data.elevation;
@@ -41,7 +70,7 @@ async function loadRealTerrain(){
  grid=heights;const min=Math.min(...heights);lidarVerticalBase=min;
  E=(x,z)=>{const u=Math.max(0,Math.min(gridSize-1,(x/span+.5)*(gridSize-1))),v=Math.max(0,Math.min(gridSize-1,(z/span+.5)*(gridSize-1))),i=Math.min(gridSize-2,Math.floor(u)),j=Math.min(gridSize-2,Math.floor(v)),fx=u-i,fz=v-j;
  const at=(a,b)=>grid[b*gridSize+a]-min;return at(i,j)*(1-fx)*(1-fz)+at(i+1,j)*fx*(1-fz)+at(i,j+1)*(1-fx)*fz+at(i+1,j+1)*fx*fz;};
- referenceElevation=E;elevationReady=true;paintTerrain();document.getElementById('bootStatus').hidden=true;loadSatellite();loadOsmDetails();$('terrainStatus').textContent='Relieve real cargado cerca de '+lat.toFixed(5)+', '+lng.toFixed(5)+' (malla 9×9 de baja resolución; utiliza MDT LiDAR para mayor precisión).'; 
+ referenceElevation=E;elevationReady=true;paintTerrain();document.getElementById('bootStatus').hidden=true;loadSatellite();loadOsmDetails();$('terrainStatus').textContent='Relieve real cargado cerca de '+lat.toFixed(5)+', '+lng.toFixed(5)+' (fuente: '+(official?official.source:'respaldo Open-Meteo')+'; malla de visualización 9×9).'; 
 }
 let trees=new T.Group(),build=new T.Group();s.add(trees,build);
 const toLocal=(latitude,longitude)=>new T.Vector2((longitude-lng)*111320*Math.cos(lat*Math.PI/180),-(latitude-lat)*111320);
