@@ -179,3 +179,10 @@ Fecha de auditoría: 2026-10-11
 - Los sectores son **esquemas geométricos**, no modelos de cobertura RF ni validaciones operativas.
 - **Pendiente de migrar/revisar:** comparación radioeléctrica avanzada, cálculos LOS/Fresnel y demás herramientas especializadas del módulo legado. No se afirma equivalencia total con la versión original.
 - Verificación: sintaxis JavaScript válida, referencias a IDs HTML existentes y sin IDs duplicados. Pendiente prueba manual en navegador.
+
+## Meteorología unificada — revisión (2026-10-18)
+
+- Comprobado en la versión vigente `desktop-v2.html`: el módulo meteorológico existe únicamente en la columna izquierda; las antiguas tarjetas de meteorología de la columna derecha ya no están presentes.
+- Se conserva la consulta Open-Meteo actual y la previsión horaria en el mismo panel, con temperatura, viento, rachas, nubosidad, dirección y probabilidad de precipitación.
+- Revisada la lógica de actualización para descartar respuestas obsoletas de consultas anteriores y avisar cuando falla una consulta. Comprobada la sintaxis JavaScript y referencias de controles HTML.
+- Pendiente comprobar visualmente en el navegador tras despliegue.
