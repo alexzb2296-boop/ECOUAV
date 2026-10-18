@@ -245,6 +245,29 @@ main.imperial-compact{grid-template-columns:68px minmax(0,1fr)}
 .imperial-compact .sidebarNav .navIcon{font-size:21px}
 .sidebarNav button[hidden]{display:none!important}
 @media(max-width:800px){main.imperial-compact{grid-template-columns:1fr}.imperial-compact .sidebar{overflow-y:auto}.imperial-compact .sideSection{display:block!important}.imperial-compact .imperialNavLabel,.imperial-compact .imperialMenuTitle{display:inline!important}.imperial-compact #imperialNavSearch{display:block!important}.imperial-compact .sidebarNav button{width:100%;justify-content:flex-start}.imperial-compact .sidebarNav{padding:10px}}
+
+/* Sidebar IMPERIAL: tools organized as functional accordion */
+.imperialToolNav{display:flex;flex-direction:column;gap:3px;padding:9px}
+.imperialToolNav button{display:flex;align-items:center;gap:12px;min-height:40px;padding:9px 10px;width:100%;border-radius:7px;border:1px solid transparent;background:transparent;color:#dae3ea;text-align:left;font-size:12px;font-weight:600}
+.imperialToolNav button:hover{background:#203643}
+.imperialToolNav button.selected{border-left:3px solid #e2b66b;background:linear-gradient(90deg,#58452a,#252d34);color:#f8dfb6}
+.imperialToolNav .toolIcon{font-size:19px;flex:0 0 24px;text-align:center;color:#d7b47d}
+.imperialToolNav .toolName{flex:1;white-space:normal}
+.imperialToolNav .toolArrow{color:#a6b3bd}
+.imperialToolsCollection{padding-bottom:12px}
+.imperialToolsCollection .sideSection{display:none}
+.imperialToolsCollection .sideSection.imperialOpen{display:block}
+.sidebar>.sidebarNav{display:none!important}
+.imperial-compact .imperialToolNav{padding:10px 6px;gap:6px}
+.imperial-compact .imperialToolNav button{width:55px;justify-content:center;min-height:46px;padding:8px}
+.imperial-compact .imperialToolNav .toolName,.imperial-compact .imperialToolNav .toolArrow{display:none}
+.imperial-compact .imperialToolsCollection{display:none}
+@media(max-width:1100px){
+ main.imperial-compact{grid-template-columns:1fr}
+ .imperial-compact .imperialMenuTitle,.imperial-compact .imperialToolNav .toolName,.imperial-compact .imperialToolNav .toolArrow{display:initial!important}
+ .imperial-compact .imperialToolNav button{width:100%;justify-content:flex-start}
+ .imperial-compact .imperialToolsCollection{display:block}
+}
 </style>
 <link rel="stylesheet" href="./imperial-brand.css?v=6bfc8b7">
 </head>
@@ -1623,26 +1646,63 @@ main.imperial-compact{grid-template-columns:68px minmax(0,1fr)}
 
 <script>
 (function(){
- const main=document.querySelector('main'),toggle=document.getElementById('imperialMenuSwitch'),search=document.getElementById('imperialNavSearch'),nav=document.querySelector('.sidebarNav');
- if(!main||!toggle||!nav)return;
- const buttons=[...nav.querySelectorAll('button[data-section]')];
- buttons.forEach(button=>{button.title=button.textContent.trim();});
+ const aside=document.getElementById('imperialTools'),main=document.querySelector('main');
+ const toggle=document.getElementById('imperialMenuSwitch'),search=document.getElementById('imperialNavSearch');
+ if(!aside||!main||!toggle||!search)return;
+ const list=[
+  ['Mapa y capas','▧','Capas del mapa'],
+  ['Punto seleccionado','⌖','selectedPointPanel'],
+  ['Medición y coordenadas','⊞','geoToolsPanel'],
+  ['Antenas · información','♧','antennaSummaryPanel'],
+  ['Antenas A / B / C','⌁','antennasABCPanel'],
+  ['Relieve y terreno','⛰','Terreno'],
+  ['Información de ruta','◇','routeSummaryPanel'],
+  ['Perfiles y desniveles','⌁','terrainProfilesPanel'],
+  ['DEM y curvas de nivel','▥','demPanel'],
+  ['Meteorología','☁','weatherPanel'],
+  ['Puntos de interés','◎','poisPanel'],
+  ['Proyectos y archivos','▣','Proyecto']
+ ];
+ const sections=[...aside.querySelectorAll(':scope > section.sideSection')];
+ const entries=list.map((d,i)=>({name:d[0],icon:d[1],section:sections[i]})).filter(x=>x.section);
+ const nav=document.createElement('nav');nav.className='imperialToolNav';nav.setAttribute('aria-label','Herramientas de IMPERIAL');
+ const collection=document.createElement('div');collection.className='imperialToolsCollection';
+ const original=aside.querySelector('.sidebarNav');
+ original.after(nav,collection);
+ entries.forEach((e,i)=>{
+  collection.appendChild(e.section);
+  const b=document.createElement('button');b.type='button';b.title=e.name;b.setAttribute('aria-expanded','false');
+  b.innerHTML='<span class="toolIcon" aria-hidden="true">'+e.icon+'</span><span class="toolName">'+e.name+'</span><span class="toolArrow" aria-hidden="true">⌄</span>';
+  nav.appendChild(b);e.button=b;
+  b.addEventListener('click',()=>{if(main.classList.contains('imperial-compact'))setCompact(false);choose(i);});
+ });
+ let active=-1;
+ function choose(i){
+   active=active===i?-1:i;
+   entries.forEach((e,j)=>{const on=j===active;e.section.classList.toggle('imperialOpen',on);e.button.classList.toggle('selected',on);e.button.setAttribute('aria-expanded',String(on));e.button.querySelector('.toolArrow').textContent=on?'⌃':'⌄';});
+   if(active>=0)requestAnimationFrame(()=>entries[active].button.scrollIntoView({block:'nearest',behavior:'smooth'}));
+ }
  function setCompact(value){
-   main.classList.toggle('imperial-compact',value);
-   toggle.textContent=value?'»':'«';
-   toggle.setAttribute('aria-expanded',String(!value));
-   toggle.setAttribute('aria-label',value?'Expandir menú':'Contraer menú');
-   try{localStorage.setItem('imperial-menu-compact-v1',value?'1':'0')}catch(e){}
-   window.dispatchEvent(new Event('resize'));
+  main.classList.toggle('imperial-compact',value);
+  toggle.textContent=value?'»':'«';
+  toggle.setAttribute('aria-expanded',String(!value));
+  toggle.setAttribute('aria-label',value?'Expandir menú':'Contraer menú');
+  if(value&&active>=0)choose(active);
+  try{localStorage.setItem('imperial-menu-compact-v1',value?'1':'0')}catch(e){}
+  window.dispatchEvent(new Event('resize'));
  }
  let saved=false;try{saved=localStorage.getItem('imperial-menu-compact-v1')==='1'}catch(e){}
- setCompact(saved);
+ setCompact(saved);if(!saved)choose(0);
  toggle.addEventListener('click',()=>setCompact(!main.classList.contains('imperial-compact')));
- buttons.forEach(button=>button.addEventListener('click',()=>{if(main.classList.contains('imperial-compact'))setCompact(false);}));
  search.addEventListener('input',()=>{
-   const q=search.value.trim().toLocaleLowerCase('es');
-   buttons.forEach(b=>{b.hidden=!b.textContent.toLocaleLowerCase('es').includes(q)});
+  const q=search.value.trim().toLocaleLowerCase('es');
+  entries.forEach(e=>e.button.hidden=!((e.name+' '+e.section.textContent).toLocaleLowerCase('es').includes(q)));
  });
+ document.querySelectorAll('.headerNav button, #topWx').forEach(b=>b.addEventListener('click',()=>{
+  const key=b.id==='topWx'?'weather':b.dataset.section;
+  const indices={weather:9,terrain:5,antenna:4,flights:6,projects:11,planning:6};
+  if(indices[key]!==undefined){if(main.classList.contains('imperial-compact'))setCompact(false);active=-1;choose(indices[key]);}
+ }));
 })();
 </script>
 </body>
