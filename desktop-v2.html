@@ -30,7 +30,7 @@ header{display:flex;align-items:center;gap:18px;padding:0 13px;background:linear
 #planButton{padding:10px 13px;border:1px solid #2aa8d3;border-radius:7px;color:white;background:linear-gradient(#1288b7,#0d638c);font-size:12px;font-weight:700}
 #planButton[aria-pressed="true"]{background:#124e61;box-shadow:0 0 0 2px #4cdfff44}
 #desktopLink{color:#84cfed;font-size:11px;text-decoration:none}
-main{display:grid;grid-template-columns:252px minmax(0,1fr) 314px;min-height:0;min-width:0;background:#091725}
+main{display:grid;grid-template-columns:340px minmax(0,1fr);min-height:0;min-width:0;background:#091725}
 .sidebar{background:linear-gradient(150deg,#0c2130,#081a27 65%);border-right:1px solid #284658;min-height:0;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#34566c transparent}
 .sidebarNav{display:flex;flex-direction:column;gap:3px;padding:10px}
 .sidebarNav button{min-height:37px;display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:8px 11px;font-size:12px;font-weight:600;border:1px solid transparent;border-radius:7px;background:transparent;color:#d0e4f0}
@@ -122,7 +122,7 @@ main{display:grid;grid-template-columns:252px minmax(0,1fr) 314px;min-height:0;m
 #toast{position:absolute;top:65px;left:50%;transform:translateX(-50%);background:#0a293af5;border:1px solid #3991b0;border-radius:8px;padding:8px 13px;color:#dff6ff;font-size:11px;z-index:1500;display:none;box-shadow:0 3px 15px #0009}
 footer{background:#061622;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:0 12px;border-top:1px solid #28617d;color:#9fbdca;font-size:10px}
 footer strong{font-weight:500;color:#cae7f5}
-@media(max-width:1400px){main{grid-template-columns:235px minmax(0,1fr) 295px}.headerNav button{font-size:9px}.liveStatus{gap:8px}}
+@media(max-width:1400px){main{grid-template-columns:310px minmax(0,1fr)}.headerNav button{font-size:9px}.liveStatus{gap:8px}}
 
 /* Keep desktop cards stable; POIs scroll independently instead of shifting lower panels. */
 .rightPanel>.infoCard{flex:0 0 auto}
@@ -167,14 +167,12 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
  #desktopLink{display:none}
  #planButton{white-space:nowrap;padding:8px;font-size:11px}
  .mobileDrawerButton{display:block;flex:0 0 auto;background:#102e44;color:#e6f8ff;border:1px solid #39718e;border-radius:7px;height:34px;width:36px}
- .sidebar,.rightPanel{position:absolute;z-index:1100;top:0;bottom:0;width:min(370px,88vw);box-shadow:0 8px 28px #0009;transform:translateX(-110%);transition:transform .2s ease;visibility:hidden;overflow-y:auto;overscroll-behavior:contain}
+ .sidebar{position:absolute;z-index:1100;top:0;bottom:0;width:min(370px,88vw);box-shadow:0 8px 28px #0009;transform:translateX(-110%);transition:transform .2s ease;visibility:hidden;overflow-y:auto;overscroll-behavior:contain}
  .sidebar.mobileShown{visibility:visible;transform:translateX(0)}
- .rightPanel{right:0;left:auto;transform:translateX(110%);border-left:1px solid #315870}
- .rightPanel.mobileShown{visibility:visible;transform:translateX(0)}
  .mapShell{grid-column:1;grid-row:1;min-height:0}
- .sidebar,.rightPanel{touch-action:pan-y}
+ .sidebar{touch-action:pan-y}
  .mobileBackdrop{display:block;position:fixed;z-index:1050;inset:56px 0 0;background:#0008}
- .mobileBottomNav{display:grid;grid-template-columns:repeat(3,1fr);background:#091e2c;border-top:1px solid #336780;position:relative;z-index:1200}
+ .mobileBottomNav{display:grid;grid-template-columns:repeat(2,1fr);background:#091e2c;border-top:1px solid #336780;position:relative;z-index:1200}
  .mobileBottomNav button{border:0;background:transparent;color:#c7e3f3;font-size:18px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:1px}
  .mobileBottomNav button span{font-size:10px}
  .mobileBottomNav button.mobileSelected{background:#19445a;color:#65d7ff}
@@ -192,11 +190,11 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
  .headerSearch input{font-size:11px}
  .liveStatus{display:none}
  #planButton{padding:7px;font-size:10px;max-width:99px;overflow:hidden;text-overflow:ellipsis}
- .mobileBottomNav{display:grid;grid-template-columns:repeat(3,1fr);position:relative;z-index:1200;background:#091e2c;border-top:1px solid #336780;padding-bottom:env(safe-area-inset-bottom,0px);height:calc(58px + env(safe-area-inset-bottom,0px));margin-bottom:calc(-1*env(safe-area-inset-bottom,0px))}
+ .mobileBottomNav{display:grid;grid-template-columns:repeat(2,1fr);position:relative;z-index:1200;background:#091e2c;border-top:1px solid #336780;padding-bottom:env(safe-area-inset-bottom,0px);height:calc(58px + env(safe-area-inset-bottom,0px));margin-bottom:calc(-1*env(safe-area-inset-bottom,0px))}
  .mobileBottomNav button{border:0;background:transparent;color:#c7e3f3;font-size:19px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:1px}
  .mobileBottomNav button span{font-size:10px}
  .mobileBottomNav button.mobileSelected{background:#19445a;color:#65d7ff}
- .sidebar,.rightPanel{width:min(390px,94vw)}
+ .sidebar{width:min(390px,94vw)}
  footer{display:none}
  #app{grid-template-rows:54px minmax(0,1fr);padding-bottom:calc(58px + env(safe-area-inset-bottom,0px))}
  .mobileBottomNav{position:absolute;bottom:0;left:0;right:0}
@@ -213,7 +211,7 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
  #preview3d.collapsed{width:calc(100% - 65px);height:34px}
  #threeLegend{display:none}
 }
-@media(prefers-reduced-motion:reduce){.sidebar,.rightPanel{transition:none}}
+@media(prefers-reduced-motion:reduce){.sidebar{transition:none}}
 
 
 .zoneGridCellIcon{background:transparent;border:0!important;pointer-events:none!important}.zoneGridCellIcon span{display:block;text-align:center;font-size:11px;font-weight:800;letter-spacing:.02em;color:#fff8dc;text-shadow:0 1px 3px #000,0 0 5px #000;background:#091e2a88;border-radius:3px}
@@ -223,6 +221,9 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
 .imperialPositionPin{height:34px;width:34px;border:3px solid #062b43;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#ffcd67;color:#062b43;font-size:23px;font-weight:900;box-shadow:0 2px 13px #000b,0 0 0 3px #ffe2a255;cursor:grab}.leaflet-dragging .imperialPositionPin{cursor:grabbing}
 
 .wxShortcut{border:0;background:transparent;color:#b5e6fa;font-size:11px;cursor:pointer;padding:3px}.wxShortcut:hover{text-decoration:underline}#weatherPanel{scroll-margin-top:12px}
+
+/* Integrated left information sections replace the former right rail. */
+.integratedInfo .sectionTitle{color:#9ae5ff}.integratedInfo .metricGrid{gap:9px}.integratedInfo #selectedThumb{height:96px}.integratedInfo .sideContent{overflow-wrap:anywhere}
 </style>
 <link rel="stylesheet" href="./imperial-brand.css?v=6bfc8b7">
 </head>
@@ -256,6 +257,13 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
    <p class="sideMessage">Las posiciones iniciales son una demostración, no datos de una misión real.</p>
   </div></section>
 
+  <section class="sideSection integratedInfo" id="selectedPointPanel"><div class="sectionTitle">⌖ &nbsp;Punto seleccionado</div><div class="sideContent">
+   <div class="selectedName"><span id="selectedTitle">Selecciona un punto</span><span class="smallTag" id="selectedType">SIN DATOS</span></div>
+   <img id="selectedThumb" alt="Vista satelital aproximada del entorno seleccionado">
+   <div class="detailRow"><span>Coordenadas WGS84</span><strong id="selectedCoords">—</strong></div>
+   <div class="detailRow"><span>Altitud del terreno</span><strong id="selectedHeight">—</strong></div>
+   <div class="detailRow"><span>Fuente elevación</span><strong id="selectedElevSource">Sin consulta</strong></div>
+  </div></section>
   <section class="sideSection" id="geoToolsPanel"><div class="sectionTitle">⌖ &nbsp;Coordenadas y medición <b>⌃</b></div><div class="sideContent">
    <p class="sideMessage">WGS84 · coordenadas geográficas y proyección UTM. Herramientas de consulta, no navegación certificada.</p>
    <div class="geoFields"><input id="geoLat" type="number" min="-90" max="90" step="any" placeholder="Latitud" aria-label="Latitud decimal"><input id="geoLon" type="number" min="-180" max="180" step="any" placeholder="Longitud" aria-label="Longitud decimal"></div>
@@ -284,6 +292,13 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
    <p id="zoneGridStatus" class="sideMessage" role="status">Cada celda mantiene sus metros reales. Arrastra una esquina para añadir o quitar cuadrados completos; el centro sirve para mover la zona.</p>
    <p id="geoShapeOutput" class="geoMeasures">Figuras: sin geometrías. El radio usa metros; el área se cierra con «Terminar área».</p>
   </div></section>
+  <section class="sideSection integratedInfo" id="antennaSummaryPanel"><div class="sectionTitle">♧ &nbsp;Antena y representación 3D</div><div class="sideContent">
+   <div class="detailRow"><span>Antena</span><strong id="antennaInfo">Demostración</strong></div>
+   <div class="detailRow"><span>Altura de mástil</span><strong>3 m (visual)</strong></div>
+   <div class="detailRow"><span>Cobertura de señal</span><strong>No calculada</strong></div>
+   <button type="button" id="placeAntenna" class="smallAction">⌖ Colocar antena en mapa</button>
+   <p class="miniNote">El sector representado es ilustrativo. No predice alcance, calidad del enlace ni zonas seguras.</p>
+  </div></section>
   <section class="sideSection" id="antennasABCPanel"><div class="sectionTitle">♧ &nbsp;Antenas A / B / C <b>⌃</b></div><div class="sideContent">
 <div class="selectRow"><label for="antSelect">Antena activa</label><select id="antSelect"><option>A</option><option>B</option><option>C</option></select></div>
 <div class="geoFields"><label>Azimut °<input id="antAzimuth" type="number" min="0" max="359" value="0" step="1"></label><label>Apertura °<input id="antBeam" type="number" min="1" max="360" value="90" step="1"></label></div>
@@ -301,6 +316,10 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
    <label class="setting"><span>Capa 3D sobre el mapa</span><input class="toggle" id="terrainOverlayToggle" type="checkbox"></label>
    <button type="button" id="reload3d" class="smallAction">⛰ Cargar elevaciones 3D</button>
    <p id="terrainSideStatus" class="sideMessage">Open-Meteo · se indicará la fuente realmente cargada.</p>
+  </div></section>
+  <section class="sideSection integratedInfo" id="routeSummaryPanel"><div class="sectionTitle">⌁ &nbsp;Información de la ruta</div><div class="sideContent">
+   <div class="metricGrid"><div class="metricBox"><label>Distancia total</label><strong id="distanceInfo">—</strong></div><div class="metricBox"><label>Puntos</label><strong id="pointsInfo">—</strong></div><div class="metricBox"><label>Desnivel +</label><strong>Sin cálculo</strong></div><div class="metricBox"><label>Tiempo estimado</label><strong>Sin velocidad</strong></div></div>
+   <p id="routeNote" class="miniNote">Ruta de demostración. No es un recorrido validado.</p>
   </div></section>
   <section class="sideSection" id="terrainProfilesPanel"><div class="sectionTitle">▥ &nbsp;Perfiles y desniveles <b>⌃</b></div><div class="sideContent">
    <div class="geoTools"><button type="button" id="terrainPickAB" class="smallAction" aria-pressed="false">⌖ Marcar A/B</button><button type="button" id="terrainClearAB" class="smallAction">✕ Limpiar A/B</button><button type="button" id="terrainAnalyzeRoute" class="smallAction">⛰ Perfil de ruta</button><button type="button" id="terrainClearRoute" class="smallAction">✕ Limpiar ruta</button></div>
@@ -328,6 +347,10 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
    <p id="weatherNote" class="sideMessage">Sin previsión cargada. Fuente: Open-Meteo.</p>
    <p id="weatherDetail" class="sideMessage">La meteorología se consulta desde este panel único.</p>
    <div id="weatherHours" class="miniNote" role="status">Pronóstico por horas pendiente.</div>
+  </div></section>
+  <section class="sideSection integratedInfo" id="poisPanel"><div class="sectionTitle">📍 &nbsp;Puntos de interés</div><div class="sideContent">
+   <button id="addPoiPanel" type="button" class="smallAction">+ Colocar POI en el mapa</button>
+   <div id="poiDesktopList" class="miniNote" role="region" aria-label="Lista desplazable de puntos de interés" tabindex="0" aria-live="polite">No hay POI creados.</div>
   </div></section>
   <section class="sideSection"><div class="sectionTitle">☷ &nbsp;Proyecto <b>⌃</b></div><div class="sideContent">
    <label class="selectRow" for="localProjectName">Nombre de proyecto</label><input id="localProjectName" class="localProjectInput" maxlength="70" value="Mi proyecto IMPERIAL" aria-label="Nombre del proyecto">
@@ -367,33 +390,10 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
   </section>
   <div class="mapStatus"><span id="mapCoords">WGS84 —</span><span id="mapZoom">Zoom —</span><span id="mapSource">Satélite Esri</span></div>
  </section>
- <aside class="rightPanel" id="imperialData" aria-label="Datos del punto y la ruta">
-  <section class="infoCard"><div class="infoTitle">⌖ &nbsp;Punto seleccionado</div><div class="infoBody">
-   <div class="selectedName"><span id="selectedTitle">Selecciona un punto</span><span class="smallTag" id="selectedType">SIN DATOS</span></div>
-   <img id="selectedThumb" alt="Vista satelital aproximada del entorno seleccionado">
-   <div class="detailRow"><span>Coordenadas WGS84</span><strong id="selectedCoords">—</strong></div>
-   <div class="detailRow"><span>Altitud del terreno</span><strong id="selectedHeight">—</strong></div>
-   <div class="detailRow"><span>Fuente elevación</span><strong id="selectedElevSource">Sin consulta</strong></div>
-  </div></section>
-  <section class="infoCard"><div class="infoTitle">📍 &nbsp;Puntos de interés</div><div class="infoBody">
-   <button id="addPoiPanel" type="button" class="smallAction">+ Colocar POI en el mapa</button>
-   <div id="poiDesktopList" class="miniNote" role="region" aria-label="Lista desplazable de puntos de interés" tabindex="0" aria-live="polite">No hay POI creados.</div>
-  </div></section>
-  <section class="infoCard"><div class="infoTitle">⌁ &nbsp;Información de la ruta</div><div class="infoBody">
-   <div class="metricGrid"><div class="metricBox"><label>Distancia total</label><strong id="distanceInfo">—</strong></div><div class="metricBox"><label>Puntos</label><strong id="pointsInfo">—</strong></div><div class="metricBox"><label>Desnivel +</label><strong>Sin cálculo</strong></div><div class="metricBox"><label>Tiempo estimado</label><strong>Sin velocidad</strong></div></div>
-   <p id="routeNote" class="miniNote">Ruta de demostración. No es un recorrido validado.</p>
-  </div></section>
-  <section class="infoCard"><div class="infoTitle">♧ &nbsp;Antena y representación 3D</div><div class="infoBody">
-   <div class="detailRow"><span>Antena</span><strong id="antennaInfo">Demostración</strong></div>
-   <div class="detailRow"><span>Altura de mástil</span><strong>3 m (visual)</strong></div>
-   <div class="detailRow"><span>Cobertura de señal</span><strong>No calculada</strong></div>
-   <button type="button" id="placeAntenna" class="smallAction">⌖ Colocar antena en mapa</button>
-   <p class="miniNote">El sector representado es ilustrativo. No predice alcance, calidad del enlace ni zonas seguras.</p>
-  </div></section>
- </aside>
+
 </main>
 <div id="mobileBackdrop" class="mobileBackdrop" hidden></div>
-<nav class="mobileBottomNav" aria-label="Navegación móvil"><button type="button" id="mobileTabTools" aria-controls="imperialTools" aria-expanded="false">☰ <span>Herramientas</span></button><button type="button" id="mobileTabMap" aria-current="page">▧ <span>Mapa</span></button><button type="button" id="mobileTabData" aria-controls="imperialData" aria-expanded="false">◉ <span>Datos</span></button></nav>
+<nav class="mobileBottomNav" aria-label="Navegación móvil"><button type="button" id="mobileTabTools" aria-controls="imperialTools" aria-expanded="false">☰ <span>Herramientas</span></button><button type="button" id="mobileTabMap" aria-current="page">▧ <span>Mapa</span></button></nav>
 <footer><span id="footerCoords">⌖ WGS84 · Centro del mapa</span><span>ESCALA APROX. · <strong id="footerScale">—</strong> &nbsp;|&nbsp; PROYECCIÓN WGS84</span><span id="footerSource">Ortofoto/MDT según fuente seleccionada · GNSS no conectado</span></footer>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -1329,7 +1329,7 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
   document.querySelectorAll('[data-section]').forEach(b=>b.classList.toggle('selected',b.dataset.section===section));
   document.querySelectorAll('.headerNav button').forEach(b=>b.classList.toggle('active',b.dataset.section===section));
   const panel=document.querySelector('.sidebar');
-  const sectionTarget=section==='weather'?$('weatherPanel'):section==='terrain'?$('terrainProfilesPanel'):section==='antenna'?$('antennaToolsPanel'):section==='projects'?$('localProjectSave'):null;
+  const sectionTarget=section==='weather'?$('weatherPanel'):section==='terrain'?$('terrainProfilesPanel'):section==='antenna'?$('antennasABCPanel'):section==='projects'?$('localProjectSave'):null;
   if(sectionTarget){panel.scrollTo({top:Math.max(0,sectionTarget.offsetTop-panel.offsetTop-10),behavior:'smooth'});}
   else panel.scrollTop=0;
   if(section==='weather'){
@@ -1344,23 +1344,19 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
  const mobileBp=window.matchMedia('(max-width:1100px)');
  let mobilePanel='';
  function mobileSetPanel(next){
-  mobilePanel=mobileBp.matches?next:'';
-  const showTools=mobilePanel==='tools',showData=mobilePanel==='data';
+  mobilePanel=mobileBp.matches&&next==='tools'?'tools':'';
+  const showTools=mobilePanel==='tools';
   $('imperialTools').classList.toggle('mobileShown',showTools);
-  $('imperialData').classList.toggle('mobileShown',showData);
-  $('mobileBackdrop').hidden=!mobilePanel;
+  $('mobileBackdrop').hidden=!showTools;
   $('mobileOpenTools').setAttribute('aria-expanded',String(showTools));
   $('mobileTabTools').setAttribute('aria-expanded',String(showTools));
-  $('mobileTabData').setAttribute('aria-expanded',String(showData));
-  for(const [name,id] of [['tools','mobileTabTools'],['data','mobileTabData'],['map','mobileTabMap']]){
-   const active=mobilePanel===name||(!mobilePanel&&name==='map');$(id).classList.toggle('mobileSelected',active);
-   if(name==='map')$(id).setAttribute('aria-current',active?'page':'false');
-  }
-  if(!mobilePanel)requestAnimationFrame(()=>map.invalidateSize({pan:false}));
+  $('mobileTabTools').classList.toggle('mobileSelected',showTools);
+  $('mobileTabMap').classList.toggle('mobileSelected',!showTools);
+  $('mobileTabMap').setAttribute('aria-current',showTools?'false':'page');
+  if(!showTools)requestAnimationFrame(()=>map.invalidateSize({pan:false}));
  }
  $('mobileOpenTools').onclick=()=>mobileSetPanel(mobilePanel==='tools'?'':'tools');
  $('mobileTabTools').onclick=()=>mobileSetPanel(mobilePanel==='tools'?'':'tools');
- $('mobileTabData').onclick=()=>mobileSetPanel(mobilePanel==='data'?'':'data');
  $('mobileTabMap').onclick=()=>mobileSetPanel('');
  $('mobileBackdrop').onclick=()=>mobileSetPanel('');
  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&mobilePanel)mobileSetPanel('')});
