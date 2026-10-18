@@ -1486,6 +1486,25 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
   }
   scene.add(group);sectorMesh3D=group;renderThree();
  }
+ // Draw a clearly labelled provisional mesh immediately; real elevations replace it.
+ function showPreviewTerrain(){
+  if(!renderer||!THREE||terrainMesh)return;
+  const n=17,size=8,vertices=[],indices=[],colors=[];
+  for(let j=0;j<n;j++)for(let i=0;i<n;i++){
+   const x=(i/(n-1)-.5)*size,z=(j/(n-1)-.5)*size;
+   const h=.1+.55*Math.exp(-((x-1)**2+(z+1)**2)/5)+.26*Math.exp(-((x+2)**2+(z-1.5)**2)/3);
+   vertices.push(x,h,z);
+   const c=new THREE.Color(0x285a56).lerp(new THREE.Color(0xb4bd89),Math.min(1,h));
+   colors.push(c.r,c.g,c.b);
+  }
+  for(let j=0;j<n-1;j++)for(let i=0;i<n-1;i++){const a=j*n+i,b=a+n;indices.push(a,b,a+1,b,b+1,a+1)}
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));g.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));g.setIndex(indices);g.computeVertexNormals();
+  const mesh=new THREE.Group();
+  mesh.add(new THREE.Mesh(g,new THREE.MeshLambertMaterial({vertexColors:true,side:THREE.DoubleSide})));
+  mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(g,18),new THREE.LineBasicMaterial({color:0xd0efff,transparent:true,opacity:.18})));
+  scene.add(mesh);terrainMesh=mesh;focus=new THREE.Vector3(0,.25,0);radius=6;renderThree();
+  threeMessage('Vista 3D provisional (relieve ilustrativo). Cargando elevaciones reales…');
+ }
  function loadTerrain(){
   if(!renderer){$('threeStatus').textContent='Iniciando motor gráfico 3D…';if(typeof loadThreeSource==='function'&&!window.THREE)loadThreeSource();return}
   const id=++terrainRequest,n=11,meters=Number($('terrainExtent').value)||2000,half=meters/2;
@@ -1532,7 +1551,7 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
    renderThree();
    const info=(hasLocal?'GeoTIFF local':'Open-Meteo Elevation')+' · '+n+'×'+n+' cotas · '+meters+' × '+meters+' m · exageración '+vertical+'×';
    $('threeStatus').textContent=info;$('terrainSideStatus').textContent=info;
-  }).catch(e=>{if(id!==terrainRequest)return;$('threeStatus').textContent='No se pudo generar el relieve: '+e.message;$('terrainSideStatus').textContent='Error de elevación: '+e.message});
+  }).catch(e=>{if(id!==terrainRequest)return;threeMessage('Vista 3D provisional: no se pudieron cargar cotas reales ('+e.message+'). Prueba Reintentar 3D.');});
  }
  $('terrainExtent').onchange=loadTerrain;
  $('terrainExaggeration').onchange=loadTerrain;
@@ -1559,10 +1578,11 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
    if(!initThree())throw Error('No se pudo iniciar el motor WebGL');
    threeReady=true;
    $('threeStatus').dataset.engineReady='true';
+   showPreviewTerrain();
    threeMessage('Motor 3D listo. Consultando cotas del relieve…');
    // Show a usable canvas immediately; elevation download is asynchronous.
    requestAnimationFrame(()=>{resizeThree();loadTerrain()});
-  }catch(error){threeMessage('Error del visor 3D: '+error.message+'. Usa «Reintentar 3D» tras comprobar los ajustes del navegador.')}
+  }catch(error){threeMessage('Error del motor 3D: '+error.message+'. Prueba «Reintentar 3D» o habilita WebGL en el navegador.')}
  }
  let threeLoading=false;
  function loadThreeSource(){
