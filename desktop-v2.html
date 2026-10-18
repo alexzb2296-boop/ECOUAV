@@ -221,6 +221,8 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
 .zoneCornerLabels,.zoneCornerRow{display:grid;grid-template-columns:30px minmax(0,1fr) minmax(0,1fr);align-items:center;gap:5px;margin:5px 0}.zoneCornerLabels{font-size:10px;color:#9dc6dc}.zoneCornerRow label{font-size:11px;color:#ffe0a1;font-weight:700}.zoneCornerRow input{min-width:0;width:100%;border:1px solid #3a6076;border-radius:5px;background:#122d40;color:#e9f8ff;padding:7px 4px;font-size:11px}#zoneCornerCell{min-width:0}
 
 .imperialPositionPin{height:34px;width:34px;border:3px solid #062b43;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#ffcd67;color:#062b43;font-size:23px;font-weight:900;box-shadow:0 2px 13px #000b,0 0 0 3px #ffe2a255;cursor:grab}.leaflet-dragging .imperialPositionPin{cursor:grabbing}
+
+.wxShortcut{border:0;background:transparent;color:#b5e6fa;font-size:11px;cursor:pointer;padding:3px}.wxShortcut:hover{text-decoration:underline}#weatherPanel{scroll-margin-top:12px}
 </style>
 <link rel="stylesheet" href="./imperial-brand.css?v=6bfc8b7">
 </head>
@@ -231,7 +233,7 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
  <div class="brand" aria-label="IMPERIAL"><span class="imperialBrandLogo" aria-hidden="true"></span>IMPERIAL</div>
  <nav class="headerNav" aria-label="Secciones principales"><button data-section="planning" class="active">PLANIFICACIÓN</button><button data-section="terrain">TERRENO</button><button data-section="antenna">ANTENAS</button><button data-section="flights">VUELOS</button><button data-section="projects">PROYECTOS</button></nav>
  <form id="searchForm" class="headerSearch" autocomplete="off"><span aria-hidden="true">⌕</span><input id="searchCoords" aria-label="Coordenadas de destino" placeholder="Coordenadas: latitud, longitud"><button aria-label="Ir" title="Ir a coordenadas" type="submit">↵</button></form>
- <div class="liveStatus"><span><i class="statusDot" id="gpsDot"></i><span id="gpsInfo">GPS no conectado</span></span><span id="topWx">Meteo —</span><span id="clock">—</span></div>
+ <div class="liveStatus"><span><i class="statusDot" id="gpsDot"></i><span id="gpsInfo">GPS no conectado</span></span><button type="button" id="topWx" class="wxShortcut" title="Abrir panel meteorológico">Meteo —</button><span id="clock">—</span></div>
  <button id="planButton" type="button" aria-pressed="false">▶ Planificar vuelo</button>
  <a id="desktopLink" href="./legacy-index.html" title="Abrir copia de la versión clásica">Clásico ↗</a>
 </header>
@@ -319,7 +321,7 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
   <p class="sideMessage" id="demStatus" role="status">Solo GeoTIFF EPSG:4326 · máximo 60 MB.</p><p class="sideMessage" id="demContourStatus" role="status">Sin curvas calculadas.</p>
   <p class="sideMessage">El DEM se conserva localmente en este navegador. Las curvas son aproximadas y no sustituyen datos topográficos certificados.</p>
   </div></section>
-  <section class="sideSection"><div class="sectionTitle">◉ &nbsp;Meteorología <b>⌃</b></div><div class="sideContent">
+  <section class="sideSection" id="weatherPanel"><div class="sectionTitle">◉ &nbsp;Meteorología <b>⌃</b></div><div class="sideContent">
    <div class="selectRow"><label for="weatherTarget">Ubicación</label><select id="weatherTarget"><option value="selected">Punto seleccionado</option><option value="center">Centro del mapa</option></select></div>
    <button type="button" class="smallAction" id="loadWeather">↻ Consultar previsión</button>
    <div class="sideWeather"><div>♧ Temperatura<strong id="sideTemp">—</strong></div><div>≋ Viento<strong id="sideWind">—</strong></div><div>≋ Rachas<strong id="sideGust">—</strong></div><div>☁ Nubosidad<strong id="sideCloud">—</strong></div></div>
@@ -1326,12 +1328,17 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
  function switchSection(section){
   document.querySelectorAll('[data-section]').forEach(b=>b.classList.toggle('selected',b.dataset.section===section));
   document.querySelectorAll('.headerNav button').forEach(b=>b.classList.toggle('active',b.dataset.section===section));
-  const sectionTarget=section==='weather'?$('loadWeather'):section==='antenna'?$('placeAntenna'):section==='projects'?$('saveProject'):null;
-  if(sectionTarget)sectionTarget.scrollIntoView({block:'nearest',behavior:'smooth'});
-  else document.querySelector('.sidebar').scrollTop=0;
+  const panel=document.querySelector('.sidebar');
+  const sectionTarget=section==='weather'?$('weatherPanel'):section==='terrain'?$('terrainProfilesPanel'):section==='antenna'?$('antennaToolsPanel'):section==='projects'?$('localProjectSave'):null;
+  if(sectionTarget){panel.scrollTo({top:Math.max(0,sectionTarget.offsetTop-panel.offsetTop-10),behavior:'smooth'});}
+  else panel.scrollTop=0;
+  if(section==='weather'){
+   $('weatherNote').textContent=weatherDate?'Última previsión: '+weatherDate+' · pulsa Consultar previsión para actualizar.':'Pulsa Consultar previsión para cargar los datos.';
+  }
   if(section==='planning'||section==='flights')toast('Pulsa «Planificar vuelo» para empezar una ruta manual.');
  }
  document.querySelectorAll('[data-section]').forEach(b=>b.onclick=()=>switchSection(b.dataset.section));
+ $('topWx').onclick=()=>{if(mobileBp.matches)mobileSetPanel('tools');switchSection('weather')};
 
  // Mobile and tablet navigation: existing map and controls, never a second app.
  const mobileBp=window.matchMedia('(max-width:1100px)');
