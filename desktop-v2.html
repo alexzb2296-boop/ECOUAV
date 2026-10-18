@@ -88,7 +88,7 @@ main{display:grid;grid-template-columns:252px minmax(0,1fr) 314px;min-height:0;m
 .previewBody{position:relative;flex:1;min-height:0;background:radial-gradient(ellipse at 50% 10%,#21475b,#0a1a2c 80%)}
 #preview3d.collapsed .previewBody{display:none}
 #threeStage{width:100%;height:100%;min-height:0;position:relative;touch-action:none}
-#threeStatus{position:absolute;left:9px;bottom:7px;background:#071827a9;color:#b9d4e5;border-radius:4px;padding:4px 7px;font-size:10px;pointer-events:none}
+#threeStatus{max-width:calc(100% - 125px);white-space:normal;position:absolute;left:9px;bottom:7px;background:#071827a9;color:#b9d4e5;border-radius:4px;padding:4px 7px;font-size:10px;pointer-events:none}
 #threeLegend{position:absolute;right:9px;top:8px;color:#d8ecfa;background:#071b2bd9;border:1px solid #315970;border-radius:6px;font-size:10px;padding:7px 8px}
 #preview3d:fullscreen{width:100%;height:100%;max-width:none;left:0;bottom:0;transform:none;border-radius:0}
 #preview3d.terrainMapOverlay{inset:0!important;left:0!important;top:0!important;bottom:0!important;transform:none!important;width:100%!important;max-width:none!important;height:100%!important;border-radius:0!important;z-index:805!important}
@@ -361,7 +361,7 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
   <div class="mapLegend"><span class="legendLine"></span> Ruta ilustrativa&nbsp; <span class="legendSector"></span> Lóbulo visual (sin predicción RF)</div>
   <section id="preview3d" aria-label="Visor 3D del terreno">
    <div class="previewHead"><span>⛰ &nbsp;Vista 3D del terreno y antena <span class="smallTag">DEM</span></span><div class="control"><button id="resetCamera" title="Centrar cámara 3D">◎</button><button id="terrain3dClose" title="Volver al mapa 2D" hidden>✕ 2D</button><button id="fullscreen3d" title="Pantalla completa 3D">⛶</button><button id="collapse3d" title="Contraer 3D">−</button></div></div>
-   <div class="previewBody"><div id="threeStage"></div><div id="threeLegend">▰ Terreno&nbsp;&nbsp; <span class="legendSector"></span> Haz ilustrativo</div><div id="threeStatus">Preparando visor 3D…</div></div>
+   <div class="previewBody"><div id="threeStage"></div><div id="threeLegend">▰ Terreno&nbsp;&nbsp; <span class="legendSector"></span> Haz ilustrativo</div><div id="threeStatus" role="status" aria-live="polite">Iniciando motor 3D…</div><button id="threeRecoverButton" type="button" title="Recargar el visor si se queda bloqueado" style="position:absolute;right:10px;bottom:8px;z-index:4;border:1px solid #41748f;background:#10344b;color:#d9f3ff;border-radius:5px;padding:4px 8px;font-size:11px">Reintentar 3D</button></div>
   </section>
   <div class="mapStatus"><span id="mapCoords">WGS84 —</span><span id="mapZoom">Zoom —</span><span id="mapSource">Satélite Esri</span></div>
  </section>
@@ -396,6 +396,33 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
 </div>
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mgrs@2.1.0/dist/mgrs.min.js"></script>
+<script>
+/* IMPERIAL 3D diagnostics; remains active if the main application fails to initialize. */
+(function(){
+ const initial='Iniciando motor 3D…';
+ const status=()=>document.getElementById('threeStatus');
+ function report(message){
+  const el=status();
+  if(el && (!el.dataset.engineReady || el.textContent===initial || el.textContent.includes('Iniciando motor')))
+   el.textContent=message;
+ }
+ window.addEventListener('error',e=>{
+  if(e.target && e.target!==window)return;
+  report('Error de inicialización: '+String(e.message||'error JavaScript').slice(0,120)+'. Pulsa Reintentar 3D.');
+ });
+ window.addEventListener('unhandledrejection',e=>{
+  report('Error de carga: '+String(e.reason?.message||e.reason||'operación rechazada').slice(0,120)+'. Pulsa Reintentar 3D.');
+ });
+ document.addEventListener('click',e=>{
+  if(e.target.closest('#threeRecoverButton'))location.reload();
+ });
+ setTimeout(()=>{
+  const el=status();
+  if(el && (el.textContent===initial || el.textContent==='Preparando visor 3D…'))
+   el.textContent='El visor no ha terminado de iniciar. Revisa la conexión, WebGL o los bloqueadores y pulsa Reintentar 3D.';
+ },16000);
+})();
+</script>
 <script>
 (function(){
  'use strict';
@@ -1382,6 +1409,9 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
   renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));
   renderer.domElement.style.cssText='width:100%;height:100%;display:block;touch-action:none';
   threeHost.append(renderer.domElement);
+  renderer.domElement.addEventListener('webglcontextlost',event=>{
+   event.preventDefault();threeMessage('Contexto WebGL perdido. Pulsa Reintentar 3D.');
+  });
   scene.add(new THREE.HemisphereLight(0xcff4ff,0x28495c,2.2));
   const light=new THREE.DirectionalLight(0xffffff,2);light.position.set(-4,8,5);scene.add(light);
   focus=new THREE.Vector3(0,0,0);
@@ -1521,6 +1551,7 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
    ctx.getExtension('WEBGL_lose_context')?.loseContext();
    if(!initThree())throw Error('No se pudo iniciar el motor WebGL');
    threeReady=true;
+   $('threeStatus').dataset.engineReady='true';
    threeMessage('Motor 3D listo. Consultando cotas del relieve…');
    // Show a usable canvas immediately; elevation download is asynchronous.
    requestAnimationFrame(()=>{resizeThree();loadTerrain()});
