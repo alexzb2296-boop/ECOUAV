@@ -6,14 +6,14 @@
 <meta name="theme-color" content="#071522">
 <title>IMPERIAL · Cartografía y terreno</title>
 <meta name="description" content="IMPERIAL: aplicación cartográfica adaptable para escritorio, tablet y móvil.">
-<meta http-equiv="refresh" content="0;url=./desktop-v2.html">
+<meta http-equiv="refresh" content="0;url=./desktop-v2.html?revision=wx-de64603">
 <style>html,body{height:100%;margin:0;background:#071522;color:#eef8ff;font-family:system-ui}main{min-height:100%;display:grid;place-content:center;text-align:center;padding:24px}a{color:#6fd8ff}h1{letter-spacing:.13em}</style>
 <script>
 (function(){
  const url=new URL('./desktop-v2.html',location.href);
  const params=new URLSearchParams(location.search);
  if(params.get('classic')==='1'){url.pathname=url.pathname.replace(/desktop-v2\.html$/,'legacy-index.html');params.delete('classic')}
- url.search=params.toString();url.hash=location.hash;
+ url.search=params.toString();if(params.get("classic")!=="1")url.searchParams.set("revision","wx-de64603");url.hash=location.hash;
  location.replace(url.href);
 })();
 </script>
