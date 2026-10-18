@@ -186,3 +186,12 @@ Fecha de auditoría: 2026-10-11
 - Se conserva la consulta Open-Meteo actual y la previsión horaria en el mismo panel, con temperatura, viento, rachas, nubosidad, dirección y probabilidad de precipitación.
 - Revisada la lógica de actualización para descartar respuestas obsoletas de consultas anteriores y avisar cuando falla una consulta. Comprobada la sintaxis JavaScript y referencias de controles HTML.
 - Pendiente comprobar visualmente en el navegador tras despliegue.
+
+## Corrección de estabilidad del visor 3D (2026-10-18)
+
+- Mejorada la inicialización Three.js: prueba explícita de contexto WebGL y diagnóstico de aceleración gráfica.
+- Añadido control de espera para cada proveedor de Three.js (10 segundos) y reintento desde el botón existente «Cargar elevaciones 3D» cuando la biblioteca no ha arrancado.
+- Reducidas las ráfagas de consultas Open-Meteo Elevation: grupos de hasta 25 puntos, como máximo 3 peticiones concurrentes; validación de integridad de cotas y plazo de 18 segundos.
+- Se evita inicializar dos veces el renderizador y se actualiza el estado con la causa de error del motor 3D o de las elevaciones.
+- Se actualiza el caché del lanzador `escritorio.html`.
+- **Comprobado:** sintaxis JavaScript. **No comprobado aún:** visualización WebGL en el navegador del usuario ni si el error original venía de Three.js, WebGL o la API de elevación.
