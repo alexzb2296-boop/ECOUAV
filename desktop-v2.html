@@ -224,6 +224,27 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
 
 /* Integrated left information sections replace the former right rail. */
 .integratedInfo .sectionTitle{color:#9ae5ff}.integratedInfo .metricGrid{gap:9px}.integratedInfo #selectedThumb{height:96px}.integratedInfo .sideContent{overflow-wrap:anywhere}
+
+/* IMPERIAL classic / compact left menu */
+main{transition:grid-template-columns .2s ease}
+main.imperial-compact{grid-template-columns:68px minmax(0,1fr)}
+.imperialMenuHead{position:sticky;top:0;z-index:10;display:flex;justify-content:space-between;align-items:center;gap:6px;padding:12px 10px;background:#0a1723;border-bottom:1px solid #34404a}
+.imperialMenuTitle{color:#e5ba76;font-weight:800;letter-spacing:.09em;font-size:14px;white-space:nowrap}
+#imperialMenuSwitch{flex:0 0 36px;height:36px;background:#162633;border:1px solid #665335;color:#e5ba76;border-radius:8px;font-size:21px;cursor:pointer}
+#imperialMenuSwitch:hover{background:#443723}
+#imperialNavSearch{margin:9px 10px 3px;width:calc(100% - 20px);padding:10px;border-radius:8px;background:#142736;border:1px solid #374758;color:#fff;font-size:12px}
+.sidebarNav button{transition:background .16s ease;white-space:nowrap}
+.sidebarNav button.selected{border-color:#8c6e39;border-left:3px solid #e3b66a;background:linear-gradient(90deg,#4b3a25,#302d29)}
+.sidebarNav button.selected .navIcon{color:#f1c77f}
+.sidebarNav .navIcon{min-width:22px;flex:0 0 22px}
+.imperial-compact .sidebar{overflow-x:hidden}
+.imperial-compact .imperialMenuHead{justify-content:center;padding:12px 4px}
+.imperial-compact .imperialMenuTitle,.imperial-compact #imperialNavSearch,.imperial-compact .sideSection,.imperial-compact .imperialNavLabel{display:none!important}
+.imperial-compact .sidebarNav{padding:10px 6px;gap:7px}
+.imperial-compact .sidebarNav button{justify-content:center;width:55px;min-height:46px;padding:8px;border-radius:9px}
+.imperial-compact .sidebarNav .navIcon{font-size:21px}
+.sidebarNav button[hidden]{display:none!important}
+@media(max-width:800px){main.imperial-compact{grid-template-columns:1fr}.imperial-compact .sidebar{overflow-y:auto}.imperial-compact .sideSection{display:block!important}.imperial-compact .imperialNavLabel,.imperial-compact .imperialMenuTitle{display:inline!important}.imperial-compact #imperialNavSearch{display:block!important}.imperial-compact .sidebarNav button{width:100%;justify-content:flex-start}.imperial-compact .sidebarNav{padding:10px}}
 </style>
 <link rel="stylesheet" href="./imperial-brand.css?v=6bfc8b7">
 </head>
@@ -240,12 +261,13 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
 </header>
 <main>
  <aside class="sidebar" id="imperialTools" aria-label="Herramientas y capas">
+  <div class="imperialMenuHead"><span class="imperialMenuTitle">IMPERIAL</span><button id="imperialMenuSwitch" type="button" title="Cambiar entre menú clásico y compacto" aria-label="Contraer menú" aria-expanded="true">«</button></div><input id="imperialNavSearch" type="search" placeholder="Buscar herramienta..." aria-label="Buscar herramienta del menú">
   <nav class="sidebarNav">
-   <button type="button" class="selected" data-section="terrain"><span class="navIcon">⛰</span>Terreno</button>
-   <button type="button" data-section="weather"><span class="navIcon">☁</span>Meteo</button>
-   <button type="button" data-section="antenna"><span class="navIcon">♧</span>Antenas</button>
-   <button type="button" data-section="flights"><span class="navIcon">✈</span>Vuelos</button>
-   <button type="button" data-section="projects"><span class="navIcon">▣</span>Proyectos</button>
+   <button type="button" class="selected" data-section="terrain"><span class="navIcon">⛰</span><span class="imperialNavLabel">Terreno</span></button>
+   <button type="button" data-section="weather"><span class="navIcon">☁</span><span class="imperialNavLabel">Meteo</span></button>
+   <button type="button" data-section="antenna"><span class="navIcon">♧</span><span class="imperialNavLabel">Antenas</span></button>
+   <button type="button" data-section="flights"><span class="navIcon">✈</span><span class="imperialNavLabel">Vuelos</span></button>
+   <button type="button" data-section="projects"><span class="navIcon">▣</span><span class="imperialNavLabel">Proyectos</span></button>
   </nav>
   <section class="sideSection"><div class="sectionTitle">♧ &nbsp;Capas del mapa <b>⌃</b></div><div class="sideContent">
    <label class="setting"><span>▧ &nbsp;Satélite Esri</span><input class="toggle" type="radio" name="basemap" value="esri" checked></label>
@@ -1596,6 +1618,31 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
   document.head.appendChild(script);
  }
  loadThreeSource();
+})();
+</script>
+
+<script>
+(function(){
+ const main=document.querySelector('main'),toggle=document.getElementById('imperialMenuSwitch'),search=document.getElementById('imperialNavSearch'),nav=document.querySelector('.sidebarNav');
+ if(!main||!toggle||!nav)return;
+ const buttons=[...nav.querySelectorAll('button[data-section]')];
+ buttons.forEach(button=>{button.title=button.textContent.trim();});
+ function setCompact(value){
+   main.classList.toggle('imperial-compact',value);
+   toggle.textContent=value?'»':'«';
+   toggle.setAttribute('aria-expanded',String(!value));
+   toggle.setAttribute('aria-label',value?'Expandir menú':'Contraer menú');
+   try{localStorage.setItem('imperial-menu-compact-v1',value?'1':'0')}catch(e){}
+   window.dispatchEvent(new Event('resize'));
+ }
+ let saved=false;try{saved=localStorage.getItem('imperial-menu-compact-v1')==='1'}catch(e){}
+ setCompact(saved);
+ toggle.addEventListener('click',()=>setCompact(!main.classList.contains('imperial-compact')));
+ buttons.forEach(button=>button.addEventListener('click',()=>{if(main.classList.contains('imperial-compact'))setCompact(false);}));
+ search.addEventListener('input',()=>{
+   const q=search.value.trim().toLocaleLowerCase('es');
+   buttons.forEach(b=>{b.hidden=!b.textContent.toLocaleLowerCase('es').includes(q)});
+ });
 })();
 </script>
 </body>
