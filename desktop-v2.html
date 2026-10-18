@@ -1376,6 +1376,8 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
  });
  function showClock(){$('clock').textContent=new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}
  showClock();setInterval(showClock,30000);
+ // Initialize Three.js state before resetDemo -> redraw -> refreshAntenna3D.
+ let renderer=null,scene=null,camera=null,terrainMesh=null,sectorMesh3D=null,terrain3DRegion=null,gridLines=null,threeHost=$('threeStage'),THREE=null,orbitAz=1.15,orbitEl=.45,zoom=1,focus=null,radius=3,drag=null;
  resetDemo();
  const preview=$('preview3d');
  function toggle3dOverlay(on){
@@ -1396,7 +1398,7 @@ header .brand .imperialBrandLogo{width:36px;height:36px}
  $('collapse3d').onclick=()=>{preview.classList.toggle('collapsed');$('collapse3d').textContent=preview.classList.contains('collapsed')?'+':'−';requestAnimationFrame(resizeThree)};
  $('fullscreen3d').onclick=()=>{if(document.fullscreenElement)document.exitFullscreen();else preview.requestFullscreen?.()};
  document.addEventListener('fullscreenchange',()=>setTimeout(resizeThree,80));
- let renderer=null,scene=null,camera=null,terrainMesh=null,sectorMesh3D=null,terrain3DRegion=null,gridLines=null,threeHost=$('threeStage'),THREE=null,orbitAz=1.15,orbitEl=.45,zoom=1,focus=null,radius=3,drag=null;
+
  function renderThree(){
   if(!renderer||!camera||!focus)return;
   const w=Math.max(2,threeHost.clientWidth),h=Math.max(2,threeHost.clientHeight);
