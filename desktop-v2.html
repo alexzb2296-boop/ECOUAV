@@ -60,7 +60,7 @@ main{display:grid;grid-template-columns:340px minmax(0,1fr);min-height:0;min-wid
 .leaflet-container{font-family:inherit;background:#132c35}
 .leaflet-control-attribution{font-size:9px!important;background:#071622b5!important;color:#a3c5d7!important}
 .leaflet-control-attribution a{color:#80cef0!important}
-.mapTopLabel{position:absolute;z-index:650;top:12px;left:12px;display:flex;align-items:center;gap:10px;pointer-events:none}
+.mapTopLabel{position:absolute;z-index:650;top:12px;left:12px;display:flex;align-items:center;gap:10px;pointer-events:none}.mapTopLabel button,.mapTopLabel input{pointer-events:auto}
 .compass{width:51px;height:51px;border:1px solid #eff8ffcc;background:#071a27b8;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-direction:column;color:#fff;box-shadow:0 2px 12px #0006}
 .compass b{font-size:11px;line-height:1}
 .compass span{font-size:29px;line-height:27px}
@@ -417,7 +417,7 @@ main.imperial-compact{grid-template-columns:68px minmax(0,1fr)}
  <div class="sideSection" id="v3ToolsEntry" style="display:block;border-color:#987849"><div class="sectionTitle" style="color:#efc787">✦ &nbsp;Centro de herramientas</div><div class="sideContent"><p class="sideMessage">Cartografía local, checklist, calidad de datos, diario de vuelos, meteorología y zonas UAS.</p><button type="button" class="smallAction" id="openToolsV3" style="width:100%;color:#f2cb8a;border-color:#9a794a">✦ Abrir herramientas V3</button></div></div><div class="sideSection" id="environmentAnalysisEntry" style="display:block;border-color:#987849"><div class="sectionTitle" style="color:#efc787">⌖ &nbsp;Análisis del entorno</div><div class="sideContent"><p class="sideMessage">Perfil geográfico independiente de hasta 5 km desde la antena seleccionada.</p><button type="button" class="smallAction" id="openEnvironmentAnalysis" style="width:100%;color:#f2cb8a;border-color:#9a794a">⌖ Abrir análisis del entorno</button></div></div><div class="sideSection" id="integral3dEntry" style="display:block;border-color:#987849"><div class="sectionTitle" style="color:#efc787">◈ &nbsp;Simulador 3D de antena</div><div class="sideContent"><p class="sideMessage">Relieve real desde las coordenadas de la antena seleccionada, dron hasta 5 km y patrones orientativos.</p><button type="button" class="smallAction" id="openIntegral3d" style="width:100%;color:#f2cb8a;border-color:#9a794a">◈ Abrir simulador 3D</button><p class="sideMessage">El relieve se consulta en línea; edificios y árboles siguen siendo esquemáticos.</p></div></div></aside>
  <section class="mapShell" aria-label="Mapa principal">
   <div id="map"></div>
-  <div class="mapTopLabel"><button type="button" class="compass" id="liveCompass" title="Activar brújula del dispositivo" aria-label="Activar brújula" style="cursor:pointer;padding:0"><span id="compassNeedle" style="display:flex;align-items:center;flex-direction:column;transition:transform .12s linear;transform-origin:center"><b>N</b><span>▲</span></span></button><span id="compassHeading" style="font-size:11px;background:#071927da;border:1px solid #305166;border-radius:6px;padding:5px;color:#e5f3f9;min-width:72px;text-align:center">Activar</span><div class="mapHint" id="modeLabel">● Demostración · haz clic para inspeccionar</div></div>
+  <div class="mapTopLabel"><button type="button" class="compass" id="liveCompass" title="Activar brújula del dispositivo" aria-label="Activar brújula" style="cursor:pointer;padding:0"><span id="compassNeedle" style="display:flex;align-items:center;flex-direction:column;transition:transform .12s linear;transform-origin:center"><b>N</b><span>▲</span></span></button><span id="compassHeading" style="font-size:11px;background:#071927da;border:1px solid #305166;border-radius:6px;padding:5px;color:#e5f3f9;min-width:72px;text-align:center">Activar</span><input type="range" id="compassManual" min="0" max="359" value="0" step="1" aria-label="Orientación manual de la brújula" title="Orientación manual en PC" hidden style="width:110px;accent-color:#e7bf7e"><div class="mapHint" id="modeLabel">● Demostración · haz clic para inspeccionar</div></div>
   <div class="mapActions" aria-label="Herramientas del mapa">
    <button id="layersAction" title="Capas" aria-label="Capas">▧</button>
    <button id="locateAction" title="Mi posición (con permiso)" aria-label="Mi posición">⊙</button>
@@ -1747,7 +1747,9 @@ main.imperial-compact{grid-template-columns:68px minmax(0,1fr)}
  }
  async function toggle(){
    if(active){window.removeEventListener('deviceorientation',listener,true);window.removeEventListener('deviceorientationabsolute',listener,true);active=false;last=null;label.textContent='Activar';needle.style.transform='rotate(0deg)';return}
-   if(!('DeviceOrientationEvent' in window)){label.textContent='Sin sensor';return}
+   if(!('DeviceOrientationEvent' in window)){
+      const manual=document.getElementById('compassManual');manual.hidden=!manual.hidden;label.textContent=manual.hidden?'Activar':'Manual 0°';return
+   }
    try{
     if(typeof DeviceOrientationEvent.requestPermission==='function'){
       const permission=await DeviceOrientationEvent.requestPermission();
@@ -1759,6 +1761,8 @@ main.imperial-compact{grid-template-columns:68px minmax(0,1fr)}
     active=true;label.textContent='Buscando N';
    }catch(e){label.textContent='No disponible';console.warn('Brújula:',e)}
  }
+ const manual=document.getElementById('compassManual');
+ manual.addEventListener('input',()=>{const deg=Number(manual.value);needle.style.transform='rotate('+(-deg)+'deg)';label.textContent='Manual '+deg+'°'});
  button.addEventListener('click',toggle);
 })();</script></body>
 </html>
