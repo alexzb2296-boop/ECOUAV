@@ -61,7 +61,7 @@ $('copyTerrainReport').addEventListener('click',async()=>{
  const text=['IMPERIAL · procedencia de datos','Posición seleccionada: '+(Number.isFinite(lat)?lat.toFixed(5):'sin dato')+', '+(Number.isFinite(lng)?lng.toFixed(5):'sin dato'),$('terrainStatus').textContent,$('lidarStatus').textContent,$('mdsStatus').textContent,$('dataQuality').textContent,'El volumen ilustrativo no representa cobertura radioeléctrica real.'].join('\n');
  try{await navigator.clipboard.writeText(text);$('copyTerrainReport').textContent='Informe copiado';setTimeout(()=>$('copyTerrainReport').textContent='Copiar informe de procedencia',2200)}catch(e){const blob=new Blob([text],{type:'text/plain;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='imperial-fuentes.txt';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
 });
-let elevationReady=false,grid=null,gridSize=9,span=11000, lidarMesh=null;
+let elevationReady=false,remoteTerrainReady=false,grid=null,gridSize=9,span=11000, lidarMesh=null;
 let E=(x,z)=>0;let referenceElevation=(x,z)=>0;let lidarSampler=null;let lidarGroundAbsolute=null;let surfaceMesh=null;
 let geo=new T.PlaneGeometry(span,span,144,144);geo.rotateX(-Math.PI/2);let p=geo.attributes.position;
 let ground=new T.Mesh(geo,new T.MeshStandardMaterial({color:0x678465,side:T.DoubleSide}));s.add(ground);
@@ -162,7 +162,8 @@ async function loadRealTerrain(){
   $('terrainStatus').textContent='Cargando elevaciones reales: '+Math.round(100*(idx+1)/chunks.length)+'% (último bloque recibido)…';
  }}
  await Promise.all(Array.from({length:1},()=>worker()));
- grid=heights;setSourceFlag(official?'MDT oficial: respuesta recibida (precisión sin certificar)':'Modelo de respaldo: resolución limitada','#d7ad65');$('dataQuality').textContent='Terreno: '+(official?'IGN WCS MDT25 (cobertura recibida)':'Open-Meteo (malla remota 9×9)')+'. La visualización interpola muestras y no aporta precisión adicional. Volumen y anillos: conceptuales.';const min=Math.min(...heights);lidarVerticalBase=min;
+ if(lidarGroundAbsolute){$('terrainStatus').textContent='MDT local prioritario; respaldo remoto recibido pero no se sustituye el MDT cargado.';remoteTerrainReady=true;return}
+ remoteTerrainReady=true;grid=heights;setSourceFlag(official?'MDT oficial: respuesta recibida (precisión sin certificar)':'Modelo de respaldo: resolución limitada','#d7ad65');$('dataQuality').textContent='Terreno: '+(official?'IGN WCS MDT25 (cobertura recibida)':'Open-Meteo (malla remota 9×9)')+'. La visualización interpola muestras y no aporta precisión adicional. Volumen y anillos: conceptuales.';const min=Math.min(...heights);lidarVerticalBase=min;
  E=(x,z)=>{const u=Math.max(0,Math.min(gridSize-1,(x/span+.5)*(gridSize-1))),v=Math.max(0,Math.min(gridSize-1,(z/span+.5)*(gridSize-1))),i=Math.min(gridSize-2,Math.floor(u)),j=Math.min(gridSize-2,Math.floor(v)),fx=u-i,fz=v-j;
  const at=(a,b)=>grid[b*gridSize+a]-min;return at(i,j)*(1-fx)*(1-fz)+at(i+1,j)*fx*(1-fz)+at(i,j+1)*(1-fx)*fz+at(i+1,j+1)*fx*fz;};
  referenceElevation=E;elevationReady=true;paintTerrain();document.getElementById('bootStatus').hidden=true;loadSatellite();loadOsmDetails();$('terrainStatus').textContent='Relieve real cargado cerca de '+lat.toFixed(5)+', '+lng.toFixed(5)+' (fuente: '+(official?official.source:'respaldo Open-Meteo')+'; malla de visualización 9×9).'; 
@@ -257,6 +258,16 @@ async function loadLocalLidar(file){
  if(x1<=x0||y1<=y0)throw Error('Este archivo no cubre el entorno de la antena');
  const nx=Math.max(2,Math.min(220,Math.ceil((x1-x0)/Math.max(cell,8))));
  const ny=Math.max(2,Math.min(220,Math.ceil((y1-y0)/Math.max(cell,8))));
+ // Si el servidor no está disponible, se toma una cota real del propio ASC como datum visual.
+ // No se generan cotas artificiales fuera del archivo.
+ const localCenter=sourceSample(centerX,centerY);
+ if(!elevationReady){
+  let datum=localCenter;
+  if(datum===null){for(const value of numbers){if(Number.isFinite(value)&&value!==info.nodata_value){datum=value;break}}}
+  if(datum===null||!Number.isFinite(datum))throw Error('El MDT no contiene cotas válidas para establecer la referencia vertical');
+  lidarVerticalBase=datum;
+  referenceElevation=()=>0;
+ }
  const vertices=[],indices=[],valid=[];let hits=0;
  for(let j=0;j<=ny;j++)for(let i=0;i<=nx;i++){
   const east=x0+(x1-x0)*i/nx,north=y1-(y1-y0)*j/ny;
@@ -276,13 +287,20 @@ async function loadLocalLidar(file){
  lidarGroundAbsolute=(localX,localZ)=>{const latitude=lat-localZ/111320,longitude=lng+localX/(111320*Math.cos(lat*Math.PI/180));const xy=project.forward([longitude,latitude]);return sourceSample(xy[0],xy[1])};
  lidarSampler=(localX,localZ)=>{const latitude=lat-localZ/111320,longitude=lng+localX/(111320*Math.cos(lat*Math.PI/180));const xy=project.forward([longitude,latitude]);const value=sourceSample(xy[0],xy[1]);return value===null?null:value-lidarVerticalBase};
  E=(x,z)=>lidarSampler(x,z)??referenceElevation(x,z);
+ elevationReady=true;
+ if(!remoteTerrainReady){
+  $('terrainStatus').textContent='MDT local activo (sin servidor): '+file.name+'. Solo la zona cubierta dispone de cotas verificadas.';
+  setSourceFlag('MDT ASC local · fuera del archivo sin elevación verificada','#8ac9ab');
+  $('dataQuality').textContent='Suelo: MDT ASC importado localmente. Fuera de su cobertura el plano base es solo una referencia gráfica, no relieve real. MDS opcional.';
+  $('bootStatus').hidden=true;
+ }
  update();
  status.textContent='LiDAR cargado: '+file.name+' · '+cols+'×'+rows+' celdas · '+cell+' m/píxel. Malla visual '+nx+'×'+ny+'. El relieve importado se utiliza para situar antena y dron; fuera de cobertura sigue el modelo de referencia.';
 }
 let lidarVerticalBase=0;
 $('lidarFile').addEventListener('change',async e=>{
  const file=e.target.files?.[0];if(!file)return;
- try{if(!elevationReady)throw Error('El importador MDT actual necesita primero una elevación de referencia. Si el servidor sigue caído, usa Reintentar cargar relieve; no se sustituirá por una cota inventada.');$('lidarStatus').textContent='Validando MDT local…';await loadLocalLidar(file);$('terrainLayersExplanation').textContent='MDT local importado. El modelo de suelo se representa con las cotas del archivo allí donde hay cobertura. Fuera de cobertura se usa la elevación remota de referencia; MDS sigue siendo una capa independiente.'}
+ try{$('lidarStatus').textContent='Validando MDT local…';await loadLocalLidar(file);$('terrainLayersExplanation').textContent='MDT local importado. El modelo de suelo se representa con las cotas del archivo allí donde hay cobertura. Fuera de cobertura se usa la elevación remota de referencia; MDS sigue siendo una capa independiente.'}
  catch(err){$('lidarStatus').textContent='LiDAR: '+err.message}
 });
 
