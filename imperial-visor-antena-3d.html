@@ -156,7 +156,7 @@ async function tryIGNWcs(){
  const sample=(x,y)=>{const u=(x-bx)/cell-.5,v=(by+rows*cell-y)/cell-.5,i=Math.floor(u),j=Math.floor(v);if(i<0||j<0||i>=cols-1||j>=rows-1)return null;const fx=u-i,fz=v-j,a=[arr[j*cols+i],arr[j*cols+i+1],arr[(j+1)*cols+i],arr[(j+1)*cols+i+1]];if(a.some(n=>!Number.isFinite(n)||n===header.nodata_value))return null;return a[0]*(1-fx)*(1-fz)+a[1]*fx*(1-fz)+a[2]*(1-fx)*fz+a[3]*fx*fz};
  const values=[],size=33;
  for(let j=0;j<size;j++)for(let i=0;i<size;i++){const x=(i/(size-1)-.5)*span,z=(j/(size-1)-.5)*span,xy=transform.forward([lng+x/(111320*Math.cos(lat*Math.PI/180)),lat-z/111320]);values.push(sample(xy[0],xy[1]))}
- if(values.some(v=>v===null))throw Error('Cobertura IGN incompleta sobre los 11 km');
+ if(values.some(v=>!Number.isFinite(v)))throw Error('Cobertura IGN incompleta o con valores no numéricos sobre los 11 km');
  return {values,source:'IGN WCS MDT25'};
 }
 
@@ -179,6 +179,11 @@ async function loadRealTerrain(){
   $('terrainStatus').textContent='Cargando elevaciones reales: '+Math.round(100*(idx+1)/chunks.length)+'% (último bloque recibido)…';
  }}
  await Promise.all(Array.from({length:1},()=>worker()));
+ // Los datos de servicios distintos nunca se mezclan: comprobar la malla completa antes de representar.
+ if(heights.length!==gridSize*gridSize||heights.some(h=>!Number.isFinite(h)))
+  throw Error('Malla de elevaciones incompleta: no se mostrará relieve no verificado');
+ if(Math.max(...heights)-Math.min(...heights)>9000)
+  throw Error('Elevaciones incoherentes: diferencia superior a 9.000 m en la malla');
  if(lidarGroundAbsolute){$('terrainStatus').textContent='MDT local prioritario; respaldo remoto recibido pero no se sustituye el MDT cargado.';remoteTerrainReady=true;return}
  remoteTerrainReady=true;grid=heights;setSourceFlag(official?'MDT oficial: respuesta recibida (precisión sin certificar)':'Modelo de respaldo: resolución limitada','#d7ad65');$('dataQuality').textContent='Terreno: '+(official?'IGN WCS MDT25 (33×33 muestras verificadas)':'Open-Meteo (malla remota 9×9)')+'. La visualización interpola muestras y no aporta precisión adicional. Volumen y anillos: conceptuales.';const min=Math.min(...heights);lidarVerticalBase=min;
  E=(x,z)=>{const u=Math.max(0,Math.min(gridSize-1,(x/span+.5)*(gridSize-1))),v=Math.max(0,Math.min(gridSize-1,(z/span+.5)*(gridSize-1))),i=Math.min(gridSize-2,Math.floor(u)),j=Math.min(gridSize-2,Math.floor(v)),fx=u-i,fz=v-j;
