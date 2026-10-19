@@ -129,7 +129,7 @@ async function tryIGNWcs(){
  const params=new URLSearchParams({SERVICE:'WCS',VERSION:'2.0.1',REQUEST:'GetCoverage',COVERAGEID:coverage,FORMAT:'application/asc',CRS:'EPSG:'+epsg});
  const url='https://servicios.idee.es/wcs-inspire/mdt?'+params.toString()+'&SUBSET=x('+extent[0]+','+extent[2]+')&SUBSET=y('+extent[1]+','+extent[3]+')';
  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),17000);
- let raw;try{const response=await fetch(url,{signal:controller.signal});if(!response.ok)throw Error('IGN HTTP '+response.status);raw=await response.text()}finally{clearTimeout(timer)}
+ let raw;try{const response=await fetch(url,{signal:controller.signal});if(!response.ok)throw Error('IGN HTTP '+response.status+'; el servicio oficial no ha entregado un modelo válido');raw=await response.text()}finally{clearTimeout(timer)}
  const lines=raw.trim().split(/\r?\n/),header={},data=[];
  for(const line of lines){const match=line.trim().match(/^(ncols|nrows|xllcorner|yllcorner|xllcenter|yllcenter|cellsize|nodata_value)\s+([-+\d.eE]+)/i);if(match)header[match[1].toLowerCase()]=Number(match[2]);else if(line.trim())data.push(line.trim())}
  if(!Number.isInteger(header.ncols)||!Number.isInteger(header.nrows)||header.ncols<2||header.nrows<2||header.ncols*header.nrows>2000000||data.length!==header.nrows)throw Error('IGN devolvió un formato de cobertura no compatible');
@@ -282,7 +282,7 @@ async function loadLocalLidar(file){
 let lidarVerticalBase=0;
 $('lidarFile').addEventListener('change',async e=>{
  const file=e.target.files?.[0];if(!file)return;
- try{if(!elevationReady)throw Error('Carga primero la elevación de referencia');await loadLocalLidar(file)}
+ try{if(!elevationReady)throw Error('El importador MDT actual necesita primero una elevación de referencia. Si el servidor sigue caído, usa Reintentar cargar relieve; no se sustituirá por una cota inventada.');$('lidarStatus').textContent='Validando MDT local…';await loadLocalLidar(file);$('terrainLayersExplanation').textContent='MDT local importado. El modelo de suelo se representa con las cotas del archivo allí donde hay cobertura. Fuera de cobertura se usa la elevación remota de referencia; MDS sigue siendo una capa independiente.'}
  catch(err){$('lidarStatus').textContent='LiDAR: '+err.message}
 });
 
@@ -324,7 +324,7 @@ async function loadSurfaceModel(file){
  surfaceMesh=mesh;s.add(mesh);surfaceMesh.visible=$('mdsVisible').checked;
  $('mdsStatus').textContent='MDS cargado: '+count+' muestras elevadas y '+triangles.length/3+' triángulos. Ocre = 2–15 m; verde = más de 15 m. Son superficies medidas, no árboles o edificios identificados automáticamente.';
 }
-$('mdsFile').addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;try{$('mdsStatus').textContent='Procesando MDS…';await loadSurfaceModel(file)}catch(err){$('mdsStatus').textContent='Error MDS: '+err.message}});
+$('mdsFile').addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;try{$('mdsStatus').textContent='Procesando MDS…';await loadSurfaceModel(file);$('terrainLayersExplanation').textContent='MDT y MDS locales cargados. Ocre y verde representan alturas de superficie sobre el suelo, pero no identifican de forma automática edificios ni vegetación. Comprueba que ambos archivos tengan el mismo sistema de coordenadas y referencia vertical.'}catch(err){$('mdsStatus').textContent='Error MDS: '+err.message}});
 $('mdsVisible').addEventListener('change',()=>{if(surfaceMesh)surfaceMesh.visible=$('mdsVisible').checked});
 let ax=0,az=0,mast=new T.Mesh(new T.CylinderGeometry(2,3,1,8),new T.MeshStandardMaterial({color:0xf5cf8d}));s.add(mast);let drone=new T.Mesh(new T.BoxGeometry(27,7,27),new T.MeshStandardMaterial({color:0xe8bd78}));s.add(drone);let beam=new T.Line(new T.BufferGeometry(),new T.LineBasicMaterial({color:0x76ffd0}));s.add(beam);let zone=new T.Mesh(new T.BufferGeometry(),new T.MeshBasicMaterial({color:0x5fe2ae,transparent:true,opacity:.12,side:T.DoubleSide,depthWrite:false}));s.add(zone);let ring=new T.Line(new T.BufferGeometry(),new T.LineBasicMaterial({color:0xefcc86}));s.add(ring);let illustration=new T.Group();s.add(illustration);let patternReference=new T.Group();s.add(patternReference);
 const patternGeometry=new T.SphereGeometry(1,24,16),patternMaterial=new T.MeshBasicMaterial({color:0xdca7f3,wireframe:true,transparent:true,opacity:.65,depthWrite:false});
