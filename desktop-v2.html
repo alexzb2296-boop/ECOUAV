@@ -58,6 +58,10 @@ main{display:grid;grid-template-columns:340px minmax(0,1fr);min-height:0;min-wid
 .mapShell{position:relative;overflow:hidden;min-width:0;background:#0d1f2d}
 #map{height:100%;width:100%;z-index:1;background:#132c35}
 .leaflet-container{font-family:inherit;background:#132c35}
+#mapCoordinates{position:absolute;z-index:640;right:12px;bottom:38px;background:#071928e8;border:1px solid #365c73;border-radius:8px;padding:8px 10px;color:#e8f5fa;font-size:11px;display:flex;gap:9px;align-items:center;box-shadow:0 2px 12px #0006}
+#mapCoordinates button{border:1px solid #4c8caa;border-radius:5px;background:#17384b;color:#bfefff;padding:5px 8px;font-size:10px}
+.leaflet-control-scale{margin-bottom:10px!important;margin-left:12px!important}
+.leaflet-control-scale-line{background:#0c2330df!important;color:#e9f6fb!important;border-color:#b3d7e8!important;text-shadow:none!important;font-size:10px!important}
 .leaflet-control-attribution{font-size:9px!important;background:#071622b5!important;color:#a3c5d7!important}
 .leaflet-control-attribution a{color:#80cef0!important}
 .mapTopLabel{position:absolute;z-index:650;top:12px;left:12px;display:flex;align-items:center;gap:10px;pointer-events:none}.mapTopLabel button,.mapTopLabel input{pointer-events:auto}
@@ -416,7 +420,7 @@ main.imperial-compact{grid-template-columns:68px minmax(0,1fr)}
   </div></section>
  <div class="sideSection" id="v3ToolsEntry" style="display:block;border-color:#987849"><div class="sectionTitle" style="color:#efc787">✦ &nbsp;Centro de herramientas</div><div class="sideContent"><p class="sideMessage">Cartografía local, checklist, calidad de datos, diario de vuelos, meteorología y zonas UAS.</p><button type="button" class="smallAction" id="openToolsV3" style="width:100%;color:#f2cb8a;border-color:#9a794a">✦ Abrir herramientas V3</button></div></div><div class="sideSection" id="environmentAnalysisEntry" style="display:block;border-color:#987849"><div class="sectionTitle" style="color:#efc787">⌖ &nbsp;Análisis del entorno</div><div class="sideContent"><p class="sideMessage">Perfil geográfico independiente de hasta 5 km desde la antena seleccionada.</p><button type="button" class="smallAction" id="openEnvironmentAnalysis" style="width:100%;color:#f2cb8a;border-color:#9a794a">⌖ Abrir análisis del entorno</button></div></div><div class="sideSection" id="rfLibraryEntry" style="display:block;border-color:#987849"><div class="sectionTitle" style="color:#efc787">◈ &nbsp;Biblioteca de equipos RF</div><div class="sideContent"><p class="sideMessage">Fichas técnicas de control ELRS y vídeo, documentación y patrones H/V importados.</p><button type="button" class="smallAction" id="openRfLibrary" style="width:100%;color:#f2cb8a;border-color:#9a794a">Abrir biblioteca RF</button></div></div><div class="sideSection" id="integral3dEntry" style="display:block;border-color:#987849"><div class="sectionTitle" style="color:#efc787">◈ &nbsp;Simulador 3D de antena</div><div class="sideContent"><p class="sideMessage">Relieve real desde las coordenadas de la antena seleccionada, dron hasta 5 km y patrones orientativos.</p><button type="button" class="smallAction" id="openIntegral3d" style="width:100%;color:#f2cb8a;border-color:#9a794a">◈ Abrir simulador 3D</button><p class="sideMessage">El relieve se consulta en línea; edificios y árboles siguen siendo esquemáticos.</p></div></div></aside>
  <section class="mapShell" aria-label="Mapa principal">
-  <div id="map"></div>
+  <div id="map"></div><div id="mapCoordinates"><span id="mapCoordinatesText">Centro del mapa: —</span><button id="copyMapCoordinates" type="button" title="Copiar coordenadas del centro del mapa">Copiar</button></div>
   <div class="mapTopLabel"><button type="button" class="compass" id="liveCompass" title="Activar brújula del dispositivo" aria-label="Activar brújula" style="cursor:pointer;padding:0"><span id="compassNeedle" style="display:flex;align-items:center;flex-direction:column;transition:transform .12s linear;transform-origin:center"><b>N</b><span>▲</span></span></button><span id="compassHeading" style="font-size:11px;background:#071927da;border:1px solid #305166;border-radius:6px;padding:5px;color:#e5f3f9;min-width:72px;text-align:center">Activar</span><input type="range" id="compassManual" min="0" max="359" value="0" step="1" aria-label="Orientación manual de la brújula" title="Orientación manual en PC" hidden style="width:110px;accent-color:#e7bf7e"><div class="mapHint" id="modeLabel">● Demostración · haz clic para inspeccionar</div></div>
   <div class="mapActions" aria-label="Herramientas del mapa">
    <button id="layersAction" title="Capas" aria-label="Capas">▧</button>
@@ -659,6 +663,17 @@ main.imperial-compact{grid-template-columns:68px minmax(0,1fr)}
   demo=true;route=demoRoute.map(p=>({...p}));antenna={...demoAntenna};antennaABC={A:{...demoAntenna,azimuth:0,beam:90,range:2},B:null,C:null};pois=[];redraw();setMode('inspect');map.setView([startCenter.lat,startCenter.lng],12);selectAt(route[2],'B · waypoint demo');toast('Demostración restaurada');
  }
  map=L.map('map',{center:[startCenter.lat,startCenter.lng],zoom:12,zoomControl:false,preferCanvas:true});
+ // Escala gráfica y lectura de coordenadas del centro: no modifica la navegación ni las capas.
+ L.control.scale({position:'bottomleft',metric:true,imperial:false,maxWidth:140}).addTo(map);
+ const mapCoordsText=document.getElementById('mapCoordinatesText'),mapCoordsCopy=document.getElementById('copyMapCoordinates');
+ function refreshMapCoords(){const point=map.getCenter();mapCoordsText.textContent='Centro · '+point.lat.toFixed(5)+'°, '+point.lng.toFixed(5)+'°';}
+ map.on('moveend',refreshMapCoords);refreshMapCoords();
+ mapCoordsCopy.addEventListener('click',async()=>{
+   const point=map.getCenter(),str=point.lat.toFixed(6)+', '+point.lng.toFixed(6);
+   try{await navigator.clipboard.writeText(str);mapCoordsCopy.textContent='Copiado'}catch{mapCoordsCopy.textContent='No disponible'}
+   setTimeout(()=>mapCoordsCopy.textContent='Copiar',1600);
+ });
+
  routeLayer.addTo(map);antennaLayer.addTo(map);poiLayer.addTo(map);setBase('esri');setTopo(true);
  map.on('moveend zoomend',updateMapStatus);
 
