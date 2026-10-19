@@ -1725,44 +1725,39 @@ main.imperial-compact{grid-template-columns:68px minmax(0,1fr)}
  window.addEventListener('keydown',function(event){if(event.key==='Escape'&&!overlay.hidden)close.click()});
 })();
 </script><script>(function(){const b=document.getElementById("openToolsV3");if(!b)return;b.addEventListener("click",()=>{const a=window.imperial3dGetAntenna?.(),p=new URLSearchParams({v:"1193cc2"});if(a){p.set("lat",String(a.lat));p.set("lng",String(a.lng))}document.getElementById("toolsV3Frame").src="./imperial-herramientas-v3.html?"+p.toString();document.getElementById("toolsV3Overlay").hidden=false})})();</script><div id="toolsV3Overlay" hidden style="position:fixed;inset:54px 0 31px;z-index:9996;background:#071421"><div style="height:43px;display:flex;align-items:center;justify-content:space-between;padding:5px 14px;background:#0b1c2b;border-bottom:1px solid #876c40;color:#efc486;font-weight:700">IMPERIAL · Centro de herramientas <button id="toolsV3Close" type="button" style="padding:7px 12px;border:1px solid #a58352;background:#302b23;color:#f7dba7;border-radius:7px">✕ Volver al mapa</button></div><iframe id="toolsV3Frame" title="Centro de herramientas IMPERIAL" style="width:100%;height:calc(100% - 43px);border:0"></iframe></div><script>(function(){const o=document.getElementById('toolsV3Overlay'),f=document.getElementById('toolsV3Frame'),b=document.getElementById('toolsV3Close');b.onclick=()=>{o.hidden=true;f.removeAttribute('src')};window.addEventListener('keydown',e=>{if(e.key==='Escape'&&!o.hidden)b.click()})})();</script><script>(function(){
- const button=document.getElementById('liveCompass'),needle=document.getElementById('compassNeedle'),label=document.getElementById('compassHeading');
- if(!button||!needle||!label)return;
- let active=false,last=null,listener=null;
+ const button=document.getElementById('liveCompass'),needle=document.getElementById('compassNeedle'),label=document.getElementById('compassHeading'),manual=document.getElementById('compassManual');
+ if(!button||!needle||!label||!manual)return;
+ let active=false,last=null,listener=null,timeout=null,valid=false;
+ const desktop=!(/Android|iPhone|iPad|iPod/i.test(navigator.userAgent))&&!navigator.maxTouchPoints;
+ function removeSensor(){if(listener){window.removeEventListener('deviceorientation',listener,true);window.removeEventListener('deviceorientationabsolute',listener,true)}clearTimeout(timeout);active=false;listener=null}
+ function manualMode(){removeSensor();manual.hidden=false;label.textContent='Manual '+manual.value+'°';needle.style.transform='rotate('+(-Number(manual.value))+'deg)';button.title='Brújula manual; pulsa para ocultar'}
  function heading(event){
    let degrees;
-   if(typeof event.webkitCompassHeading==='number'&&Number.isFinite(event.webkitCompassHeading)){
-      degrees=event.webkitCompassHeading;
-   }else if(event.absolute===true&&typeof event.alpha==='number'){
-      degrees=(360-event.alpha)%360;
-   }else if(typeof event.alpha==='number'){
-      // Relative headings are not a reliable compass bearing; do not label them north.
-      label.textContent='Sin norte';return;
-   }else return;
-   degrees=((degrees%360)+360)%360;
-   if(last!==null){let delta=((degrees-last+540)%360)-180;degrees=(last+delta*.28+360)%360}
-   last=degrees;
-   needle.style.transform='rotate('+(-degrees)+'deg)';
-   label.textContent=Math.round(degrees)+'°';
-   button.title='Rumbo '+Math.round(degrees)+'° · toca para desactivar';
+   if(typeof event.webkitCompassHeading==='number'&&Number.isFinite(event.webkitCompassHeading))degrees=event.webkitCompassHeading;
+   else if(event.absolute===true&&Number.isFinite(event.alpha))degrees=(360-event.alpha)%360;
+   else return;
+   valid=true;clearTimeout(timeout);manual.hidden=true;degrees=((degrees%360)+360)%360;
+   if(last!==null){const delta=((degrees-last+540)%360)-180;degrees=(last+delta*.28+360)%360}
+   last=degrees;needle.style.transform='rotate('+(-degrees)+'deg)';label.textContent=Math.round(degrees)+'°';
+   button.title='Rumbo '+Math.round(degrees)+'° · pulsa para desactivar';
  }
  async function toggle(){
-   if(active){window.removeEventListener('deviceorientation',listener,true);window.removeEventListener('deviceorientationabsolute',listener,true);active=false;last=null;label.textContent='Activar';needle.style.transform='rotate(0deg)';return}
-   if(!('DeviceOrientationEvent' in window)){
-      const manual=document.getElementById('compassManual');manual.hidden=!manual.hidden;label.textContent=manual.hidden?'Activar':'Manual 0°';return
-   }
+   if(!manual.hidden){manual.hidden=true;label.textContent='Activar';needle.style.transform='rotate(0deg)';return}
+   if(active){removeSensor();label.textContent='Activar';needle.style.transform='rotate(0deg)';return}
+   if(desktop||!('DeviceOrientationEvent' in window)){manualMode();return}
    try{
-    if(typeof DeviceOrientationEvent.requestPermission==='function'){
-      const permission=await DeviceOrientationEvent.requestPermission();
-      if(permission!=='granted'){label.textContent='Sin permiso';return}
-    }
-    listener=heading;
-    window.addEventListener('deviceorientation',listener,true);
-    window.addEventListener('deviceorientationabsolute',listener,true);
-    active=true;label.textContent='Buscando N';
-   }catch(e){label.textContent='No disponible';console.warn('Brújula:',e)}
+     if(typeof DeviceOrientationEvent.requestPermission==='function'){
+       const permission=await DeviceOrientationEvent.requestPermission();
+       if(permission!=='granted'){label.textContent='Sin permiso';return}
+     }
+     valid=false;last=null;listener=heading;active=true;
+     window.addEventListener('deviceorientation',listener,true);
+     window.addEventListener('deviceorientationabsolute',listener,true);
+     label.textContent='Buscando N';
+     timeout=setTimeout(()=>{if(!valid)manualMode()},3500);
+   }catch(e){manualMode()}
  }
- const manual=document.getElementById('compassManual');
- manual.addEventListener('input',()=>{const deg=Number(manual.value);needle.style.transform='rotate('+(-deg)+'deg)';label.textContent='Manual '+deg+'°'});
+ manual.addEventListener('input',()=>{needle.style.transform='rotate('+(-Number(manual.value))+'deg)';label.textContent='Manual '+manual.value+'°'});
  button.addEventListener('click',toggle);
 })();</script></body>
 </html>
