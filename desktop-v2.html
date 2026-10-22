@@ -1182,6 +1182,27 @@ main.imperial-compact{grid-template-columns:68px minmax(0,1fr)}
  $('layerTopoOpacity').addEventListener('input',event=>{topo.setOpacity(Number(event.target.value)/100)});
  for(const [id,layer] of [['layerRoute',routeLayer],['layerAntennas',antennaLayer],['layerPoi',poiLayer]]){$(id).checked=map.hasLayer(layer);$(id).addEventListener('change',event=>{if(event.target.checked)layer.addTo(map);else map.removeLayer(layer)})}
  document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!layerManager.hidden)layerManager.hidden=true});
+ // Mantener el panel flotante y los controles laterales sincronizados.
+ function syncLayerControls(){
+   $('layerBase').value=map.hasLayer(pnoa)?'pnoa':'esri';
+   const topographic=map.hasLayer(topo);
+   for(const id of ['layerTopo','topoToggle','topo2Toggle']){const el=$(id);if(el)el.checked=topographic}
+   $('layerTopoOpacity').value=String(Math.round(topo.options.opacity*100));
+   for(const [floating,sidebar,group] of [['layerRoute','routesToggle',routeLayer],['layerAntennas','antennaToggle',antennaLayer],['layerPoi','poiToggle',poiLayer]]){
+     for(const id of [floating,sidebar]){const el=$(id);if(el)el.checked=map.hasLayer(group)}
+   }
+ }
+ map.on('layeradd layerremove',syncLayerControls);
+ for(const id of ['topoToggle','topo2Toggle','basemapOpacity','routesToggle','antennaToggle','poiToggle']){
+   const el=$(id);if(el)el.addEventListener('change',()=>setTimeout(syncLayerControls,0))
+ }
+ $('layerTopoOpacity').addEventListener('change',()=>{
+   const v=Number($('layerTopoOpacity').value)/100;
+   $('basemapOpacity').value=String([.3,.5,.75].reduce((best,next)=>Math.abs(next-v)<Math.abs(best-v)?next:best,.5));
+ });
+ $('basemapOpacity').addEventListener('change',()=>{$('layerTopoOpacity').value=String(Math.round(topo.options.opacity*100))});
+ syncLayerControls();
+
  
  $('loadWeather').onclick=loadWeather;
  $('planButton').onclick=()=>{
