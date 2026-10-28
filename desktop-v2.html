@@ -318,7 +318,7 @@ main.imperial-compact{grid-template-columns:68px minmax(0,1fr)}
    <div class="geoFields"><input id="geoLat" type="number" min="-90" max="90" step="any" placeholder="Latitud" aria-label="Latitud decimal"><input id="geoLon" type="number" min="-180" max="180" step="any" placeholder="Longitud" aria-label="Longitud decimal"></div>
    <div class="geoTools"><button class="smallAction" id="geoGo" type="button">⌖ Ir a coordenadas</button><button class="smallAction" id="geoUseSelected" type="button">↳ Usar selección</button><button class="smallAction" id="geoCopy" type="button">⧉ Copiar WGS84</button><button class="smallAction" id="geoMeasure" type="button" aria-pressed="false">📏 Medir A/B</button></div>
    <div id="geoOutput" class="geoResult" role="status">Selecciona un punto para consultar coordenadas y UTM.</div>
-   <div id="geoMeasureOutput" class="geoMeasures">Medición: sin puntos A/B.</div>
+   <div id="geoMeasureOutput" class="geoMeasures">Medición: sin puntos A/B.</div><div style="margin-top:11px;border:1px solid #37617a;border-radius:7px;padding:9px;background:#102b3b"><strong>☆ Puntos favoritos</strong><p class="sideMessage">Guarda el punto seleccionado o el centro del mapa. Solo se conserva en este navegador.</p><input id="favoriteName" maxlength="80" placeholder="Nombre del punto" aria-label="Nombre del favorito" style="width:100%;margin:6px 0;padding:7px;background:#17384a;border:1px solid #50768a;border-radius:5px;color:#fff"><div class="geoTools"><button type="button" class="smallAction" id="favoriteSave">☆ Guardar selección</button><button type="button" class="smallAction" id="favoriteExport">↓ GeoJSON favoritos</button></div><label class="setting"><span>Mostrar favoritos</span><input type="checkbox" class="toggle" id="favoriteVisible" checked></label><div id="favoriteList" role="status" style="max-height:180px;overflow:auto;font-size:11px">No hay favoritos.</div></div>
    <button class="smallAction" id="geoClearMeasure" type="button">✕ Limpiar medición</button>
    <div class="geoFields"><input id="geoMgrsInput" type="text" maxlength="40" placeholder="MGRS: 30TVK..." aria-label="Coordenada MGRS"><button id="geoMgrsGo" class="smallAction" type="button">Ir a MGRS</button></div>
    <div class="geoTools"><button id="geoRadius" class="smallAction" type="button" aria-pressed="false">◯ Radio</button><button id="geoArea" class="smallAction" type="button" aria-pressed="false">▱ Área</button><button id="geoFinishArea" class="smallAction" type="button">✓ Terminar área</button><button id="geoClearShapes" class="smallAction" type="button">✕ Limpiar figuras</button></div>
@@ -681,6 +681,38 @@ main.imperial-compact{grid-template-columns:68px minmax(0,1fr)}
  // Unified desktop coordinate and A/B measuring tools. WGS84 -> UTM (standard transverse Mercator series).
  const geoLayer=L.layerGroup(),geoMeasurePoints=[];
  geoLayer.addTo(map);
+ // Favoritos personales aislados del proyecto y de la ruta.
+ const favoriteKey='imperial_cartographic_favorites_v1',favoriteLayer=L.layerGroup().addTo(map);
+ let favorites=[];try{const saved=JSON.parse(localStorage.getItem(favoriteKey)||'[]');if(Array.isArray(saved))favorites=saved.filter(x=>x&&Number.isFinite(x.lat)&&Number.isFinite(x.lng)&&Math.abs(x.lat)<=90&&Math.abs(x.lng)<=180&&typeof x.name==='string').slice(0,100)}catch{}
+ function persistFavorites(){try{localStorage.setItem(favoriteKey,JSON.stringify(favorites));return true}catch{return false}}
+ function renderFavorites(){
+  favoriteLayer.clearLayers();const list=$('favoriteList');list.replaceChildren();
+  if(!favorites.length)list.textContent='No hay favoritos.';
+  favorites.forEach((p,i)=>{
+   L.circleMarker([p.lat,p.lng],{radius:6,color:'#f3d58c',fillColor:'#f3c469',fillOpacity:.9,weight:2}).bindTooltip(p.name).addTo(favoriteLayer);
+   const row=document.createElement('div');row.style.cssText='display:flex;gap:5px;align-items:center;justify-content:space-between;margin:5px 0';
+   const go=document.createElement('button');go.className='smallAction';go.textContent=p.name+' · '+p.lat.toFixed(4)+', '+p.lng.toFixed(4);go.style.flex='1';go.onclick=()=>{map.setView([p.lat,p.lng],Math.max(map.getZoom(),14));selectAt({lat:p.lat,lng:p.lng},p.name)};
+   const del=document.createElement('button');del.className='smallAction';del.textContent='✕';del.title='Eliminar favorito';del.onclick=()=>{favorites.splice(i,1);persistFavorites();renderFavorites()};
+   row.append(go,del);list.append(row);
+  });favoriteLayer.getLayers().forEach(layer=>layer.setStyle?.({opacity:$('favoriteVisible').checked?1:0,fillOpacity:$('favoriteVisible').checked?.9:0}));
+ }
+ $('favoriteSave').onclick=()=>{
+  if(favorites.length>=100)return toast('Máximo de 100 favoritos');
+  const point=selected||map.getCenter(),name=$('favoriteName').value.trim()||'Punto '+(favorites.length+1);
+  if(!Number.isFinite(point.lat)||!Number.isFinite(point.lng))return toast('Coordenadas no válidas');
+  favorites.push({name,lat:point.lat,lng:point.lng});
+  if(!persistFavorites()){favorites.pop();return toast('No se pudo guardar en este navegador')}
+  $('favoriteName').value='';renderFavorites();toast('Favorito guardado localmente');
+ };
+ $('favoriteVisible').onchange=()=>{if($('favoriteVisible').checked)favoriteLayer.addTo(map);else map.removeLayer(favoriteLayer)};
+ $('favoriteExport').onclick=()=>{
+  if(!favorites.length)return toast('No hay puntos que exportar');
+  const json={type:'FeatureCollection',features:favorites.map(x=>({type:'Feature',geometry:{type:'Point',coordinates:[x.lng,x.lat]},properties:{name:x.name,source:'favorite-local'}}))};
+  const blob=new Blob([JSON.stringify(json,null,2)],{type:'application/geo+json'}),url=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=url;a.download='imperial-favoritos.geojson';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+ };
+ renderFavorites();
+
  const fmtDms=(value,pos,neg)=>{const a=Math.abs(value),d=Math.floor(a),m=Math.floor((a-d)*60),sec=(((a-d)*60-m)*60).toFixed(2);return d+'° '+m+'′ '+sec+'″ '+(value<0?neg:pos)};
  function toUTM(lat,lng){
   if(!Number.isFinite(lat)||!Number.isFinite(lng)||Math.abs(lat)>84||lat< -80||Math.abs(lng)>180)return null;
